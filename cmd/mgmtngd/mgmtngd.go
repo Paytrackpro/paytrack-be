@@ -1,8 +1,8 @@
 package main
 
 import (
-	"code.cryptopower.dev/private/mgmt-ng/storage"
-	"code.cryptopower.dev/private/mgmt-ng/webserver"
+	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"code.cryptopower.dev/mgmt-ng/be/webserver"
 	"log"
 )
 

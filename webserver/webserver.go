@@ -1,15 +1,27 @@
 package webserver
 
 import (
-	"code.cryptopower.dev/private/mgmt-ng/storage"
+	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v4"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type Config struct {
-	Port int
+	Port          int
+	HmacSecretKey string
+}
+
+type Response struct {
+	httpCode int
+	Success  bool        `json:"success"`
+	Error    string      `json:"error,omitempty"`
+	Data     interface{} `json:"data,omitempty"`
 }
 
 type WebServer struct {
@@ -18,7 +30,10 @@ type WebServer struct {
 	db   storage.Storage
 }
 
+type Map map[string]interface{}
+
 func NewWebServer(c Config, db storage.Storage) (*WebServer, error) {
+	c.HmacSecretKey = hmacDefaultSecret
 	return &WebServer{
 		mux:  chi.NewRouter(),
 		conf: &c,
@@ -26,12 +41,12 @@ func NewWebServer(c Config, db storage.Storage) (*WebServer, error) {
 	}, nil
 }
 
-func (w *WebServer) Run() error {
-	w.Route()
-	log.Printf("mgmtngd is running on :%d", w.conf.Port)
+func (s *WebServer) Run() error {
+	s.Route()
+	log.Printf("mgmtngd is running on :%d", s.conf.Port)
 	var server = http.Server{
-		Addr:              fmt.Sprintf(":%d", w.conf.Port),
-		Handler:           w.mux,
+		Addr:              fmt.Sprintf(":%d", s.conf.Port),
+		Handler:           s.mux,
 		TLSConfig:         nil,
 		ReadTimeout:       0,
 		ReadHeaderTimeout: 0,
@@ -45,4 +60,65 @@ func (w *WebServer) Run() error {
 		ConnContext:       nil,
 	}
 	return server.ListenAndServe()
+}
+
+func (s *WebServer) response(data Response, w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(data.httpCode)
+	body, _ := json.Marshal(data)
+	w.Write(body)
+}
+
+func (s *WebServer) parseJSON(r *http.Request, data interface{}) error {
+	if r.Body == nil {
+		return fmt.Errorf("body is nil")
+	}
+	var decoder = json.NewDecoder(r.Body)
+	var err = decoder.Decode(data)
+	defer r.Body.Close()
+	return err
+}
+
+func (s *WebServer) errorResponse(w http.ResponseWriter, err error, code int) {
+	var errStr string
+	if err != nil {
+		errStr = err.Error()
+	}
+	s.response(Response{
+		httpCode: code,
+		Success:  false,
+		Error:    errStr,
+		Data:     nil,
+	}, w)
+}
+
+func (s *WebServer) successResponse(w http.ResponseWriter, data interface{}, code int) {
+	s.response(Response{
+		httpCode: code,
+		Success:  true,
+		Error:    "",
+		Data:     data,
+	}, w)
+}
+
+func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		var bearer = r.Header.Get("Authorization")
+		// Should be a bearer token
+		if len(bearer) > 6 && strings.ToUpper(bearer[0:7]) == "BEARER " {
+			var tokenStr = bearer[7:]
+			var claim authClaims
+			token, err := jwt.ParseWithClaims(tokenStr, &claim, func(token *jwt.Token) (interface{}, error) {
+				return []byte(s.conf.HmacSecretKey), nil
+			})
+			if err != nil {
+				s.errorResponse(w, fmt.Errorf("your crediential is invalid"), http.StatusUnauthorized)
+				return
+			}
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)))
+			return
+		}
+		s.errorResponse(w, fmt.Errorf("your crediential is invalid"), http.StatusUnauthorized)
+	}
+	return http.HandlerFunc(fn)
 }

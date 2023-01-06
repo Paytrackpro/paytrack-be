@@ -1,5 +1,8 @@
 package storage
 
+const UserFieldUName = "UserName"
+const UserFieldId = "Id"
+
 type UserStorage interface {
 	CreateUser(user *User) error
 	QueryUser(field, val string) (*User, error)
@@ -14,11 +17,15 @@ type User struct {
 }
 
 func (p *psql) CreateUser(user *User) error {
+	user.Id = "123"
 	return nil
 }
 
 func (p *psql) QueryUser(field, val string) (*User, error) {
-	return nil, nil
+	return &User{
+		Id:       "123",
+		UserName: "VA",
+	}, nil
 }
 
 func (p *psql) ListUser() ([]User, error) {
