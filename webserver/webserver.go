@@ -13,8 +13,8 @@ import (
 )
 
 type Config struct {
-	Port          int
-	HmacSecretKey string
+	Port          int    `yaml:"port"`
+	HmacSecretKey string `yaml:"hmacSecretKey"`
 }
 
 type Response struct {
@@ -92,9 +92,9 @@ func (s *WebServer) errorResponse(w http.ResponseWriter, err error, code int) {
 	}, w)
 }
 
-func (s *WebServer) successResponse(w http.ResponseWriter, data interface{}, code int) {
+func (s *WebServer) successResponse(w http.ResponseWriter, data interface{}) {
 	s.response(Response{
-		httpCode: code,
+		httpCode: http.StatusOK,
 		Success:  true,
 		Error:    "",
 		Data:     data,
@@ -112,13 +112,20 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 				return []byte(s.conf.HmacSecretKey), nil
 			})
 			if err != nil {
-				s.errorResponse(w, fmt.Errorf("your crediential is invalid"), http.StatusUnauthorized)
+				s.errorResponse(w, fmt.Errorf("your credential is invalid"), http.StatusUnauthorized)
 				return
 			}
-			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)))
+			ctx := context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
-		s.errorResponse(w, fmt.Errorf("your crediential is invalid"), http.StatusUnauthorized)
+		s.errorResponse(w, fmt.Errorf("your credential is invalid"), http.StatusUnauthorized)
 	}
 	return http.HandlerFunc(fn)
+}
+
+func (s *WebServer) credentialsInfo(r *http.Request) (*authClaims, bool) {
+	val := r.Context().Value(authClaimsCtxKey)
+	claims, ok := val.(*authClaims)
+	return claims, ok
 }

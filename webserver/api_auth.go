@@ -59,7 +59,7 @@ func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			a.successResponse(w, Map{
 				"userId": user.Id,
-			}, http.StatusOK)
+			})
 		} else {
 			a.errorResponse(w, err, http.StatusInternalServerError)
 		}
@@ -91,6 +91,6 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		a.successResponse(w, Map{
 			"requestToken": tokenString,
 			"userInfo":     authClaim,
-		}, http.StatusOK)
+		})
 	}
 }

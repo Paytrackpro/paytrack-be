@@ -1,0 +1,5 @@
+db:
+  dns: "host=localhost user=database_user password=password dbname=mgmtng port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+webServer:
+  port: 6789
+  hmacSecretKey: "a key for generate jwt hash. it should be different for each environment"

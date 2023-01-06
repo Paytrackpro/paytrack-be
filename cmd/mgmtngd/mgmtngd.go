@@ -17,6 +17,12 @@ func _main() error {
 		return err
 	}
 	db, err := storage.NewStorage(conf.dbConfig())
+	if err != nil {
+		return err
+	}
 	web, err := webserver.NewWebServer(conf.webConfig(), db)
+	if err != nil {
+		return err
+	}
 	return web.Run()
 }

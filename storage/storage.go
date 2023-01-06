@@ -1,18 +1,25 @@
 package storage
 
-import "fmt"
+import (
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+)
 
 type Storage interface {
 	UserStorage
 }
 
 type psql struct {
+	db *gorm.DB
 }
 
 type Config struct {
-	Type string
+	Dns string `yaml:"dns"`
 }
 
 func NewStorage(c Config) (Storage, error) {
-	return &psql{}, fmt.Errorf("not implemeted yet")
+	db, err := gorm.Open(postgres.Open(c.Dns), &gorm.Config{})
+	return &psql{
+		db: db,
+	}, err
 }
