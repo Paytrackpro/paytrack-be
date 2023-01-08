@@ -16,11 +16,11 @@ func _main() error {
 	if err != nil {
 		return err
 	}
-	db, err := storage.NewStorage(conf.dbConfig())
+	db, err := storage.NewStorage(conf.Db)
 	if err != nil {
 		return err
 	}
-	web, err := webserver.NewWebServer(conf.webConfig(), db)
+	web, err := webserver.NewWebServer(conf.WebServer, db)
 	if err != nil {
 		return err
 	}

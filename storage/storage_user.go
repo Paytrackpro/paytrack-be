@@ -17,7 +17,7 @@ type UserStorage interface {
 
 type User struct {
 	Id           string
-	UserName     string
+	UserName     string `gorm:"index:users_user_name_idx,unique"`
 	PasswordHash string `json:"-"`
 	Email        string
 	CreatedAt    time.Time

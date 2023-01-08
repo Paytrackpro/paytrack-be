@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v4"
 	"log"
 	"net/http"
@@ -18,26 +19,31 @@ type Config struct {
 }
 
 type Response struct {
-	httpCode int
+	httpCode int         `json:"-"`
 	Success  bool        `json:"success"`
 	Error    string      `json:"error,omitempty"`
 	Data     interface{} `json:"data,omitempty"`
 }
 
 type WebServer struct {
-	mux  *chi.Mux
-	conf *Config
-	db   storage.Storage
+	mux       *chi.Mux
+	conf      *Config
+	db        storage.Storage
+	validator *validator.Validate
 }
 
 type Map map[string]interface{}
 
 func NewWebServer(c Config, db storage.Storage) (*WebServer, error) {
-	c.HmacSecretKey = hmacDefaultSecret
+	if c.HmacSecretKey == "" {
+		c.HmacSecretKey = hmacDefaultSecret
+	}
+
 	return &WebServer{
-		mux:  chi.NewRouter(),
-		conf: &c,
-		db:   db,
+		mux:       chi.NewRouter(),
+		conf:      &c,
+		db:        db,
+		validator: validator.New(),
 	}, nil
 }
 

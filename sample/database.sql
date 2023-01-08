@@ -6,3 +6,4 @@ CREATE TABLE public.users (
     created_at timestamp NULL,
     updated_at timestamp NULL
 );
+CREATE UNIQUE INDEX users_user_name_idx ON public.users (user_name);

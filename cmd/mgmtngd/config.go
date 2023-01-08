@@ -26,13 +26,3 @@ func loadConfig() (*Config, error) {
 	err = yaml.Unmarshal(raw, &conf)
 	return &conf, err
 }
-
-func (c *Config) dbConfig() storage.Config {
-	return c.Db
-}
-
-func (c *Config) webConfig() webserver.Config {
-	return webserver.Config{
-		Port: 6789,
-	}
-}
