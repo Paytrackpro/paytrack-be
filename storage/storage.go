@@ -19,7 +19,18 @@ type Config struct {
 
 func NewStorage(c Config) (Storage, error) {
 	db, err := gorm.Open(postgres.Open(c.Dns), &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+	err = autoMigrate(db)
+	if err != nil {
+		return nil, err
+	}
 	return &psql{
 		db: db,
 	}, err
+}
+
+func autoMigrate(db *gorm.DB) error {
+	return db.AutoMigrate(&User{})
 }

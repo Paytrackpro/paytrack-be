@@ -14,8 +14,9 @@ import (
 )
 
 type Config struct {
-	Port          int    `yaml:"port"`
-	HmacSecretKey string `yaml:"hmacSecretKey"`
+	Port              int    `yaml:"port"`
+	HmacSecretKey     string `yaml:"hmacSecretKey"`
+	AliveSessionHours int    `yaml:"aliveSessionHours"`
 }
 
 type Response struct {
@@ -35,8 +36,14 @@ type WebServer struct {
 type Map map[string]interface{}
 
 func NewWebServer(c Config, db storage.Storage) (*WebServer, error) {
+	if c.Port == 0 {
+		return nil, fmt.Errorf("please set up server port")
+	}
+	if c.AliveSessionHours <= 0 {
+		return nil, fmt.Errorf("aliveSessionHours must be > 0")
+	}
 	if c.HmacSecretKey == "" {
-		c.HmacSecretKey = hmacDefaultSecret
+		return nil, fmt.Errorf("please set up hmacSecretKey")
 	}
 
 	return &WebServer{

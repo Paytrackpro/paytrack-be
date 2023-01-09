@@ -1,5 +1,9 @@
 db:
   dns: "host=localhost user=database_user password=password dbname=mgmtng port=5432 sslmode=disable TimeZone=Asia/Shanghai"
 webServer:
+  # port: the port mgmtngd will take to run the web server
   port: 6789
-  hmacSecretKey: "a key for generate jwt hash. it should be different for each environment"
+  # hmacSecretKey: used to generate jwt hash. it should be private on production
+  hmacSecretKey: "A Secret String"
+  # aliveSessionHours: time to keep the login session alive
+  aliveSessionHours: 24

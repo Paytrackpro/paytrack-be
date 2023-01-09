@@ -19,7 +19,7 @@ type authForm struct {
 }
 
 type authClaims struct {
-	Id       string
+	Id       uint64
 	UserName string
 	Expire   int64
 }
@@ -54,10 +54,8 @@ func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var user = storage.User{
-		Id:           "",
 		UserName:     f.UserName,
 		PasswordHash: string(hash),
-		Email:        "",
 	}
 	err = a.db.CreateUser(&user)
 	if err == nil {
@@ -78,13 +76,22 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := a.db.QueryUser(storage.UserFieldUName, f.UserName)
 	if err != nil {
+		if err.Error() == "record not found" {
+			a.errorResponse(w, fmt.Errorf("your user name or password is incorrect"), http.StatusBadRequest)
+		} else {
+			a.errorResponse(w, err, http.StatusInternalServerError)
+		}
+		return
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(f.Password))
+	if err != nil {
 		a.errorResponse(w, fmt.Errorf("your user name or password is incorrect"), http.StatusBadRequest)
 		return
 	}
 	var authClaim = authClaims{
 		Id:       user.Id,
 		UserName: user.UserName,
-		Expire:   time.Now().Add(time.Hour * 24).Unix(),
+		Expire:   time.Now().Add(time.Hour * time.Duration(a.conf.AliveSessionHours)).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, authClaim)
 	tokenString, err := token.SignedString([]byte(a.conf.HmacSecretKey))

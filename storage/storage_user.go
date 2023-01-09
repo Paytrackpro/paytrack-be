@@ -11,12 +11,12 @@ const UserFieldId = "id"
 type UserStorage interface {
 	CreateUser(user *User) error
 	UpdateUser(user *User) error
-	QueryUser(field, val string) (*User, error)
+	QueryUser(field string, val interface{}) (*User, error)
 	ListUser() ([]User, error)
 }
 
 type User struct {
-	Id           string
+	Id           uint64 `gorm:"primarykey"`
 	UserName     string `gorm:"index:users_user_name_idx,unique"`
 	PasswordHash string `json:"-"`
 	Email        string
@@ -29,17 +29,14 @@ func (User) TableName() string {
 }
 
 func (p *psql) CreateUser(user *User) error {
-	user.CreatedAt = time.Now()
-	user.UpdatedAt = time.Now()
 	return p.db.Create(user).Error
 }
 
 func (p *psql) UpdateUser(user *User) error {
-	user.UpdatedAt = time.Now()
 	return p.db.Save(user).Error
 }
 
-func (p *psql) QueryUser(field, val string) (*User, error) {
+func (p *psql) QueryUser(field string, val interface{}) (*User, error) {
 	var user User
 	var err = p.db.Where(fmt.Sprintf("%s = ?", field), val).First(&user).Error
 	return &user, err
