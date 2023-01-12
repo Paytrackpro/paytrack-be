@@ -100,7 +100,7 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.successResponse(w, Map{
-		"requestToken": tokenString,
-		"userInfo":     authClaim,
+		"token":    tokenString,
+		"userInfo": authClaim,
 	})
 }
