@@ -12,7 +12,6 @@ type UserStorage interface {
 	CreateUser(user *User) error
 	UpdateUser(user *User) error
 	QueryUser(field string, val interface{}) (*User, error)
-	ListUser() ([]User, error)
 }
 
 type User struct {
@@ -40,8 +39,4 @@ func (p *psql) QueryUser(field string, val interface{}) (*User, error) {
 	var user User
 	var err = p.db.Where(fmt.Sprintf("%s = ?", field), val).First(&user).Error
 	return &user, err
-}
-
-func (p *psql) ListUser() ([]User, error) {
-	return nil, nil
 }

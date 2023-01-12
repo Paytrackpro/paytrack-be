@@ -20,7 +20,7 @@ type Config struct {
 }
 
 type Response struct {
-	httpCode int         `json:"-"`
+	httpCode int
 	Success  bool        `json:"success"`
 	Error    string      `json:"error,omitempty"`
 	Data     interface{} `json:"data,omitempty"`
