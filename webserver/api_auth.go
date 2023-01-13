@@ -57,8 +57,7 @@ func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 		UserName:     f.UserName,
 		PasswordHash: string(hash),
 	}
-	err = a.db.CreateUser(&user)
-	if err == nil {
+	if err := a.db.CreateUser(&user); err == nil {
 		a.successResponse(w, Map{
 			"userId": user.Id,
 		})
