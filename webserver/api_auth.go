@@ -58,17 +58,17 @@ func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 		PasswordHash: string(hash),
 	}
 	if err := a.db.CreateUser(&user); err == nil {
-		a.successResponse(w, Map{
-			"userId": user.Id,
-		})
-	} else {
 		// 23505 is  duplicate key value error for postgresql
 		if e, ok := err.(*pgconn.PgError); ok && e.Code == "23505" && e.ConstraintName == "users_user_name_idx" {
 			a.errorResponse(w, fmt.Errorf("the user name '%s' is already taken", f.UserName), http.StatusBadRequest)
 			return
 		}
 		a.errorResponse(w, err, http.StatusInternalServerError)
+		return
 	}
+	a.successResponse(w, Map{
+		"userId": user.Id,
+	})
 }
 
 func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
