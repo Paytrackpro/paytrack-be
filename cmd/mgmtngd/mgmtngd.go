@@ -1,14 +1,16 @@
 package main
 
 import (
+	"fmt"
+
+	"code.cryptopower.dev/mgmt-ng/be/log"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/webserver"
-	"log"
 )
 
 func main() {
 	err := _main()
-	log.Println(err)
+	fmt.Println(err)
 }
 
 func _main() error {
@@ -20,9 +22,17 @@ func _main() error {
 	if err != nil {
 		return err
 	}
+
+	// Config log
+	log.SetLogLevel(conf.LogLevel)
+	if err := log.InitLogRotator(conf.LogDir); err != nil {
+		return fmt.Errorf("failed to init logRotator: %v", err.Error())
+	}
+
 	web, err := webserver.NewWebServer(conf.WebServer, db)
 	if err != nil {
 		return err
 	}
+
 	return web.Run()
 }
