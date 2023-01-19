@@ -1,12 +1,20 @@
 package storage
 
 import (
+	"code.cryptopower.dev/mgmt-ng/be/payment"
 	"fmt"
 	"time"
 )
 
 const UserFieldUName = "user_name"
 const UserFieldId = "id"
+
+type UserRole int
+
+const (
+	UserRoleNone UserRole = iota
+	UserRoleAdmin
+)
 
 type UserStorage interface {
 	CreateUser(user *User) error
@@ -15,12 +23,17 @@ type UserStorage interface {
 }
 
 type User struct {
-	Id           uint64 `gorm:"primarykey"`
-	UserName     string `gorm:"index:users_user_name_idx,unique"`
-	PasswordHash string `json:"-"`
-	Email        string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	Id             uint64 `gorm:"primarykey"`
+	UserName       string `gorm:"index:users_user_name_idx,unique"`
+	DisplayName    string
+	PasswordHash   string `json:"-"`
+	Email          string
+	PaymentType    payment.Type
+	PaymentAddress string
+	Role           UserRole
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	LastSeen       time.Time
 }
 
 func (User) TableName() string {
