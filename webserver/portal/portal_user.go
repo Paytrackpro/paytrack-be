@@ -10,7 +10,7 @@ type RegisterForm struct {
 	UserName       string `validate:"required,alphanum,gte=4,lte=32"`
 	Password       string `validate:"required"`
 	Email          string `validate:"omitempty,email"`
-	DefaultPayment payment.Type
+	DefaultPayment payment.Method
 	PaymentAddress string
 }
 

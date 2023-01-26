@@ -1,9 +1,9 @@
 package payment
 
-type Type int
+type Method int
 
 const (
-	PaymentTypeNotSet Type = iota
+	PaymentTypeNotSet Method = iota
 	PaymentTypeBTC
 	PaymentTypeLTC
 	PaymentTypeDCR

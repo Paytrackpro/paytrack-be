@@ -82,6 +82,14 @@ func (s *WebServer) parseJSON(r *http.Request, data interface{}) error {
 	return err
 }
 
+func (s *WebServer) parseJSONAndValidate(r *http.Request, data interface{}) error {
+	err := s.parseJSON(r, data)
+	if err != nil {
+		return err
+	}
+	return s.validator.Struct(data)
+}
+
 func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		var bearer = r.Header.Get("Authorization")

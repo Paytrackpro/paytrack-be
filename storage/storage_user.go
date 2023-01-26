@@ -26,7 +26,7 @@ type User struct {
 	UserName       string           `json:"user_name" gorm:"index:users_user_name_idx,unique"`
 	PasswordHash   string           `json:"-"`
 	Email          string           `json:"email"`
-	PaymentType    payment.Type     `json:"payment_type"`
+	PaymentType    payment.Method   `json:"payment_type"`
 	PaymentAddress string           `json:"payment_address"`
 	Status         utils.UserStatus `gorm:"default:1" json:"status"`
 	Role           utils.UserRole   `json:"role"`

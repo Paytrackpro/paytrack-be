@@ -35,12 +35,7 @@ func (c authClaims) Valid() error {
 
 func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 	var f portal.RegisterForm
-	err := a.parseJSON(r, &f)
-	if err != nil {
-		utils.Response(w, http.StatusBadRequest, err, nil)
-		return
-	}
-	err = a.validator.Struct(&f)
+	err := a.parseJSONAndValidate(r, &f)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return

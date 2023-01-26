@@ -35,5 +35,11 @@ func (s *WebServer) Route() {
 			r.Put("/user/info", userRouter.adminUpdateUser)
 			r.Get("/user/list", userRouter.getListUsers)
 		})
+		r.Route("/payment", func(r chi.Router) {
+			var paymentRouter = apiPayment{WebServer: s}
+			r.With(s.loggedInMiddleware).Post("/", paymentRouter.createPayment)
+			r.Get("/{id:[0-9]+}", paymentRouter.getPayment)
+			r.Post("/process", paymentRouter.processPayment)
+		})
 	})
 }
