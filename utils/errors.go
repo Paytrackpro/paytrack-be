@@ -7,11 +7,12 @@ type Error struct {
 }
 
 const (
-	ErrorInternalCode      = 400
-	ErrorObjectExist       = 401
-	ErrorloginFail         = 402
-	ErrorInvalidCredential = 403
-	ErrorBodyRequited      = 403
+	StatusOK               = 2000
+	ErrorInternalCode      = 4000
+	ErrorObjectExist       = 4001
+	ErrorloginFail         = 4002
+	ErrorInvalidCredential = 4003
+	ErrorBodyRequited      = 4004
 )
 
 var InternalError = Error{

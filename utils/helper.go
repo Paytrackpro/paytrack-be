@@ -18,14 +18,17 @@ func NewError(mess string, code int) *Error {
 		Code: code,
 	}
 }
+func ResponseOK(w http.ResponseWriter, err error, data interface{}) {
+	Response(w, http.StatusOK, err, data)
+}
 
-func Response(w http.ResponseWriter, err error, data interface{}) {
-	w.WriteHeader(http.StatusOK)
+func Response(w http.ResponseWriter, httpStatus int, err error, data interface{}) {
+	w.WriteHeader(httpStatus)
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	res := response{
 		Success: err == nil,
-		Code:    200,
+		Code:    StatusOK,
 		Message: "ok",
 		Data:    data,
 	}

@@ -91,14 +91,14 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 				return []byte(s.conf.HmacSecretKey), nil
 			})
 			if err != nil {
-				utils.Response(w, utils.InvalidCredential, nil)
+				utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
 				return
 			}
 			ctx := context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
-		utils.Response(w, utils.InvalidCredential, nil)
+		utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
 	}
 	return http.HandlerFunc(fn)
 }
