@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"code.cryptopower.dev/mgmt-ng/be/email"
 	"code.cryptopower.dev/mgmt-ng/be/log"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/webserver"
@@ -29,7 +30,11 @@ func _main() error {
 		return fmt.Errorf("failed to init logRotator: %v", err.Error())
 	}
 
-	web, err := webserver.NewWebServer(conf.WebServer, db)
+	mailClient, err := email.NewMailClient(conf.Mail)
+	if err != nil {
+		return err
+	}
+	web, err := webserver.NewWebServer(conf.WebServer, db, mailClient)
 	if err != nil {
 		return err
 	}

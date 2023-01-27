@@ -1,6 +1,7 @@
 package webserver
 
 import (
+	"code.cryptopower.dev/mgmt-ng/be/email"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -26,13 +27,14 @@ type WebServer struct {
 	conf      *Config
 	db        storage.Storage
 	validator *validator.Validate
+	mail      *email.MailClient
 }
 
 const authClaimsCtxKey = "authClaimsCtxKey"
 
 type Map map[string]interface{}
 
-func NewWebServer(c Config, db storage.Storage) (*WebServer, error) {
+func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*WebServer, error) {
 	if c.Port == 0 {
 		return nil, fmt.Errorf("please set up server port")
 	}
@@ -48,6 +50,7 @@ func NewWebServer(c Config, db storage.Storage) (*WebServer, error) {
 		conf:      &c,
 		db:        db,
 		validator: validator.New(),
+		mail:      mailClient,
 	}, nil
 }
 

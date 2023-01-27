@@ -1,12 +1,13 @@
 package main
 
 import (
+	"code.cryptopower.dev/mgmt-ng/be/email"
+	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"code.cryptopower.dev/mgmt-ng/be/webserver"
 	"flag"
 	"fmt"
 	"os"
 
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/webserver"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,6 +16,7 @@ type Config struct {
 	WebServer webserver.Config `yaml:"webServer"`
 	LogLevel  string           `yaml:"logLevel"`
 	LogDir    string           `yaml:"logDir"`
+	Mail      email.Config     `yaml:"mail"`
 }
 
 func loadConfig() (*Config, error) {
