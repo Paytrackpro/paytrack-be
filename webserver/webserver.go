@@ -1,29 +1,24 @@
 package webserver
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-playground/validator/v10"
-	"github.com/golang-jwt/jwt/v4"
 	"log"
 	"net/http"
 	"strings"
+
+	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 type Config struct {
 	Port              int    `yaml:"port"`
 	HmacSecretKey     string `yaml:"hmacSecretKey"`
 	AliveSessionHours int    `yaml:"aliveSessionHours"`
-}
-
-type Response struct {
-	httpCode int
-	Success  bool        `json:"success"`
-	Error    string      `json:"error,omitempty"`
-	Data     interface{} `json:"data,omitempty"`
 }
 
 type WebServer struct {
@@ -75,43 +70,14 @@ func (s *WebServer) Run() error {
 	return server.ListenAndServe()
 }
 
-func (s *WebServer) response(data Response, w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(data.httpCode)
-	body, _ := json.Marshal(data)
-	w.Write(body)
-}
-
 func (s *WebServer) parseJSON(r *http.Request, data interface{}) error {
 	if r.Body == nil {
-		return fmt.Errorf("body is nil")
+		return utils.NewError("body cannot be empty or nil", utils.ErrorBodyRequited)
 	}
 	var decoder = json.NewDecoder(r.Body)
 	var err = decoder.Decode(data)
 	defer r.Body.Close()
 	return err
-}
-
-func (s *WebServer) errorResponse(w http.ResponseWriter, err error, code int) {
-	var errStr string
-	if err != nil {
-		errStr = err.Error()
-	}
-	s.response(Response{
-		httpCode: code,
-		Success:  false,
-		Error:    errStr,
-		Data:     nil,
-	}, w)
-}
-
-func (s *WebServer) successResponse(w http.ResponseWriter, data interface{}) {
-	s.response(Response{
-		httpCode: http.StatusOK,
-		Success:  true,
-		Error:    "",
-		Data:     data,
-	}, w)
 }
 
 func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
@@ -125,14 +91,14 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 				return []byte(s.conf.HmacSecretKey), nil
 			})
 			if err != nil {
-				s.errorResponse(w, fmt.Errorf("your credential is invalid"), http.StatusUnauthorized)
+				utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
 				return
 			}
 			ctx := context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
-		s.errorResponse(w, fmt.Errorf("your credential is invalid"), http.StatusUnauthorized)
+		utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
 	}
 	return http.HandlerFunc(fn)
 }
