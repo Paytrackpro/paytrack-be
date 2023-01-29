@@ -3,7 +3,12 @@ package utils
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
+
+	"github.com/gorilla/schema"
 )
+
+var decoder = schema.NewDecoder()
 
 type response struct {
 	Success bool        `json:"success"`
@@ -46,4 +51,32 @@ func Response(w http.ResponseWriter, httpStatus int, err error, data interface{}
 		}
 	}
 	enc.Encode(res)
+}
+
+func IsEmpty(x interface{}) bool {
+	switch value := x.(type) {
+	case string:
+		return value == ""
+	case int32:
+		return value == 0
+	case int:
+		return value == 0
+	case uint32:
+		return value == 0
+	case int64:
+		return value == 0
+	case float64:
+		return value == 0
+	default:
+		return true
+	}
+}
+
+func DecodeQuery(object interface{}, query url.Values) error {
+	err := decoder.Decode(object, query)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

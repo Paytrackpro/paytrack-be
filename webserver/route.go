@@ -22,10 +22,11 @@ func (s *WebServer) Route() {
 			r.Post("/login", authRouter.login)
 		})
 		r.Route("/user", func(r chi.Router) {
-			r.Use(s.loggedInMiddleware)
+			// r.Use(s.loggedInMiddleware)
 			var userRouter = apiUser{WebServer: s}
 			r.Get("/info", userRouter.info)
 			r.Post("/info", userRouter.update)
+			r.Get("/list", userRouter.getListUsers)
 		})
 	})
 }
