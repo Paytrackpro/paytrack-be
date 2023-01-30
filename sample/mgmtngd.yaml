@@ -7,6 +7,8 @@ webServer:
   hmacSecretKey: "A Secret String"
   # aliveSessionHours: time to keep the login session alive
   aliveSessionHours: 24
+  # aesSecretKey: a secret key used to encrypt sensitive data
+  aesSecretKey: asder45t678uio89
 # mail: config for mail client, tested running with google mail service
 mail:
   addr: smtp.gmail.com:587

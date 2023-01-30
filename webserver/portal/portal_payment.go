@@ -24,16 +24,22 @@ type PaymentConfirm struct {
 }
 
 func (p *PaymentRequest) Payment(requesterId uint64) storage.Payment {
-	return storage.Payment{
+	var payment = storage.Payment{
+		ContactMethod:  p.ContactMethod,
 		RequesterId:    requesterId,
-		SenderId:       p.SenderId,
-		SenderEmail:    p.SenderEmail,
 		Amount:         p.Amount,
 		Description:    p.Description,
 		PaymentMethod:  p.PaymentMethod,
 		PaymentAddress: p.PaymentAddress,
 		Status:         storage.PaymentStatusCreated,
 	}
+	if p.ContactMethod == storage.PaymentTypeInternal {
+		payment.SenderId = p.SenderId
+	}
+	if p.ContactMethod == storage.PaymentTypeEmail {
+		payment.SenderEmail = p.SenderEmail
+	}
+	return payment
 }
 
 func (p *PaymentConfirm) Process(payment *storage.Payment) {

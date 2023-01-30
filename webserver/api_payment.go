@@ -18,13 +18,13 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 	var f portal.PaymentRequest
 	err := a.parseJSONAndValidate(r, &f)
 	if err != nil {
-		a.errorResponse(w, err, http.StatusBadRequest)
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
 	claims, _ := a.credentialsInfo(r)
 	payment := f.Payment(claims.Id)
 	if err = a.db.Create(&payment); err != nil {
-		a.errorResponse(w, err, http.StatusInternalServerError)
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
 	}
 	var response = Map{
@@ -34,7 +34,7 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 	response["generateToken"] = err == nil
 	if err != nil {
 		response["generateTokenError"] = err.Error()
-		a.successResponse(w, response)
+		utils.ResponseOK(w, response)
 		return
 	}
 	response["token"] = accessToken
@@ -44,7 +44,7 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 			Sender:    payment.SenderEmail,
 			Requester: claims.UserName,
 			Link:      a.conf.ClientAddr,
-		})
+		}, payment.SenderEmail)
 		response["mailNotification"] = err == nil
 		if err != nil {
 			response["mailNotificationError"] = err.Error()
@@ -52,28 +52,27 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 	}
 	// todo: do we have to notify with internal case?
 	// setup notification system
-	a.successResponse(w, response)
+	utils.ResponseOK(w, response)
 }
 
 func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 	var id = chi.URLParam(r, "id")
-	r.ParseForm()
-	var token = r.Form.Get("token")
+	var token = r.FormValue("token")
 	var payment storage.Payment
 	if err := a.db.GetById(id, &payment); err != nil {
-		a.errorResponse(w, err, http.StatusNotFound)
+		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
 	if err := a.verifyAccessPayment(token, payment, r); err != nil {
-		a.errorResponse(w, err, http.StatusForbidden)
+		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
-	a.successResponse(w, payment)
+	utils.ResponseOK(w, payment)
 }
 
 func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, r *http.Request) error {
-	claims, _ := a.credentialsInfo(r)
-	if payment.ContactMethod == storage.PaymentTypeInternal && claims.Id != payment.SenderId {
+	claims, _ := a.parseBearer(r)
+	if payment.ContactMethod == storage.PaymentTypeInternal && (claims == nil || claims.Id != payment.SenderId) {
 		return fmt.Errorf("only requested user has the access to process the payment")
 	}
 	if payment.ContactMethod == storage.PaymentTypeEmail {
@@ -92,22 +91,27 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 	var f portal.PaymentConfirm
 	err := a.parseJSONAndValidate(r, &f)
 	if err != nil {
-		a.errorResponse(w, err, http.StatusBadRequest)
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
 	var payment storage.Payment
 	if err := a.db.GetById(f.Id, &payment); err != nil {
-		a.errorResponse(w, err, http.StatusNotFound)
+		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
 	if err := a.verifyAccessPayment(f.Token, payment, r); err != nil {
-		a.errorResponse(w, err, http.StatusForbidden)
+		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
+		return
+	}
+	if payment.Status == storage.PaymentStatusPaid {
+		utils.Response(w, http.StatusBadRequest,
+			utils.NewError(fmt.Errorf("payment was processed"), utils.ErrorBadRequest), nil)
 		return
 	}
 	f.Process(&payment)
 	if err = a.db.Save(&payment); err != nil {
-		a.errorResponse(w, err, http.StatusInternalServerError)
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
 	}
-	a.successResponse(w, payment)
+	utils.ResponseOK(w, payment)
 }

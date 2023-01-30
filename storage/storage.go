@@ -35,7 +35,7 @@ func NewStorage(c Config) (Storage, error) {
 }
 
 func autoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(&User{})
+	return db.AutoMigrate(&User{}, &Payment{})
 }
 
 func (p *psql) Create(obj interface{}) error {

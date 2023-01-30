@@ -4,7 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/base64"
+	"encoding/base32"
 	"fmt"
 	"io"
 )
@@ -14,8 +14,12 @@ type Cryptography struct {
 }
 
 func NewCryptography(key string) (*Cryptography, error) {
-	if len(key) == 0 {
-		return nil, fmt.Errorf("please provide secret key")
+	k := len(key)
+	switch k {
+	default:
+		return nil, fmt.Errorf("eas key length must be 16, 24 or 32")
+	case 16, 24, 32:
+		break
 	}
 	return &Cryptography{key: []byte(key)}, nil
 }
@@ -33,11 +37,11 @@ func (c *Cryptography) Encrypt(text string) (string, error) {
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
 		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(gcm.Seal(nonce, nonce, []byte(text), nil)), nil
+	return base32.StdEncoding.EncodeToString(gcm.Seal(nonce, nonce, []byte(text), nil)), nil
 }
 
 func (c *Cryptography) Decrypt(cypher string) (string, error) {
-	ciphertext, err := base64.StdEncoding.DecodeString(cypher)
+	ciphertext, err := base32.StdEncoding.DecodeString(cypher)
 	if err != nil {
 		return "", err
 	}

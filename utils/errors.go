@@ -6,6 +6,11 @@ type Error struct {
 	Code int
 }
 
+func (e *Error) With(err error) *Error {
+	e.error = err
+	return e
+}
+
 const (
 	StatusOK               = 2000
 	ErrorInternalCode      = 4000
@@ -13,12 +18,19 @@ const (
 	ErrorloginFail         = 4002
 	ErrorInvalidCredential = 4003
 	ErrorBodyRequited      = 4004
-	ErrorForbidden         = 4005
+	ErrorBadRequest        = 4010
+	ErrorNotFound          = 4040
+	ErrorForbidden         = 4030
 )
 
-var RequestFobidden = &Error{
-	Mess: "This api not allow on this user",
+var ForbiddenError = &Error{
+	Mess: "not allowed",
 	Code: ErrorForbidden,
+}
+
+var NotFoundError = &Error{
+	Mess: "not found",
+	Code: ErrorNotFound,
 }
 
 var InternalError = Error{

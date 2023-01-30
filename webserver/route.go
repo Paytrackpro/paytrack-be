@@ -39,7 +39,7 @@ func (s *WebServer) Route() {
 			var paymentRouter = apiPayment{WebServer: s}
 			r.With(s.loggedInMiddleware).Post("/", paymentRouter.createPayment)
 			r.Get("/{id:[0-9]+}", paymentRouter.getPayment)
-			r.Post("/process", paymentRouter.processPayment)
+			r.Put("/process", paymentRouter.processPayment)
 		})
 	})
 }

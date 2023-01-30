@@ -17,14 +17,14 @@ type response struct {
 	Data    interface{} `json:"data"`
 }
 
-func NewError(mess string, code int) *Error {
+func NewError(err error, code int) *Error {
 	return &Error{
-		Mess: mess,
-		Code: code,
+		error: err,
+		Code:  code,
 	}
 }
-func ResponseOK(w http.ResponseWriter, err error, data interface{}) {
-	Response(w, http.StatusOK, err, data)
+func ResponseOK(w http.ResponseWriter, data interface{}) {
+	Response(w, http.StatusOK, nil, data)
 }
 
 func Response(w http.ResponseWriter, httpStatus int, err error, data interface{}) {
