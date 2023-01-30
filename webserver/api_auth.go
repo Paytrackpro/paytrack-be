@@ -23,6 +23,7 @@ type authClaims struct {
 	Id       uint64
 	UserRole utils.UserRole
 	Expire   int64
+	UserName string
 }
 
 func (c authClaims) Valid() error {
@@ -88,6 +89,7 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		Id:       user.Id,
 		UserRole: user.Role,
 		Expire:   time.Now().Add(time.Hour * time.Duration(a.conf.AliveSessionHours)).Unix(),
+		UserName: user.UserName,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, authClaim)
 	tokenString, err := token.SignedString([]byte(a.conf.HmacSecretKey))

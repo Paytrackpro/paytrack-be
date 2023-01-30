@@ -5,15 +5,27 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"io"
 )
 
-func Encrypt(key, text string) (string, error) {
-	c, err := aes.NewCipher([]byte(key))
+type Cryptography struct {
+	key []byte
+}
+
+func NewCryptography(key string) (*Cryptography, error) {
+	if len(key) == 0 {
+		return nil, fmt.Errorf("please provide secret key")
+	}
+	return &Cryptography{key: []byte(key)}, nil
+}
+
+func (c *Cryptography) Encrypt(text string) (string, error) {
+	ci, err := aes.NewCipher(c.key)
 	if err != nil {
 		return "", err
 	}
-	gcm, err := cipher.NewGCM(c)
+	gcm, err := cipher.NewGCM(ci)
 	if err != nil {
 		return "", err
 	}
@@ -24,17 +36,17 @@ func Encrypt(key, text string) (string, error) {
 	return base64.StdEncoding.EncodeToString(gcm.Seal(nonce, nonce, []byte(text), nil)), nil
 }
 
-func Decrypt(key, cypher string) (string, error) {
+func (c *Cryptography) Decrypt(cypher string) (string, error) {
 	ciphertext, err := base64.StdEncoding.DecodeString(cypher)
 	if err != nil {
 		return "", err
 	}
-	c, err := aes.NewCipher([]byte(key))
+	ci, err := aes.NewCipher(c.key)
 	if err != nil {
 		return "", err
 	}
 
-	gcm, err := cipher.NewGCM(c)
+	gcm, err := cipher.NewGCM(ci)
 	if err != nil {
 		return "", err
 	}
@@ -47,4 +59,8 @@ func Decrypt(key, cypher string) (string, error) {
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	return string(plaintext), err
+}
+
+func PaymentPlainText(id uint64) string {
+	return fmt.Sprintf("payment:%d", id)
 }

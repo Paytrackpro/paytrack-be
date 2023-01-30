@@ -18,8 +18,9 @@ type PaymentRequest struct {
 }
 
 type PaymentConfirm struct {
-	Id   uint64 `validate:"required"`
-	TxId string
+	Id    uint64 `validate:"required"`
+	TxId  string
+	Token string
 }
 
 func (p *PaymentRequest) Payment(requesterId uint64) storage.Payment {

@@ -2,6 +2,8 @@ package webserver
 
 import (
 	"code.cryptopower.dev/mgmt-ng/be/email"
+	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,8 +11,6 @@ import (
 	"net/http"
 	"strings"
 
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v4"
@@ -20,6 +20,7 @@ type Config struct {
 	Port              int    `yaml:"port"`
 	HmacSecretKey     string `yaml:"hmacSecretKey"`
 	AliveSessionHours int    `yaml:"aliveSessionHours"`
+	ClientAddr        string `yaml:"clientAddr"`
 }
 
 type WebServer struct {
@@ -28,6 +29,7 @@ type WebServer struct {
 	db        storage.Storage
 	validator *validator.Validate
 	mail      *email.MailClient
+	crypto    *utils.Cryptography
 }
 
 const authClaimsCtxKey = "authClaimsCtxKey"
@@ -44,6 +46,10 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 	if c.HmacSecretKey == "" {
 		return nil, fmt.Errorf("please set up hmacSecretKey")
 	}
+	crypto, err := utils.NewCryptography(c.HmacSecretKey)
+	if err != nil {
+		return nil, err
+	}
 
 	return &WebServer{
 		mux:       chi.NewRouter(),
@@ -51,6 +57,7 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 		db:        db,
 		validator: validator.New(),
 		mail:      mailClient,
+		crypto:    crypto,
 	}, nil
 }
 

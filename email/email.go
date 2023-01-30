@@ -31,7 +31,7 @@ func NewMailClient(conf Config) (*MailClient, error) {
 	}, nil
 }
 
-func (m *MailClient) Send(subject, tmplName string, data map[string]interface{}, toMails ...string) error {
+func (m *MailClient) Send(subject, tmplName string, data interface{}, toMails ...string) error {
 	if len(toMails) == 0 {
 		return fmt.Errorf("mail to must be required")
 	}
