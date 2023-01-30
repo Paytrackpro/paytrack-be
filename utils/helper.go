@@ -80,3 +80,9 @@ func DecodeQuery(object interface{}, query url.Values) error {
 
 	return nil
 }
+
+func SetValue[T any](source *T, value T) {
+	if !IsEmpty(value) && source != &value {
+		*source = value
+	}
+}

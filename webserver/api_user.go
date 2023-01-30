@@ -1,21 +1,16 @@
 package webserver
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type apiUser struct {
 	*WebServer
-}
-
-type userForm struct {
-	Email string `validate:"required,email"`
 }
 
 func (a *apiUser) info(w http.ResponseWriter, r *http.Request) {
@@ -28,11 +23,32 @@ func (a *apiUser) info(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *apiUser) infoWithId(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	if claims.UserRole == utils.UserRoleNone {
+		utils.Response(w, http.StatusForbidden, utils.RequestFobidden, nil)
+		return
+	}
+	user, err := a.db.QueryUser(storage.UserFieldId, claims.Id)
+	if err != nil {
+		utils.Response(w, http.StatusNotFound, err, nil)
+	} else {
+		utils.ResponseOK(w, nil, user)
+	}
+}
+
+// This function use for update user for admin, manager and user
 func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
-	var f userForm
+	claims, _ := a.credentialsInfo(r)
+
+	var f portal.UpdateUserRequest
 	err := a.parseJSON(r, &f)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	if claims.UserRole == utils.UserRoleNone || claims.Id != uint64(f.UserId) {
+		utils.Response(w, http.StatusForbidden, utils.RequestFobidden, nil)
 		return
 	}
 	err = a.validator.Struct(&f)
@@ -40,29 +56,52 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
-	claims, _ := a.credentialsInfo(r)
 	user, err := a.db.QueryUser(storage.UserFieldId, claims.Id)
 	if err != nil {
 		utils.Response(w, http.StatusNotFound, err, nil)
 		return
 	}
-	user.Email = f.Email
+	utils.SetValue(&user.Email, f.Email)
+	utils.SetValue(&user.PaymentType, f.PaymentType)
+	utils.SetValue(&user.PaymentAddress, f.PaymentAddress)
+	if !utils.IsEmpty(f.Password) {
+		hash, err := bcrypt.GenerateFromPassword([]byte(f.Password), bcrypt.DefaultCost)
+		if err != nil {
+			utils.Response(w, http.StatusInternalServerError, err, nil)
+			return
+		}
+		user.PasswordHash = string(hash)
+	}
 	err = a.db.UpdateUser(user)
+
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
 	utils.ResponseOK(w, nil, Map{
-		"userId": user.Id,
+		"user_id": user.Id,
 	})
 }
 
 func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
-	var query portal.ListUserRequest
-	if err := utils.DecodeQuery(&query, r.URL.Query()); err != nil {
-		fmt.Println("---errr--->", err)
+	claims, _ := a.credentialsInfo(r)
+	if claims.UserRole == utils.UserRoleNone {
+		utils.Response(w, http.StatusForbidden, utils.RequestFobidden, nil)
 		return
 	}
-	data, _ := json.Marshal(query)
-	fmt.Println(string(data))
+	var query portal.ListUserRequest
+	if err := utils.DecodeQuery(&query, r.URL.Query()); err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	if query.Limit == 0 {
+		query.Limit = 20
+	}
+	users, err := a.db.GetListUser(query.SortType, query.Sort, query.Limit, query.Offset, query.KeySearch)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	utils.ResponseOK(w, nil, users)
 }
