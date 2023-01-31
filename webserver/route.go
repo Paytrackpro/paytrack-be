@@ -25,9 +25,9 @@ func (s *WebServer) Route() {
 			r.Use(s.loggedInMiddleware)
 			var userRouter = apiUser{WebServer: s}
 			r.Get("/info", userRouter.info)
-			r.Get("/info/{id}", userRouter.infoWithId)
-			r.Post("/info", userRouter.update)
-			r.Get("/list", userRouter.getListUsers)
+			r.Get("user/info/{id}", userRouter.infoWithId)
+			r.Post("user/info", userRouter.update)
+			r.Get("user/list", userRouter.getListUsers)
 		})
 	})
 }

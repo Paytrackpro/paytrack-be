@@ -3,6 +3,8 @@ package webserver
 import (
 	"net/http"
 
+	"code.cryptopower.dev/mgmt-ng/be/log"
+	"code.cryptopower.dev/mgmt-ng/be/models"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
@@ -97,8 +99,18 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 	if query.Limit == 0 {
 		query.Limit = 20
 	}
-	users, err := a.db.GetListUser(query.SortType, query.Sort, query.Limit, query.Offset, query.KeySearch)
+	filter := models.UserFilter{
+		KeySearch: query.KeySearch,
+		MSort: models.MSort{
+			SortType: query.SortType,
+			Sort:     query.Sort,
+			Limit:    query.Limit,
+			Offset:   query.Offset,
+		},
+	}
+	users, err := a.db.GetListUser(filter)
 	if err != nil {
+		log.Logger.Error(err)
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
