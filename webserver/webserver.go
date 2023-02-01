@@ -28,6 +28,8 @@ type WebServer struct {
 	validator *validator.Validate
 }
 
+const authClaimsCtxKey = "authClaimsCtxKey"
+
 type Map map[string]interface{}
 
 func NewWebServer(c Config, db storage.Storage) (*WebServer, error) {
@@ -99,6 +101,22 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
+	}
+	return http.HandlerFunc(fn)
+}
+
+func (s *WebServer) adminMiddleware(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		claims, _ := s.credentialsInfo(r)
+		if claims.UserRole != utils.UserRoleAdmin {
+			e := &utils.Error{
+				Mess: "This api only for admin",
+				Code: utils.ErrorForbidden,
+			}
+			utils.Response(w, http.StatusForbidden, e, nil)
+			return
+		}
+		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
 }

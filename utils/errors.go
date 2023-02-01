@@ -13,7 +13,13 @@ const (
 	ErrorloginFail         = 4002
 	ErrorInvalidCredential = 4003
 	ErrorBodyRequited      = 4004
+	ErrorForbidden         = 4005
 )
+
+var RequestFobidden = &Error{
+	Mess: "This api not allow on this user",
+	Code: ErrorForbidden,
+}
 
 var InternalError = Error{
 	Mess: "Something went wrong. please contact admin",
