@@ -10,11 +10,3 @@ const paymentNotify = `
 </div>
 {{end}}
 `
-
-type PaymentNotifyVar struct {
-	Title     string
-	Sender    string
-	Requester string
-	Link      string
-	Path      string
-}

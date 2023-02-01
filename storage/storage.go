@@ -9,7 +9,12 @@ type Storage interface {
 	Create(obj interface{}) error
 	Save(obj interface{}) error
 	GetById(id interface{}, obj interface{}) error
+	GetList(f Filter, obj interface{}) error
 	UserStorage
+}
+
+type Filter interface {
+	BindQuery(db *gorm.DB) *gorm.DB
 }
 
 type psql struct {
@@ -47,4 +52,8 @@ func (p *psql) Save(obj interface{}) error {
 
 func (p *psql) GetById(id interface{}, obj interface{}) error {
 	return p.db.Where("id = ?", id).First(obj).Error
+}
+
+func (p *psql) GetList(f Filter, obj interface{}) error {
+	return f.BindQuery(p.db).Find(obj).Error
 }

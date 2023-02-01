@@ -4,6 +4,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/payment"
 	"encoding/json"
 	"fmt"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -26,7 +27,11 @@ func (p PaymentStatus) MarshalJSON() ([]byte, error) {
 }
 
 func (p *PaymentStatus) UnmarshalJSON(v []byte) error {
-	switch string(v) {
+	var val string
+	if err := json.Unmarshal(v, &val); err != nil {
+		return err
+	}
+	switch val {
 	case "created":
 		*p = PaymentStatusCreated
 		return nil
@@ -37,7 +42,7 @@ func (p *PaymentStatus) UnmarshalJSON(v []byte) error {
 		*p = PaymentStatusPaid
 		return nil
 	}
-	return fmt.Errorf("invalid value")
+	return fmt.Errorf("payment status invalid value")
 }
 
 const (
@@ -63,7 +68,11 @@ func (p PaymentContact) MarshalJSON() ([]byte, error) {
 }
 
 func (p *PaymentContact) UnmarshalJSON(v []byte) error {
-	switch string(v) {
+	var val string
+	if err := json.Unmarshal(v, &val); err != nil {
+		return err
+	}
+	switch val {
 	case "internal":
 		*p = PaymentTypeInternal
 		return nil
@@ -71,7 +80,7 @@ func (p *PaymentContact) UnmarshalJSON(v []byte) error {
 		*p = PaymentTypeEmail
 		return nil
 	}
-	return fmt.Errorf("invalid value")
+	return fmt.Errorf("payment contact invalid value")
 }
 
 const (
@@ -96,4 +105,15 @@ type Payment struct {
 	CreatedAt      time.Time
 	SentAt         time.Time
 	PaidAt         time.Time
+}
+
+type PaymentFilter struct {
+	Ids []uint64
+}
+
+func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
+	if len(f.Ids) > 0 {
+		db = db.Where("id", f.Ids)
+	}
+	return db
 }

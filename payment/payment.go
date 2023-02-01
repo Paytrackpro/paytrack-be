@@ -30,7 +30,11 @@ func (m Method) MarshalJSON() ([]byte, error) {
 }
 
 func (m *Method) UnmarshalJSON(v []byte) error {
-	switch string(v) {
+	var val string
+	if err := json.Unmarshal(v, &val); err != nil {
+		return err
+	}
+	switch val {
 	case "btc":
 		*m = PaymentTypeBTC
 		return nil

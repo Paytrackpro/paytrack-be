@@ -9,7 +9,7 @@ import (
 type PaymentRequest struct {
 	// Sender is the person who will pay for the payment
 	SenderId       uint64 `validate:"required_if=ContactMethod 0"`
-	SenderEmail    string `validate:"required_if=ContactMethod 1"`
+	SenderEmail    string `validate:"required_if=ContactMethod 1,omitempty,email"`
 	ContactMethod  storage.PaymentContact
 	Amount         float64        `validate:"required"`
 	Description    string         `validate:"required"`
