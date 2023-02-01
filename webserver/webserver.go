@@ -28,6 +28,8 @@ type WebServer struct {
 	validator *validator.Validate
 }
 
+const authClaimsCtxKey = "authClaimsCtxKey"
+
 type Map map[string]interface{}
 
 func NewWebServer(c Config, db storage.Storage) (*WebServer, error) {
@@ -94,7 +96,7 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 				utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
 				return
 			}
-			ctx := context.WithValue(r.Context(), utils.AuthClaimsCtxKey, token.Claims)
+			ctx := context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
@@ -104,7 +106,7 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 }
 
 func (s *WebServer) credentialsInfo(r *http.Request) (*authClaims, bool) {
-	val := r.Context().Value(utils.AuthClaimsCtxKey)
+	val := r.Context().Value(authClaimsCtxKey)
 	claims, ok := val.(*authClaims)
 	return claims, ok
 }
