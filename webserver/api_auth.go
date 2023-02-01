@@ -20,11 +20,10 @@ type apiAuth struct {
 }
 
 type authClaims struct {
-	Id     uint64
-	Expire int64
+	Id       uint64
+	UserRole utils.UserRole
+	Expire   int64
 }
-
-const authClaimsCtxKey = "authClaimsCtxKey"
 
 func (c authClaims) Valid() error {
 	timestamp := time.Now().Unix()
@@ -65,7 +64,7 @@ func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.ResponseOK(w, nil, Map{
-		"userId": user.Id,
+		"user_id": user.Id,
 	})
 }
 
@@ -91,8 +90,9 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var authClaim = authClaims{
-		Id:     user.Id,
-		Expire: time.Now().Add(time.Hour * time.Duration(a.conf.AliveSessionHours)).Unix(),
+		Id:       user.Id,
+		UserRole: user.Role,
+		Expire:   time.Now().Add(time.Hour * time.Duration(a.conf.AliveSessionHours)).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, authClaim)
 	tokenString, err := token.SignedString([]byte(a.conf.HmacSecretKey))
@@ -101,7 +101,7 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.ResponseOK(w, nil, Map{
-		"token":    tokenString,
-		"userInfo": user,
+		"token":     tokenString,
+		"user_info": user,
 	})
 }
