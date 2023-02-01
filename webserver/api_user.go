@@ -8,6 +8,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
+	"github.com/go-chi/chi/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -26,12 +27,8 @@ func (a *apiUser) info(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiUser) infoWithId(w http.ResponseWriter, r *http.Request) {
-	claims, _ := a.credentialsInfo(r)
-	if claims.UserRole == utils.UserRoleNone {
-		utils.Response(w, http.StatusForbidden, utils.RequestFobidden, nil)
-		return
-	}
-	user, err := a.db.QueryUser(storage.UserFieldId, claims.Id)
+	id := chi.URLParam(r, "id")
+	user, err := a.db.QueryUser(storage.UserFieldId, id)
 	if err != nil {
 		utils.Response(w, http.StatusNotFound, err, nil)
 	} else {
@@ -39,35 +36,19 @@ func (a *apiUser) infoWithId(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// This function use for update user for admin, manager and user
-func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
-	claims, _ := a.credentialsInfo(r)
+// This function use for update user for admin and user
+func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest) {
 
-	var f portal.UpdateUserRequest
-	err := a.parseJSON(r, &f)
-	if err != nil {
-		utils.Response(w, http.StatusBadRequest, err, nil)
-		return
-	}
-	if claims.UserRole == utils.UserRoleNone || claims.Id != uint64(f.UserId) {
-		utils.Response(w, http.StatusForbidden, utils.RequestFobidden, nil)
-		return
-	}
-	err = a.validator.Struct(&f)
-	if err != nil {
-		utils.Response(w, http.StatusBadRequest, err, nil)
-		return
-	}
-	user, err := a.db.QueryUser(storage.UserFieldId, claims.Id)
+	user, err := a.db.QueryUser(storage.UserFieldId, req.UserId)
 	if err != nil {
 		utils.Response(w, http.StatusNotFound, err, nil)
 		return
 	}
-	utils.SetValue(&user.Email, f.Email)
-	utils.SetValue(&user.PaymentType, f.PaymentType)
-	utils.SetValue(&user.PaymentAddress, f.PaymentAddress)
-	if !utils.IsEmpty(f.Password) {
-		hash, err := bcrypt.GenerateFromPassword([]byte(f.Password), bcrypt.DefaultCost)
+	utils.SetValue(&user.Email, req.Email)
+	utils.SetValue(&user.PaymentType, req.PaymentType)
+	utils.SetValue(&user.PaymentAddress, req.PaymentAddress)
+	if !utils.IsEmpty(req.Password) {
+		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
 			utils.Response(w, http.StatusInternalServerError, err, nil)
 			return
@@ -85,12 +66,43 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
-	claims, _ := a.credentialsInfo(r)
-	if claims.UserRole == utils.UserRoleNone {
-		utils.Response(w, http.StatusForbidden, utils.RequestFobidden, nil)
+func (a *apiUser) adminUpdateUser(w http.ResponseWriter, r *http.Request) {
+	var f portal.UpdateUserRequest
+	err := a.parseJSON(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
+
+	err = a.validator.Struct(&f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	a.updateUser(w, f)
+}
+
+func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+
+	var f portal.UpdateUserRequest
+	err := a.parseJSON(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+
+	f.UserId = int(claims.Id)
+
+	err = a.validator.Struct(&f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	a.updateUser(w, f)
+}
+
+func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 	var query portal.ListUserRequest
 	if err := utils.DecodeQuery(&query, r.URL.Query()); err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)

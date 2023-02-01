@@ -105,6 +105,22 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
+func (s *WebServer) adminMiddleware(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		claims, _ := s.credentialsInfo(r)
+		if claims.UserRole != utils.UserRoleAdmin {
+			e := &utils.Error{
+				Mess: "This api only for admin",
+				Code: utils.ErrorForbidden,
+			}
+			utils.Response(w, http.StatusForbidden, e, nil)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
+}
+
 func (s *WebServer) credentialsInfo(r *http.Request) (*authClaims, bool) {
 	val := r.Context().Value(authClaimsCtxKey)
 	claims, ok := val.(*authClaims)
