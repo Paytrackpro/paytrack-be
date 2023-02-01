@@ -14,7 +14,6 @@ type UserRole int
 
 const (
 	UserRoleNone UserRole = iota
-	UserRoleManager
 	UserRoleAdmin
 )
 
@@ -26,13 +25,4 @@ const (
 	StatusWaitApproved
 	Hired
 	Quit
-)
-
-type PaymentType int
-
-const (
-	PaymentTypeNotSet PaymentType = iota
-	PaymentTypeBTC
-	PaymentTypeLTC
-	PaymentTypeDCR
 )

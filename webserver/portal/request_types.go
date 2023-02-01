@@ -1,7 +1,7 @@
 package portal
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"code.cryptopower.dev/mgmt-ng/be/payment"
 )
 
 type ListUserRequest struct {
@@ -15,7 +15,7 @@ type ListUserRequest struct {
 type UpdateUserRequest struct {
 	Password       string
 	Email          string
-	PaymentType    utils.PaymentType
+	PaymentType    payment.Type
 	PaymentAddress string
 	UserId         int
 }
