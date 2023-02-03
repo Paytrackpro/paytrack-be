@@ -66,6 +66,9 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 
 func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, r *http.Request) error {
 	claims, _ := a.parseBearer(r)
+	if claims.Id == payment.RequesterId {
+		return nil
+	}
 	if payment.ContactMethod == storage.PaymentTypeInternal && (claims == nil || claims.Id != payment.SenderId) {
 		return fmt.Errorf("only requested user has the access to process the payment")
 	}

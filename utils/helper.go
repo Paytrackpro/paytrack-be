@@ -24,11 +24,11 @@ func NewError(err error, code int) *Error {
 	}
 }
 func ResponseOK(w http.ResponseWriter, data interface{}, errs ...*Error) {
-	var err *Error
 	if len(errs) > 0 {
-		err = errs[0]
+		Response(w, http.StatusOK, errs[0], data)
+		return
 	}
-	Response(w, http.StatusOK, err, data)
+	Response(w, http.StatusOK, nil, data)
 }
 
 func Response(w http.ResponseWriter, httpStatus int, err error, data interface{}) {
@@ -43,7 +43,6 @@ func Response(w http.ResponseWriter, httpStatus int, err error, data interface{}
 	}
 
 	//TODO: Save error to files if need in here
-
 	if err != nil {
 		switch er := err.(type) {
 		case *Error:
