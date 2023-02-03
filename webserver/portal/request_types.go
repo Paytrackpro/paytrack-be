@@ -15,7 +15,7 @@ type ListUserRequest struct {
 type UpdateUserRequest struct {
 	Password       string
 	Email          string
-	PaymentType    payment.Type
+	PaymentType    payment.Method
 	PaymentAddress string
 	UserId         int
 }
