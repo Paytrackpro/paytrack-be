@@ -1,6 +1,9 @@
 package webserver
 
 import (
+	"code.cryptopower.dev/mgmt-ng/be/email"
+	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,8 +11,6 @@ import (
 	"net/http"
 	"strings"
 
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v4"
@@ -18,7 +19,9 @@ import (
 type Config struct {
 	Port              int    `yaml:"port"`
 	HmacSecretKey     string `yaml:"hmacSecretKey"`
+	AesSecretKey      string `yaml:"aesSecretKey"`
 	AliveSessionHours int    `yaml:"aliveSessionHours"`
+	ClientAddr        string `yaml:"clientAddr"`
 }
 
 type WebServer struct {
@@ -26,13 +29,15 @@ type WebServer struct {
 	conf      *Config
 	db        storage.Storage
 	validator *validator.Validate
+	mail      *email.MailClient
+	crypto    *utils.Cryptography
 }
 
 const authClaimsCtxKey = "authClaimsCtxKey"
 
 type Map map[string]interface{}
 
-func NewWebServer(c Config, db storage.Storage) (*WebServer, error) {
+func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*WebServer, error) {
 	if c.Port == 0 {
 		return nil, fmt.Errorf("please set up server port")
 	}
@@ -42,12 +47,18 @@ func NewWebServer(c Config, db storage.Storage) (*WebServer, error) {
 	if c.HmacSecretKey == "" {
 		return nil, fmt.Errorf("please set up hmacSecretKey")
 	}
+	crypto, err := utils.NewCryptography(c.AesSecretKey)
+	if err != nil {
+		return nil, err
+	}
 
 	return &WebServer{
 		mux:       chi.NewRouter(),
 		conf:      &c,
 		db:        db,
 		validator: validator.New(),
+		mail:      mailClient,
+		crypto:    crypto,
 	}, nil
 }
 
@@ -74,12 +85,20 @@ func (s *WebServer) Run() error {
 
 func (s *WebServer) parseJSON(r *http.Request, data interface{}) error {
 	if r.Body == nil {
-		return utils.NewError("body cannot be empty or nil", utils.ErrorBodyRequited)
+		return utils.NewError(fmt.Errorf("body cannot be empty or nil"), utils.ErrorBodyRequited)
 	}
 	var decoder = json.NewDecoder(r.Body)
 	var err = decoder.Decode(data)
 	defer r.Body.Close()
 	return err
+}
+
+func (s *WebServer) parseJSONAndValidate(r *http.Request, data interface{}) error {
+	err := s.parseJSON(r, data)
+	if err != nil {
+		return err
+	}
+	return s.validator.Struct(data)
 }
 
 func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
@@ -119,6 +138,23 @@ func (s *WebServer) adminMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
+}
+
+func (s *WebServer) parseBearer(r *http.Request) (*authClaims, bool) {
+	var bearer = r.Header.Get("Authorization")
+	// Should be a bearer token
+	if len(bearer) > 6 && strings.ToUpper(bearer[0:7]) == "BEARER " {
+		var tokenStr = bearer[7:]
+		var claim authClaims
+		_, err := jwt.ParseWithClaims(tokenStr, &claim, func(token *jwt.Token) (interface{}, error) {
+			return []byte(s.conf.HmacSecretKey), nil
+		})
+		if err != nil {
+			return nil, false
+		}
+		return &claim, true
+	}
+	return nil, false
 }
 
 func (s *WebServer) credentialsInfo(r *http.Request) (*authClaims, bool) {
