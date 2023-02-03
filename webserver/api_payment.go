@@ -40,10 +40,8 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 			Requester: claims.UserName,
 			Link:      a.conf.ClientAddr,
 		}, payment.SenderEmail)
-		response["mailNotification"] = err == nil
 		if err != nil {
-			customErr = utils.SendMailFailed
-			response["mailNotificationError"] = err.Error()
+			customErr = utils.SendMailFailed.With(err)
 		}
 	}
 	// todo: do we have to notify with internal case?
