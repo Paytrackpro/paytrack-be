@@ -1,10 +1,50 @@
 package payment
 
-type Type int
+import (
+	"encoding/json"
+)
+
+type Method int
 
 const (
-	PaymentTypeNotSet Type = iota
+	PaymentTypeNotSet Method = iota
 	PaymentTypeBTC
 	PaymentTypeLTC
 	PaymentTypeDCR
 )
+
+func (m Method) String() string {
+	switch m {
+	case PaymentTypeBTC:
+		return "btc"
+	case PaymentTypeLTC:
+		return "ltc"
+	case PaymentTypeDCR:
+		return "dcr"
+	}
+	return "none"
+}
+
+func (m Method) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.String())
+}
+
+func (m *Method) UnmarshalJSON(v []byte) error {
+	var val string
+	if err := json.Unmarshal(v, &val); err != nil {
+		return err
+	}
+	switch val {
+	case "btc":
+		*m = PaymentTypeBTC
+		return nil
+	case "ltc":
+		*m = PaymentTypeLTC
+		return nil
+	case "dcr":
+		*m = PaymentTypeDCR
+		return nil
+	}
+	*m = PaymentTypeNotSet
+	return nil
+}

@@ -17,14 +17,18 @@ type response struct {
 	Data    interface{} `json:"data"`
 }
 
-func NewError(mess string, code int) *Error {
+func NewError(err error, code int) *Error {
 	return &Error{
-		Mess: mess,
-		Code: code,
+		error: err,
+		Code:  code,
 	}
 }
-func ResponseOK(w http.ResponseWriter, err error, data interface{}) {
-	Response(w, http.StatusOK, err, data)
+func ResponseOK(w http.ResponseWriter, data interface{}, errs ...*Error) {
+	if len(errs) > 0 {
+		Response(w, http.StatusOK, errs[0], data)
+		return
+	}
+	Response(w, http.StatusOK, nil, data)
 }
 
 func Response(w http.ResponseWriter, httpStatus int, err error, data interface{}) {
@@ -39,7 +43,6 @@ func Response(w http.ResponseWriter, httpStatus int, err error, data interface{}
 	}
 
 	//TODO: Save error to files if need in here
-
 	if err != nil {
 		switch er := err.(type) {
 		case *Error:
