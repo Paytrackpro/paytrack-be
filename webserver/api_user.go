@@ -1,8 +1,6 @@
 package webserver
 
 import (
-	"net/http"
-
 	"code.cryptopower.dev/mgmt-ng/be/log"
 	"code.cryptopower.dev/mgmt-ng/be/models"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
@@ -10,6 +8,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/crypto/bcrypt"
+	"net/http"
 )
 
 type apiUser struct {
@@ -22,7 +21,7 @@ func (a *apiUser) info(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		utils.Response(w, http.StatusNotFound, err, nil)
 	} else {
-		utils.ResponseOK(w, nil, user)
+		utils.ResponseOK(w, user)
 	}
 }
 
@@ -32,7 +31,7 @@ func (a *apiUser) infoWithId(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		utils.Response(w, http.StatusNotFound, err, nil)
 	} else {
-		utils.ResponseOK(w, nil, user)
+		utils.ResponseOK(w, user)
 	}
 }
 
@@ -61,8 +60,8 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-	utils.ResponseOK(w, nil, Map{
-		"user_id": user.Id,
+	utils.ResponseOK(w, Map{
+		"userId": user.Id,
 	})
 }
 
@@ -127,5 +126,5 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.ResponseOK(w, nil, users)
+	utils.ResponseOK(w, users)
 }
