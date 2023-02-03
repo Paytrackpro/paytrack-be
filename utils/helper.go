@@ -23,8 +23,12 @@ func NewError(err error, code int) *Error {
 		Code:  code,
 	}
 }
-func ResponseOK(w http.ResponseWriter, data interface{}) {
-	Response(w, http.StatusOK, nil, data)
+func ResponseOK(w http.ResponseWriter, data interface{}, errs ...*Error) {
+	var err *Error
+	if len(errs) > 0 {
+		err = errs[0]
+	}
+	Response(w, http.StatusOK, err, data)
 }
 
 func Response(w http.ResponseWriter, httpStatus int, err error, data interface{}) {

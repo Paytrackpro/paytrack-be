@@ -21,7 +21,13 @@ const (
 	ErrorBadRequest        = 4010
 	ErrorNotFound          = 4040
 	ErrorForbidden         = 4030
+	ErrorSendMailFailed    = 5001
 )
+
+var SendMailFailed = &Error{
+	Mess: "send mail failed",
+	Code: ErrorSendMailFailed,
+}
 
 var ForbiddenError = &Error{
 	Mess: "not allowed",

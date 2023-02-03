@@ -30,14 +30,9 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 	var response = Map{
 		"payment": payment,
 	}
-	accessToken, err := a.crypto.Encrypt(utils.PaymentPlainText(payment.Id))
-	response["generateToken"] = err == nil
-	if err != nil {
-		response["generateTokenError"] = err.Error()
-		utils.ResponseOK(w, response)
-		return
-	}
+	accessToken, _ := a.crypto.Encrypt(utils.PaymentPlainText(payment.Id))
 	response["token"] = accessToken
+	var customErr *utils.Error
 	if payment.ContactMethod == storage.PaymentTypeEmail {
 		err := a.mail.Send("Payment request", "paymentNotify", email.PaymentNotifyVar{
 			Title:     "Payment request",
@@ -47,12 +42,13 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 		}, payment.SenderEmail)
 		response["mailNotification"] = err == nil
 		if err != nil {
+			customErr = utils.SendMailFailed
 			response["mailNotificationError"] = err.Error()
 		}
 	}
 	// todo: do we have to notify with internal case?
 	// setup notification system
-	utils.ResponseOK(w, response)
+	utils.ResponseOK(w, response, customErr)
 }
 
 func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
