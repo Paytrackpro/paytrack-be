@@ -14,8 +14,6 @@ func (p PaymentStatus) String() string {
 	switch p {
 	case PaymentStatusCreated:
 		return "created"
-	case PaymentStatusSent:
-		return "sent"
 	case PaymentStatusPaid:
 		return "paid"
 	}
@@ -35,8 +33,6 @@ func (p *PaymentStatus) UnmarshalJSON(v []byte) error {
 	case "created":
 		*p = PaymentStatusCreated
 		return nil
-	case "sent":
-		*p = PaymentStatusSent
 		return nil
 	case "paid":
 		*p = PaymentStatusPaid
@@ -47,7 +43,6 @@ func (p *PaymentStatus) UnmarshalJSON(v []byte) error {
 
 const (
 	PaymentStatusCreated PaymentStatus = iota
-	PaymentStatusSent
 	PaymentStatusPaid
 )
 
@@ -103,7 +98,6 @@ type Payment struct {
 	PaymentAddress string
 	ContactMethod  PaymentContact
 	CreatedAt      time.Time
-	SentAt         time.Time
 	PaidAt         time.Time
 }
 
