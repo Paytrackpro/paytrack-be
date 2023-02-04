@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"code.cryptopower.dev/mgmt-ng/be/models"
 	"code.cryptopower.dev/mgmt-ng/be/payment"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"gorm.io/gorm"
@@ -18,7 +17,6 @@ type UserStorage interface {
 	CreateUser(user *User) error
 	UpdateUser(user *User) error
 	QueryUser(field string, val interface{}) (*User, error)
-	GetListUser(filter models.UserFilter) ([]User, error)
 }
 
 type User struct {
@@ -53,35 +51,23 @@ func (p *psql) QueryUser(field string, val interface{}) (*User, error) {
 	return &user, err
 }
 
-func (p *psql) GetListUser(filter models.UserFilter) ([]User, error) {
-	builder := p.db
-	if !utils.IsEmpty(filter.KeySearch) {
-		keySearch := fmt.Sprintf("%%%s%%", strings.TrimSpace(filter.KeySearch))
-		builder = builder.Where("user_name LIKE ?", keySearch)
+type UserFilter struct {
+	Sort
+	KeySearch string
+}
+
+func (f *UserFilter) BindQuery(db *gorm.DB) *gorm.DB {
+	db = f.Sort.BindQuery(db)
+	if !utils.IsEmpty(f.KeySearch) {
+		keySearch := fmt.Sprintf("%%%s%%", strings.TrimSpace(f.KeySearch))
+		db = db.Where("user_name LIKE ?", keySearch)
 	}
+	return db
+}
 
-	if !utils.IsEmpty(filter.SortType) {
-		s := "desc"
-		if filter.Sort == utils.SortASC {
-			s = "asc"
-		}
-
-		if filter.SortType == utils.SortByCreated {
-			builder = builder.Order("created_at " + s)
-		}
-
-		if filter.SortType == utils.SortByCreated {
-			builder = builder.Order("last_seen " + s)
-		}
+func (f *UserFilter) Sortable() []string {
+	return []string{
+		"CreatedAt",
+		"LastSeen",
 	}
-
-	user := make([]User, 0)
-	if err := builder.Limit(filter.Limit).Offset(filter.Offset).Find(&user).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return user, nil
-		}
-		return nil, err
-	}
-
-	return user, nil
 }

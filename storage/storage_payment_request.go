@@ -24,21 +24,24 @@ func (p PaymentStatus) MarshalJSON() ([]byte, error) {
 	return json.Marshal(p.String())
 }
 
-func (p *PaymentStatus) UnmarshalJSON(v []byte) error {
-	var val string
-	if err := json.Unmarshal(v, &val); err != nil {
-		return err
-	}
-	switch val {
+func (p *PaymentStatus) UnmarshalText(val []byte) error {
+	switch string(val) {
 	case "created":
 		*p = PaymentStatusCreated
-		return nil
 		return nil
 	case "paid":
 		*p = PaymentStatusPaid
 		return nil
 	}
 	return fmt.Errorf("payment status invalid value")
+}
+
+func (p *PaymentStatus) UnmarshalJSON(v []byte) error {
+	var val string
+	if err := json.Unmarshal(v, &val); err != nil {
+		return err
+	}
+	return p.UnmarshalText([]byte(val))
 }
 
 const (
@@ -61,13 +64,8 @@ func (p PaymentContact) String() string {
 func (p PaymentContact) MarshalJSON() ([]byte, error) {
 	return json.Marshal(p.String())
 }
-
-func (p *PaymentContact) UnmarshalJSON(v []byte) error {
-	var val string
-	if err := json.Unmarshal(v, &val); err != nil {
-		return err
-	}
-	switch val {
+func (p *PaymentContact) UnmarshalText(val []byte) error {
+	switch string(val) {
 	case "internal":
 		*p = PaymentTypeInternal
 		return nil
@@ -76,6 +74,13 @@ func (p *PaymentContact) UnmarshalJSON(v []byte) error {
 		return nil
 	}
 	return fmt.Errorf("payment contact invalid value")
+}
+func (p *PaymentContact) UnmarshalJSON(v []byte) error {
+	var val string
+	if err := json.Unmarshal(v, &val); err != nil {
+		return err
+	}
+	return p.UnmarshalText([]byte(val))
 }
 
 const (
@@ -102,12 +107,43 @@ type Payment struct {
 }
 
 type PaymentFilter struct {
-	Ids []uint64
+	Sort
+	Ids            []uint64
+	RequesterIds   []uint64
+	SenderIds      []uint64
+	Statuses       []PaymentStatus
+	ContactMethods []PaymentContact
 }
 
 func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
+	db = f.Sort.BindQuery(db)
 	if len(f.Ids) > 0 {
 		db = db.Where("id", f.Ids)
 	}
+	if len(f.RequesterIds) > 0 && len(f.SenderIds) > 0 {
+		db = db.Where("requester_id IN ? OR sender_id IN ?", f.RequesterIds, f.SenderIds)
+	} else {
+		if len(f.RequesterIds) > 0 {
+			db = db.Where("requester_id", f.SenderIds)
+		}
+		if len(f.SenderIds) > 0 {
+			db = db.Where("sender_id", f.SenderIds)
+		}
+	}
+
+	if len(f.Statuses) > 0 {
+		db = db.Where("status", f.Statuses)
+	}
+	if len(f.ContactMethods) > 0 {
+		db = db.Where("contact_method", f.ContactMethods)
+	}
 	return db
+}
+
+func (f *PaymentFilter) Sortable() []string {
+	return []string{
+		"CreatedAt",
+		"PaidAt",
+		"Status",
+	}
 }

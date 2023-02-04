@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/schema"
 	"log"
 	"net/http"
 	"strings"
@@ -91,6 +92,11 @@ func (s *WebServer) parseJSON(r *http.Request, data interface{}) error {
 	var err = decoder.Decode(data)
 	defer r.Body.Close()
 	return err
+}
+
+func (s *WebServer) parseQuery(r *http.Request, data interface{}) error {
+	// for POST request, we use json decoder. So here we just handle the case of GET request
+	return schema.NewDecoder().Decode(data, r.URL.Query())
 }
 
 func (s *WebServer) parseJSONAndValidate(r *http.Request, data interface{}) error {

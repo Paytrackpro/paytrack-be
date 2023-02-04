@@ -1,8 +1,6 @@
 package webserver
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/log"
-	"code.cryptopower.dev/mgmt-ng/be/models"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
@@ -102,29 +100,15 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
-	var query portal.ListUserRequest
-	if err := utils.DecodeQuery(&query, r.URL.Query()); err != nil {
-		utils.Response(w, http.StatusBadRequest, err, nil)
+	var f storage.UserFilter
+	if err := a.parseQuery(r, &f); err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
-	if query.Limit == 0 {
-		query.Limit = 20
-	}
-	filter := models.UserFilter{
-		KeySearch: query.KeySearch,
-		MSort: models.MSort{
-			SortType: query.SortType,
-			Sort:     query.Sort,
-			Limit:    query.Limit,
-			Offset:   query.Offset,
-		},
-	}
-	users, err := a.db.GetListUser(filter)
-	if err != nil {
-		log.Logger.Error(err)
-		utils.Response(w, http.StatusInternalServerError, err, nil)
+	var users []storage.User
+	if err := a.db.GetList(&f, &users); err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
-
 	utils.ResponseOK(w, users)
 }

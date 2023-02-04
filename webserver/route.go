@@ -40,6 +40,7 @@ func (s *WebServer) Route() {
 			r.With(s.loggedInMiddleware).Post("/", paymentRouter.createPayment)
 			r.Get("/{id:[0-9]+}", paymentRouter.getPayment)
 			r.Put("/process", paymentRouter.processPayment)
+			r.With(s.loggedInMiddleware).Get("/list", paymentRouter.listPayments)
 		})
 	})
 }

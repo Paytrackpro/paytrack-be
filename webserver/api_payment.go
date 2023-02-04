@@ -112,3 +112,20 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 	}
 	utils.ResponseOK(w, payment)
 }
+
+func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
+	var f storage.PaymentFilter
+	if err := a.parseQuery(r, &f); err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	claims, _ := a.parseBearer(r)
+	f.SenderIds = append(f.SenderIds, claims.Id)
+	f.RequesterIds = append(f.RequesterIds, claims.Id)
+	var payments []storage.Payment
+	if err := a.db.GetList(&f, &payments); err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		return
+	}
+	utils.ResponseOK(w, payments)
+}
