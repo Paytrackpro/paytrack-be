@@ -65,9 +65,9 @@ func (f *UserFilter) BindQuery(db *gorm.DB) *gorm.DB {
 	return db
 }
 
-func (f *UserFilter) Sortable() []string {
-	return []string{
-		"CreatedAt",
-		"LastSeen",
+func (f *UserFilter) Sortable() map[string]bool {
+	return map[string]bool{
+		"created_at": true,
+		"last_seen":  true,
 	}
 }

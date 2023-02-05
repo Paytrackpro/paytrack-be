@@ -99,6 +99,19 @@ func (s *WebServer) parseQuery(r *http.Request, data interface{}) error {
 	return schema.NewDecoder().Decode(data, r.URL.Query())
 }
 
+func (s *WebServer) parseQueryAndValidate(r *http.Request, data interface{}) error {
+	// for POST request, we use json decoder. So here we just handle the case of GET request
+	err := schema.NewDecoder().Decode(data, r.URL.Query())
+	if err != nil {
+		return err
+	}
+	var f, ok = data.(storage.Filter)
+	if ok {
+		return utils.ValidateFilter(f.Sortable(), f.RequestedSort())
+	}
+	return nil
+}
+
 func (s *WebServer) parseJSONAndValidate(r *http.Request, data interface{}) error {
 	err := s.parseJSON(r, data)
 	if err != nil {

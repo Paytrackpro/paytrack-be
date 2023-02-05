@@ -140,10 +140,10 @@ func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
 	return db
 }
 
-func (f *PaymentFilter) Sortable() []string {
-	return []string{
-		"CreatedAt",
-		"PaidAt",
-		"Status",
+func (f *PaymentFilter) Sortable() map[string]bool {
+	return map[string]bool{
+		"CreatedAt": true,
+		"PaidAt":    true,
+		"Status":    true,
 	}
 }

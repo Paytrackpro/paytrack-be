@@ -14,7 +14,8 @@ type Storage interface {
 }
 
 type Filter interface {
-	Sortable() []string
+	Sortable() map[string]bool
+	RequestedSort() string
 	BindQuery(db *gorm.DB) *gorm.DB
 }
 

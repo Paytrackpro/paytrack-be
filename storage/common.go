@@ -1,6 +1,10 @@
 package storage
 
-import "gorm.io/gorm"
+import (
+	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"gorm.io/gorm"
+	"strings"
+)
 
 type Sort struct {
 	sortableFields []string
@@ -11,6 +15,10 @@ type Sort struct {
 
 const defaultOffset = 20
 
+func (s *Sort) RequestedSort() string {
+	return s.Order
+}
+
 func (s *Sort) BindQuery(db *gorm.DB) *gorm.DB {
 	if s.Page < 0 {
 		s.Page = 1
@@ -20,10 +28,12 @@ func (s *Sort) BindQuery(db *gorm.DB) *gorm.DB {
 	}
 	offset := (s.Page - 1) * s.Size
 	db = db.Limit(s.Size).Offset(offset)
+	if len(s.Order) > 0 {
+		var orders = strings.Split(s.Order, ",")
+		for i, order := range orders {
+			orders[i] = utils.ToSnakeCase(order)
+		}
+		return db.Order(strings.Join(orders, ","))
+	}
 	return db
-}
-
-func (s *Sort) With(f Filter) *Sort {
-	s.sortableFields = f.Sortable()
-	return s
 }

@@ -101,7 +101,7 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 
 func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 	var f storage.UserFilter
-	if err := a.parseQuery(r, &f); err != nil {
+	if err := a.parseQueryAndValidate(r, &f); err != nil {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
