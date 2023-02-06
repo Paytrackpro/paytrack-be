@@ -96,6 +96,7 @@ type Payment struct {
 	Amount         float64        `json:"amount"`
 	ConvertRate    float64        `json:"convertRate"`
 	ConvertTime    time.Time      `json:"convertTime"`
+	ExpectedAmount float64        `json:"expectedAmount"`
 	Description    string         `json:"description"`
 	TxId           string         `json:"txId"`
 	Status         PaymentStatus  `json:"status"`
