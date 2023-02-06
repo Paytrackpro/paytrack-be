@@ -16,6 +16,10 @@ func ToSnakeCase(str string) string {
 }
 
 func ValidateFilter(validMapFields map[string]bool, sortStr string) error {
+	sortStr = strings.Trim(sortStr, " ")
+	if len(sortStr) == 0 {
+		return nil
+	}
 	if validMapFields == nil && len(sortStr) != 0 {
 		return fmt.Errorf("sort is not supported")
 	}

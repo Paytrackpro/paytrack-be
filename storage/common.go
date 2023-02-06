@@ -28,8 +28,9 @@ func (s *Sort) BindQuery(db *gorm.DB) *gorm.DB {
 	}
 	offset := (s.Page - 1) * s.Size
 	db = db.Limit(s.Size).Offset(offset)
-	if len(s.Order) > 0 {
-		var orders = strings.Split(s.Order, ",")
+	var order = strings.Trim(s.Order, " ")
+	if len(order) > 0 {
+		var orders = strings.Split(order, ",")
 		for i, order := range orders {
 			orders[i] = utils.ToSnakeCase(order)
 		}
