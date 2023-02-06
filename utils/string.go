@@ -9,14 +9,16 @@ import (
 var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
 var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
 
+// ToSnakeCase replace the camel string into snake case, used for getting table field from struct field
 func ToSnakeCase(str string) string {
 	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
 	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
 	return strings.ToLower(snake)
 }
 
-func ValidateFilter(validMapFields map[string]bool, sortStr string) error {
-	sortStr = strings.Trim(sortStr, " ")
+// ValidateSortField checks the fields is valid or not to be sorted on the database
+func ValidateSortField(validMapFields map[string]bool, sortStr string) error {
+	sortStr = strings.TrimSpace(sortStr)
 	if len(sortStr) == 0 {
 		return nil
 	}
@@ -31,9 +33,9 @@ func ValidateFilter(validMapFields map[string]bool, sortStr string) error {
 
 			return fmt.Errorf("invalid format: '%s', expected formart is 'fied_name desc/asc'", field)
 		}
-		if _, ok := validMapFields[orderInfo[0]]; !ok {
+		if validMapFields[orderInfo[0]] {
 			var validFields []string
-			for f, _ := range validMapFields {
+			for f := range validMapFields {
 				validFields = append(validFields, f)
 			}
 			return fmt.Errorf("invalid field name: '%s', valid field name is: '%s'", orderInfo[0], strings.Join(validFields, ","))

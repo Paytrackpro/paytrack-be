@@ -20,17 +20,16 @@ type UserStorage interface {
 }
 
 type User struct {
-	Id             uint64           `json:"id" gorm:"primarykey"`
-	UserName       string           `json:"user_name" gorm:"index:users_user_name_idx,unique"`
-	PasswordHash   string           `json:"-"`
-	Email          string           `json:"email"`
-	PaymentType    payment.Method   `json:"payment_type"`
-	PaymentAddress string           `json:"payment_address"`
-	Status         utils.UserStatus `gorm:"default:1" json:"status"`
-	Role           utils.UserRole   `json:"role"`
-	CreatedAt      time.Time        `json:"created_at"`
-	UpdatedAt      time.Time        `json:"updated_at"`
-	LastSeen       time.Time        `json:"last_seen"`
+	Id             uint64         `json:"id" gorm:"primarykey"`
+	UserName       string         `json:"userName" gorm:"index:users_user_name_idx,unique"`
+	PasswordHash   string         `json:"-"`
+	Email          string         `json:"email"`
+	PaymentType    payment.Method `json:"paymentType"`
+	PaymentAddress string         `json:"paymentAddress"`
+	Role           utils.UserRole `json:"role"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	UpdatedAt      time.Time      `json:"updatedAt"`
+	LastSeen       time.Time      `json:"lastSeen"`
 }
 
 func (User) TableName() string {
@@ -67,7 +66,7 @@ func (f *UserFilter) BindQuery(db *gorm.DB) *gorm.DB {
 
 func (f *UserFilter) Sortable() map[string]bool {
 	return map[string]bool{
-		"created_at": true,
-		"last_seen":  true,
+		"createdAt": true,
+		"lastSeen":  true,
 	}
 }

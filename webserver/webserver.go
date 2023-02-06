@@ -107,7 +107,7 @@ func (s *WebServer) parseQueryAndValidate(r *http.Request, data interface{}) err
 	}
 	var f, ok = data.(storage.Filter)
 	if ok {
-		return utils.ValidateFilter(f.Sortable(), f.RequestedSort())
+		return utils.ValidateSortField(f.Sortable(), f.RequestedSort())
 	}
 	return nil
 }

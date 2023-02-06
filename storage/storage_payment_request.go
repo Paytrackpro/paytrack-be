@@ -89,30 +89,30 @@ const (
 )
 
 type Payment struct {
-	Id             uint64 `gorm:"primarykey"`
-	RequesterId    uint64
-	SenderId       uint64
-	SenderEmail    string
-	Amount         float64
-	ConvertRate    float64
-	ConvertTime    time.Time
-	Description    string
-	TxId           string
-	Status         PaymentStatus
-	PaymentMethod  payment.Method
-	PaymentAddress string
-	ContactMethod  PaymentContact
-	CreatedAt      time.Time
-	PaidAt         time.Time
+	Id             uint64         `gorm:"primarykey" json:"id"`
+	RequesterId    uint64         `json:"requesterId"`
+	SenderId       uint64         `json:"senderId"`
+	SenderEmail    string         `json:"senderEmail"`
+	Amount         float64        `json:"amount"`
+	ConvertRate    float64        `json:"convertRate"`
+	ConvertTime    time.Time      `json:"convertTime"`
+	Description    string         `json:"description"`
+	TxId           string         `json:"txId"`
+	Status         PaymentStatus  `json:"status"`
+	PaymentMethod  payment.Method `json:"paymentMethod"`
+	PaymentAddress string         `json:"paymentAddress"`
+	ContactMethod  PaymentContact `json:"contactMethod"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	PaidAt         time.Time      `json:"paidAt"`
 }
 
 type PaymentFilter struct {
 	Sort
-	Ids            []uint64
-	RequesterIds   []uint64
-	SenderIds      []uint64
-	Statuses       []PaymentStatus
-	ContactMethods []PaymentContact
+	Ids            []uint64         `schema:"ids"`
+	RequesterIds   []uint64         `schema:"requesterIds"`
+	SenderIds      []uint64         `schema:"senderIds"`
+	Statuses       []PaymentStatus  `schema:"statuses"`
+	ContactMethods []PaymentContact `schema:"contactMethods"`
 }
 
 func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
@@ -142,8 +142,9 @@ func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
 
 func (f *PaymentFilter) Sortable() map[string]bool {
 	return map[string]bool{
-		"CreatedAt": true,
-		"PaidAt":    true,
-		"Status":    true,
+		"createdAt": true,
+		"paidAt":    true,
+		"status":    true,
+		"amount":    true,
 	}
 }

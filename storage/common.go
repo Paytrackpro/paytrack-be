@@ -8,9 +8,9 @@ import (
 
 type Sort struct {
 	sortableFields []string
-	Order          string
-	Page           int
-	Size           int
+	Order          string `schema:"order"`
+	Page           int    `schema:"page"`
+	Size           int    `schema:"size"`
 }
 
 const defaultOffset = 20
@@ -20,7 +20,7 @@ func (s *Sort) RequestedSort() string {
 }
 
 func (s *Sort) BindQuery(db *gorm.DB) *gorm.DB {
-	if s.Page < 0 {
+	if s.Page <= 0 {
 		s.Page = 1
 	}
 	if s.Size <= 0 {
@@ -28,7 +28,7 @@ func (s *Sort) BindQuery(db *gorm.DB) *gorm.DB {
 	}
 	offset := (s.Page - 1) * s.Size
 	db = db.Limit(s.Size).Offset(offset)
-	var order = strings.Trim(s.Order, " ")
+	var order = strings.TrimSpace(s.Order)
 	if len(order) > 0 {
 		var orders = strings.Split(order, ",")
 		for i, order := range orders {

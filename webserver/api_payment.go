@@ -119,6 +119,8 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
+	// checking error on claims is not needed since listPayments is for logged in api,
+	// the checking is from the logged in middleware
 	claims, _ := a.parseBearer(r)
 	if claims.UserRole != utils.UserRoleAdmin {
 		f.SenderIds = append(f.SenderIds, claims.Id)
