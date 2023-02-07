@@ -2,12 +2,14 @@ package webserver
 
 import (
 	"code.cryptopower.dev/mgmt-ng/be/email"
+	"code.cryptopower.dev/mgmt-ng/be/payment"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"net/http"
+	"time"
 )
 
 type apiPayment struct {
@@ -57,6 +59,13 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
+	// if the user is the creator
+	claims, _ := a.parseBearer(r)
+	if claims != nil && claims.Id == payment.RequesterId {
+		utils.ResponseOK(w, payment)
+		return
+	}
+	// checking if the user is the receiver
 	if err := a.verifyAccessPayment(token, payment, r); err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
@@ -64,11 +73,9 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, payment)
 }
 
+// verifyAccessPayment checking if the user is the requested user
 func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, r *http.Request) error {
 	claims, _ := a.parseBearer(r)
-	if claims != nil && claims.Id == payment.RequesterId {
-		return nil
-	}
 	if payment.ContactMethod == storage.PaymentTypeInternal && (claims == nil || claims.Id != payment.SenderId) {
 		return fmt.Errorf("only requested user has the access to process the payment")
 	}
@@ -84,6 +91,39 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 	return nil
 }
 
+// requestRate used for the requested user to request the cryptocurrency rate with USDT
+func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
+	var f portal.PaymentRequestRate
+	err := a.parseJSONAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	var p storage.Payment
+	if err := a.db.GetById(f.Id, &p); err != nil {
+		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
+		return
+	}
+	// only the requested user has the access to process the payment
+	if err := a.verifyAccessPayment(f.Token, p, r); err != nil {
+		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
+		return
+	}
+	price, err := payment.GetPrice(p.PaymentMethod)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
+		return
+	}
+	p.ConvertRate = price
+	p.ConvertTime = time.Now()
+	p.ExpectedAmount = p.Amount / price
+	if err = a.db.Save(&p); err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
+		return
+	}
+	utils.ResponseOK(w, p)
+}
+
 func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 	var f portal.PaymentConfirm
 	err := a.parseJSONAndValidate(r, &f)
@@ -96,6 +136,7 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
+	// only the requested user has the access to process the payment
 	if err := a.verifyAccessPayment(f.Token, payment, r); err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
@@ -111,4 +152,25 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.ResponseOK(w, payment)
+}
+
+func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
+	var f storage.PaymentFilter
+	if err := a.parseQueryAndValidate(r, &f); err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	// checking error on claims is not needed since listPayments is for logged in api,
+	// the checking is from the logged in middleware
+	claims, _ := a.parseBearer(r)
+	if claims.UserRole != utils.UserRoleAdmin {
+		f.SenderIds = append(f.SenderIds, claims.Id)
+		f.RequesterIds = append(f.RequesterIds, claims.Id)
+	}
+	var payments []storage.Payment
+	if err := a.db.GetList(&f, &payments); err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		return
+	}
+	utils.ResponseOK(w, payments)
 }

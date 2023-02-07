@@ -8,19 +8,19 @@ import (
 
 type PaymentRequest struct {
 	// Sender is the person who will pay for the payment
-	SenderId       uint64 `validate:"required_if=ContactMethod 0"`
-	SenderEmail    string `validate:"required_if=ContactMethod 1,omitempty,email"`
-	ContactMethod  storage.PaymentContact
-	Amount         float64        `validate:"required"`
-	Description    string         `validate:"required"`
-	PaymentMethod  payment.Method `validate:"required"`
-	PaymentAddress string         `validate:"required"`
+	SenderId       uint64                 `validate:"required_if=ContactMethod 0" json:"senderId"`
+	SenderEmail    string                 `validate:"required_if=ContactMethod 1,omitempty,email" json:"senderEmail"`
+	ContactMethod  storage.PaymentContact `json:"contactMethod"`
+	Amount         float64                `validate:"required" json:"amount"`
+	Description    string                 `validate:"required" json:"description"`
+	PaymentMethod  payment.Method         `validate:"required" json:"paymentMethod"`
+	PaymentAddress string                 `validate:"required" json:"paymentAddress"`
 }
 
 type PaymentConfirm struct {
-	Id    uint64 `validate:"required"`
-	TxId  string
-	Token string
+	Id    uint64 `validate:"required" json:"id"`
+	TxId  string `json:"txId"`
+	Token string `json:"token"`
 }
 
 func (p *PaymentRequest) Payment(requesterId uint64) storage.Payment {
@@ -46,4 +46,9 @@ func (p *PaymentConfirm) Process(payment *storage.Payment) {
 	payment.TxId = p.TxId
 	payment.PaidAt = time.Now()
 	payment.Status = storage.PaymentStatusPaid
+}
+
+type PaymentRequestRate struct {
+	Id    uint64 `json:"id" validate:"required"`
+	Token string `json:"token"`
 }
