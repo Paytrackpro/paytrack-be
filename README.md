@@ -1,3 +1,5 @@
+# [Application Scope](https://code.cryptopower.dev/mgmt-ng/fe/-/wikis/home)
+
 # MGMT-NG backend
 
 mgmt-ng backend(mgmtngd) is the code of backend for mgmt-ng project. It is written in [go](https://golang.org/) and using  go 1.19.
