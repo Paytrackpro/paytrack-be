@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/schema"
 	"log"
 	"net/http"
 	"strings"
@@ -91,6 +92,26 @@ func (s *WebServer) parseJSON(r *http.Request, data interface{}) error {
 	var err = decoder.Decode(data)
 	defer r.Body.Close()
 	return err
+}
+
+func (s *WebServer) parseQuery(r *http.Request, data interface{}) error {
+	// for POST request, we use json decoder. So here we just handle the case of GET request
+	return schema.NewDecoder().Decode(data, r.URL.Query())
+}
+
+// parseQueryAndValidate parse the url query to a filter and validate the filter
+// at the moment, only Sort filter is in need of validation
+func (s *WebServer) parseQueryAndValidate(r *http.Request, data interface{}) error {
+	// for POST request, we use json decoder. So here we just handle the case of GET request
+	err := schema.NewDecoder().Decode(data, r.URL.Query())
+	if err != nil {
+		return err
+	}
+	var f, ok = data.(storage.Filter)
+	if ok {
+		return utils.ValidateSortField(f.Sortable(), f.RequestedSort())
+	}
+	return nil
 }
 
 func (s *WebServer) parseJSONAndValidate(r *http.Request, data interface{}) error {

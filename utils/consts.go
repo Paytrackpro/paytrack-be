@@ -14,13 +14,3 @@ const (
 	UserRoleNone UserRole = iota
 	UserRoleAdmin
 )
-
-// User status
-type UserStatus int
-
-const (
-	StatusAll UserStatus = iota
-	StatusWaitApproved
-	Hired
-	Quit
-)

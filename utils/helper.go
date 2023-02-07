@@ -24,7 +24,7 @@ func NewError(err error, code int) *Error {
 	}
 }
 func ResponseOK(w http.ResponseWriter, data interface{}, errs ...*Error) {
-	if len(errs) > 0 {
+	if len(errs) > 0 && errs[0] != nil {
 		Response(w, http.StatusOK, errs[0], data)
 		return
 	}

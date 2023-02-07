@@ -14,6 +14,8 @@ type Storage interface {
 }
 
 type Filter interface {
+	Sortable() map[string]bool
+	RequestedSort() string
 	BindQuery(db *gorm.DB) *gorm.DB
 }
 
@@ -55,5 +57,9 @@ func (p *psql) GetById(id interface{}, obj interface{}) error {
 }
 
 func (p *psql) GetList(f Filter, obj interface{}) error {
-	return f.BindQuery(p.db).Find(obj).Error
+	err := f.BindQuery(p.db).Find(obj).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil
+	}
+	return err
 }
