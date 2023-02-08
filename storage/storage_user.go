@@ -22,6 +22,7 @@ type UserStorage interface {
 type User struct {
 	Id             uint64         `json:"id" gorm:"primarykey"`
 	UserName       string         `json:"userName" gorm:"index:users_user_name_idx,unique"`
+	DisplayName    string         `json:"displayName"`
 	PasswordHash   string         `json:"-"`
 	Email          string         `json:"email"`
 	PaymentType    payment.Method `json:"paymentType"`

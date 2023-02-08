@@ -65,13 +65,7 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 
 func (a *apiUser) adminUpdateUser(w http.ResponseWriter, r *http.Request) {
 	var f portal.UpdateUserRequest
-	err := a.parseJSON(r, &f)
-	if err != nil {
-		utils.Response(w, http.StatusBadRequest, err, nil)
-		return
-	}
-
-	err = a.validator.Struct(&f)
+	err := a.parseJSONAndValidate(r, &f)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
@@ -83,19 +77,12 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
 
 	var f portal.UpdateUserRequest
-	err := a.parseJSON(r, &f)
+	err := a.parseJSONAndValidate(r, &f)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
-
 	f.UserId = int(claims.Id)
-
-	err = a.validator.Struct(&f)
-	if err != nil {
-		utils.Response(w, http.StatusBadRequest, err, nil)
-		return
-	}
 	a.updateUser(w, f)
 }
 
