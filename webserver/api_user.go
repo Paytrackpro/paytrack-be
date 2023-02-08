@@ -104,11 +104,19 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 
 func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
 	userName := r.FormValue("userName")
+	claims, _ := a.credentialsInfo(r)
+	if claims.UserName == userName {
+		utils.ResponseOK(w, Map{
+			"found":   false,
+			"message": "userName must not be yours",
+		})
+	}
 	user, err := a.db.QueryUser(storage.UserFieldUName, userName)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			utils.ResponseOK(w, Map{
-				"found": false,
+				"found":   false,
+				"message": "userName not found",
 			})
 		} else {
 			utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
