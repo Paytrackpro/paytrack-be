@@ -4,8 +4,10 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 	"net/http"
 )
 
@@ -98,4 +100,24 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.ResponseOK(w, users)
+}
+
+func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
+	userName := r.FormValue("userName")
+	user, err := a.db.QueryUser(storage.UserFieldUName, userName)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.ResponseOK(w, Map{
+				"found": false,
+			})
+		} else {
+			utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		}
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"found":    true,
+		"id":       user.Id,
+		"userName": user.UserName,
+	})
 }

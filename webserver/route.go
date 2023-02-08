@@ -26,14 +26,17 @@ func (s *WebServer) Route() {
 			var userRouter = apiUser{WebServer: s}
 			r.Get("/info", userRouter.info)
 			r.Put("/info", userRouter.update)
+			r.Get("/exist-checking", userRouter.checkingUserExist)
 		})
 
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware, s.adminMiddleware)
-			var userRouter = apiUser{WebServer: s}
-			r.Get("/user/info/{id}", userRouter.infoWithId)
-			r.Put("/user/info", userRouter.adminUpdateUser)
-			r.Get("/user/list", userRouter.getListUsers)
+			r.Route("/user", func(r chi.Router) {
+				var userRouter = apiUser{WebServer: s}
+				r.Get("/info/{id}", userRouter.infoWithId)
+				r.Put("/info", userRouter.adminUpdateUser)
+				r.Get("/list", userRouter.getListUsers)
+			})
 		})
 		r.Route("/payment", func(r chi.Router) {
 			var paymentRouter = apiPayment{WebServer: s}
