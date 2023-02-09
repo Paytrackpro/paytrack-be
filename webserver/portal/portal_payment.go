@@ -23,23 +23,20 @@ type PaymentConfirm struct {
 	Token string `json:"token"`
 }
 
-func (p *PaymentRequest) Payment(requesterId uint64) storage.Payment {
-	var payment = storage.Payment{
-		ContactMethod:  p.ContactMethod,
-		RequesterId:    requesterId,
-		Amount:         p.Amount,
-		Description:    p.Description,
-		PaymentMethod:  p.PaymentMethod,
-		PaymentAddress: p.PaymentAddress,
-		Status:         storage.PaymentStatusCreated,
-	}
+func (p *PaymentRequest) Payment(requesterId uint64, payment *storage.Payment) {
+	payment.ContactMethod = p.ContactMethod
+	payment.RequesterId = requesterId
+	payment.Amount = p.Amount
+	payment.Description = p.Description
+	payment.PaymentMethod = p.PaymentMethod
+	payment.PaymentAddress = p.PaymentAddress
+	payment.Status = storage.PaymentStatusCreated
 	if p.ContactMethod == storage.PaymentTypeInternal {
 		payment.SenderId = p.SenderId
 	}
 	if p.ContactMethod == storage.PaymentTypeEmail {
 		payment.SenderEmail = p.SenderEmail
 	}
-	return payment
 }
 
 func (p *PaymentConfirm) Process(payment *storage.Payment) {

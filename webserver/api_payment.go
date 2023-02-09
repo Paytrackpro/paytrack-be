@@ -16,6 +16,31 @@ type apiPayment struct {
 	*WebServer
 }
 
+// updatePayment user can update the payment when the status still be created
+func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
+	var f portal.PaymentRequest
+	err := a.parseJSONAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	var id = chi.URLParam(r, "id")
+	var payment storage.Payment
+	if err := a.db.GetById(id, &payment); err != nil {
+		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
+		return
+	}
+	claims, _ := a.credentialsInfo(r)
+	f.Payment(claims.Id, &payment)
+	if err = a.db.Save(&payment); err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"payment": payment,
+	})
+}
+
 func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 	var f portal.PaymentRequest
 	err := a.parseJSONAndValidate(r, &f)
@@ -24,7 +49,8 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims, _ := a.credentialsInfo(r)
-	payment := f.Payment(claims.Id)
+	var payment storage.Payment
+	f.Payment(claims.Id, &payment)
 	if err = a.db.Create(&payment); err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
