@@ -110,6 +110,7 @@ func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
 			"found":   false,
 			"message": "userName must not be yours",
 		})
+		return
 	}
 	user, err := a.db.QueryUser(storage.UserFieldUName, userName)
 	if err != nil {
