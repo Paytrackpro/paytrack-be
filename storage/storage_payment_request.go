@@ -91,7 +91,9 @@ const (
 type Payment struct {
 	Id             uint64         `gorm:"primarykey" json:"id"`
 	RequesterId    uint64         `json:"requesterId"`
+	RequesterName  string         `json:"requesterName" gorm:"-"`
 	SenderId       uint64         `json:"senderId"`
+	SenderName     string         `json:"senderName" gorm:"-"`
 	SenderEmail    string         `json:"senderEmail"`
 	Amount         float64        `json:"amount"`
 	ConvertRate    float64        `json:"convertRate"`
