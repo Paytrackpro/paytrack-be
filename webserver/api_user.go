@@ -43,6 +43,7 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 		utils.Response(w, http.StatusNotFound, err, nil)
 		return
 	}
+	utils.SetValue(&user.DisplayName, req.DisplayName)
 	utils.SetValue(&user.Email, req.Email)
 	utils.SetValue(&user.PaymentType, req.PaymentType)
 	utils.SetValue(&user.PaymentAddress, req.PaymentAddress)
