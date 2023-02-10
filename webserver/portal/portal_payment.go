@@ -33,9 +33,11 @@ func (p *PaymentRequest) Payment(requesterId uint64, payment *storage.Payment) {
 	payment.Status = storage.PaymentStatusCreated
 	if p.ContactMethod == storage.PaymentTypeInternal {
 		payment.SenderId = p.SenderId
+		payment.SenderEmail = ""
 	}
 	if p.ContactMethod == storage.PaymentTypeEmail {
 		payment.SenderEmail = p.SenderEmail
+		payment.SenderId = 0
 	}
 }
 

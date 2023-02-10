@@ -65,6 +65,10 @@ func (f *UserFilter) BindQuery(db *gorm.DB) *gorm.DB {
 	return db
 }
 
+func (f *UserFilter) BindFirst(db *gorm.DB) *gorm.DB {
+	return db
+}
+
 func (f *UserFilter) Sortable() map[string]bool {
 	return map[string]bool{
 		"createdAt": true,

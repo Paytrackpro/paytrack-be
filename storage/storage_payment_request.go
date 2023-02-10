@@ -91,9 +91,9 @@ const (
 type Payment struct {
 	Id             uint64         `gorm:"primarykey" json:"id"`
 	RequesterId    uint64         `json:"requesterId"`
-	RequesterName  string         `json:"requesterName" gorm:"-"`
+	RequesterName  string         `json:"requesterName" gorm:"->"`
 	SenderId       uint64         `json:"senderId"`
-	SenderName     string         `json:"senderName" gorm:"-"`
+	SenderName     string         `json:"senderName" gorm:"->"`
 	SenderEmail    string         `json:"senderEmail"`
 	Amount         float64        `json:"amount"`
 	ConvertRate    float64        `json:"convertRate"`
@@ -118,10 +118,17 @@ type PaymentFilter struct {
 	ContactMethods []PaymentContact `schema:"contactMethods"`
 }
 
+func (f *PaymentFilter) selectFields(db *gorm.DB) *gorm.DB {
+	return db.Select("payments.*, requester.user_name as requester_name, sender.user_name as sender_name").
+		Joins("left join users requester on payments.requester_id = requester.id").
+		Joins("left join users sender on payments.sender_id = sender.id")
+}
+
 func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
+	db = f.selectFields(db)
 	db = f.Sort.BindQuery(db)
 	if len(f.Ids) > 0 {
-		db = db.Where("id", f.Ids)
+		db = db.Where("payments.id", f.Ids)
 	}
 	if len(f.RequesterIds) > 0 && len(f.SenderIds) > 0 {
 		db = db.Where("requester_id IN ? OR sender_id IN ?", f.RequesterIds, f.SenderIds)
@@ -139,6 +146,14 @@ func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
 	}
 	if len(f.ContactMethods) > 0 {
 		db = db.Where("contact_method", f.ContactMethods)
+	}
+	return db
+}
+
+func (f *PaymentFilter) BindFirst(db *gorm.DB) *gorm.DB {
+	db = f.selectFields(db)
+	if len(f.Ids) > 0 {
+		db = db.Where("payments.id", f.Ids)
 	}
 	return db
 }
