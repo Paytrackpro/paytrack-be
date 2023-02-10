@@ -22,6 +22,7 @@ type UserStorage interface {
 type User struct {
 	Id             uint64         `json:"id" gorm:"primarykey"`
 	UserName       string         `json:"userName" gorm:"index:users_user_name_idx,unique"`
+	DisplayName    string         `json:"displayName"`
 	PasswordHash   string         `json:"-"`
 	Email          string         `json:"email"`
 	PaymentType    payment.Method `json:"paymentType"`
@@ -61,6 +62,10 @@ func (f *UserFilter) BindQuery(db *gorm.DB) *gorm.DB {
 		keySearch := fmt.Sprintf("%%%s%%", strings.TrimSpace(f.KeySearch))
 		db = db.Where("user_name LIKE ?", keySearch)
 	}
+	return db
+}
+
+func (f *UserFilter) BindFirst(db *gorm.DB) *gorm.DB {
 	return db
 }
 
