@@ -4,8 +4,10 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 	"net/http"
 )
 
@@ -41,6 +43,7 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 		utils.Response(w, http.StatusNotFound, err, nil)
 		return
 	}
+	utils.SetValue(&user.DisplayName, req.DisplayName)
 	utils.SetValue(&user.Email, req.Email)
 	utils.SetValue(&user.PaymentType, req.PaymentType)
 	utils.SetValue(&user.PaymentAddress, req.PaymentAddress)
@@ -65,13 +68,7 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 
 func (a *apiUser) adminUpdateUser(w http.ResponseWriter, r *http.Request) {
 	var f portal.UpdateUserRequest
-	err := a.parseJSON(r, &f)
-	if err != nil {
-		utils.Response(w, http.StatusBadRequest, err, nil)
-		return
-	}
-
-	err = a.validator.Struct(&f)
+	err := a.parseJSONAndValidate(r, &f)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
@@ -83,19 +80,12 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
 
 	var f portal.UpdateUserRequest
-	err := a.parseJSON(r, &f)
+	err := a.parseJSONAndValidate(r, &f)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
-
 	f.UserId = int(claims.Id)
-
-	err = a.validator.Struct(&f)
-	if err != nil {
-		utils.Response(w, http.StatusBadRequest, err, nil)
-		return
-	}
 	a.updateUser(w, f)
 }
 
@@ -111,4 +101,33 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.ResponseOK(w, users)
+}
+
+func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
+	userName := r.FormValue("userName")
+	claims, _ := a.credentialsInfo(r)
+	if claims.UserName == userName {
+		utils.ResponseOK(w, Map{
+			"found":   false,
+			"message": "userName must not be yours",
+		})
+		return
+	}
+	user, err := a.db.QueryUser(storage.UserFieldUName, userName)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.ResponseOK(w, Map{
+				"found":   false,
+				"message": "userName not found",
+			})
+		} else {
+			utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		}
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"found":    true,
+		"id":       user.Id,
+		"userName": user.UserName,
+	})
 }

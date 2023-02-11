@@ -10,6 +10,7 @@ type Storage interface {
 	Save(obj interface{}) error
 	GetById(id interface{}, obj interface{}) error
 	GetList(f Filter, obj interface{}) error
+	First(f Filter, obj interface{}) error
 	UserStorage
 }
 
@@ -17,6 +18,7 @@ type Filter interface {
 	Sortable() map[string]bool
 	RequestedSort() string
 	BindQuery(db *gorm.DB) *gorm.DB
+	BindFirst(db *gorm.DB) *gorm.DB
 }
 
 type psql struct {
@@ -62,4 +64,8 @@ func (p *psql) GetList(f Filter, obj interface{}) error {
 		return nil
 	}
 	return err
+}
+
+func (p *psql) First(f Filter, obj interface{}) error {
+	return f.BindFirst(p.db).Find(obj).Error
 }

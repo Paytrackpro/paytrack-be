@@ -16,6 +16,34 @@ type apiPayment struct {
 	*WebServer
 }
 
+// updatePayment user can update the payment when the status still be created
+func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
+	var f portal.PaymentRequest
+	err := a.parseJSONAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	var id = chi.URLParam(r, "id")
+	var payment storage.Payment
+	var filter = storage.PaymentFilter{
+		Ids: []uint64{utils.Uint64(id)},
+	}
+	if err := a.db.First(&filter, &payment); err != nil {
+		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
+		return
+	}
+	claims, _ := a.credentialsInfo(r)
+	f.Payment(claims.Id, &payment)
+	if err = a.db.Save(&payment); err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"payment": payment,
+	})
+}
+
 func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 	var f portal.PaymentRequest
 	err := a.parseJSONAndValidate(r, &f)
@@ -24,7 +52,8 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims, _ := a.credentialsInfo(r)
-	payment := f.Payment(claims.Id)
+	var payment storage.Payment
+	f.Payment(claims.Id, &payment)
 	if err = a.db.Create(&payment); err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
@@ -41,6 +70,7 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 			Sender:    payment.SenderEmail,
 			Requester: claims.UserName,
 			Link:      a.conf.ClientAddr,
+			Path:      fmt.Sprintf("/payment/%d?token=%s", payment.Id, accessToken),
 		}, payment.SenderEmail)
 		if err != nil {
 			customErr = utils.SendMailFailed.With(err)
@@ -55,7 +85,10 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 	var id = chi.URLParam(r, "id")
 	var token = r.FormValue("token")
 	var payment storage.Payment
-	if err := a.db.GetById(id, &payment); err != nil {
+	var f = storage.PaymentFilter{
+		Ids: []uint64{utils.Uint64(id)},
+	}
+	if err := a.db.First(&f, &payment); err != nil {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
@@ -100,7 +133,10 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var p storage.Payment
-	if err := a.db.GetById(f.Id, &p); err != nil {
+	var filter = storage.PaymentFilter{
+		Ids: []uint64{f.Id},
+	}
+	if err := a.db.First(&filter, &p); err != nil {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
@@ -116,7 +152,7 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 	}
 	p.ConvertRate = price
 	p.ConvertTime = time.Now()
-	p.ExpectedAmount = p.Amount / price
+	p.ExpectedAmount = utils.BtcRoundFloat(p.Amount / price)
 	if err = a.db.Save(&p); err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
@@ -132,7 +168,10 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payment storage.Payment
-	if err := a.db.GetById(f.Id, &payment); err != nil {
+	var filter = storage.PaymentFilter{
+		Ids: []uint64{f.Id},
+	}
+	if err := a.db.First(&filter, &payment); err != nil {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
