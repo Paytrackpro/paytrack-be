@@ -19,20 +19,25 @@ type UserStorage interface {
 	QueryUser(field string, val interface{}) (*User, error)
 }
 
+type PaymentSetting struct {
+	Type      payment.Method `json:"type"`
+	Address   string         `json:"address"`
+	IsDefault bool           `json:"isDefault"`
+}
+
 type User struct {
-	Id             uint64         `json:"id" gorm:"primarykey"`
-	UserName       string         `json:"userName" gorm:"index:users_user_name_idx,unique"`
-	DisplayName    string         `json:"displayName"`
-	PasswordHash   string         `json:"-"`
-	Email          string         `json:"email"`
-	PaymentType    payment.Method `json:"paymentType"`
-	PaymentAddress string         `json:"paymentAddress"`
-	Role           utils.UserRole `json:"role"`
-	CreatedAt      time.Time      `json:"createdAt"`
-	UpdatedAt      time.Time      `json:"updatedAt"`
-	LastSeen       time.Time      `json:"lastSeen"`
-	Secret         string         `json:"-"`
-	Otp            bool           `json:"otp"`
+	Id              uint64           `json:"id" gorm:"primarykey"`
+	UserName        string           `json:"userName" gorm:"index:users_user_name_idx,unique"`
+	DisplayName     string           `json:"displayName"`
+	PasswordHash    string           `json:"-"`
+	Email           string           `json:"email"`
+	PaymentSettings []PaymentSetting `json:"paymentSetting" gorm:"serializer:json"`
+	Role            utils.UserRole   `json:"role"`
+	CreatedAt       time.Time        `json:"createdAt"`
+	UpdatedAt       time.Time        `json:"updatedAt"`
+	LastSeen        time.Time        `json:"lastSeen"`
+	Secret          string           `json:"-"`
+	Otp             bool             `json:"otp"`
 }
 
 func (User) TableName() string {
