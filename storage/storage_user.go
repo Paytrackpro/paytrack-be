@@ -1,6 +1,9 @@
 package storage
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -23,6 +26,22 @@ type PaymentSetting struct {
 	Type      payment.Method `json:"type"`
 	Address   string         `json:"address"`
 	IsDefault bool           `json:"isDefault"`
+}
+
+type PaymentSettings []PaymentSetting
+
+// Value Marshal
+func (a PaymentSettings) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+// Scan Unmarshal
+func (a *PaymentSettings) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return json.Unmarshal(b, &a)
 }
 
 type User struct {
