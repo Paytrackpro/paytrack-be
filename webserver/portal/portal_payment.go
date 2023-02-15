@@ -12,10 +12,9 @@ type PaymentRequest struct {
 	SenderId   uint64 `validate:"required_if=ContactMethod 0" json:"senderId"`
 	ReceiverId uint64 `json:"receiverId"`
 	// ExternalEmail is the field to send the payment to the person who does not have an account yet
-	ExternalEmail  string                  `validate:"required_if=ContactMethod 1,omitempty,email" json:"senderEmail"`
+	ExternalEmail  string                  `validate:"required_if=ContactMethod 1,omitempty,email" json:"externalEmail"`
 	ContactMethod  storage.PaymentContact  `json:"contactMethod"`
 	HourlyRate     float64                 `json:"hourlyRate"`
-	Amount         float64                 `validate:"required" json:"amount"`
 	Details        []storage.PaymentDetail `json:"details"`
 	PaymentMethod  payment.Method          `validate:"required" json:"paymentMethod"`
 	PaymentAddress string                  `validate:"required" json:"paymentAddress"`
@@ -29,7 +28,7 @@ type PaymentConfirm struct {
 }
 
 func (p *PaymentRequest) Payment(creatorId uint64, payment *storage.Payment) error {
-	if creatorId != p.SenderId && creatorId != p.ReceiverId {
+	if !(creatorId == p.SenderId || creatorId == p.ReceiverId) {
 		return fmt.Errorf("the sender or receiver must be you")
 	}
 	payment.ContactMethod = p.ContactMethod

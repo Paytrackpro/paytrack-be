@@ -128,9 +128,10 @@ func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.ResponseOK(w, Map{
-		"found":    true,
-		"id":       user.Id,
-		"userName": user.UserName,
+		"found":           true,
+		"id":              user.Id,
+		"userName":        user.UserName,
+		"paymentSettings": user.PaymentSettings,
 	})
 }
 
