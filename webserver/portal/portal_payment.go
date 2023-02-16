@@ -12,13 +12,14 @@ type PaymentRequest struct {
 	SenderId   uint64 `validate:"required_if=ContactMethod 0" json:"senderId"`
 	ReceiverId uint64 `json:"receiverId"`
 	// ExternalEmail is the field to send the payment to the person who does not have an account yet
-	ExternalEmail  string                  `validate:"required_if=ContactMethod 1,omitempty,email" json:"externalEmail"`
-	ContactMethod  storage.PaymentContact  `json:"contactMethod"`
-	HourlyRate     float64                 `json:"hourlyRate"`
-	Details        []storage.PaymentDetail `json:"details"`
-	PaymentMethod  payment.Method          `validate:"required" json:"paymentMethod"`
-	PaymentAddress string                  `validate:"required" json:"paymentAddress"`
-	IsDraft        bool                    `json:"isDraft"`
+	ExternalEmail   string                  `validate:"required_if=ContactMethod 1,omitempty,email" json:"externalEmail"`
+	ContactMethod   storage.PaymentContact  `json:"contactMethod"`
+	HourlyRate      float64                 `json:"hourlyRate"`
+	PaymentSettings storage.PaymentSettings `json:"paymentSetting" gorm:"type:jsonb"`
+	Details         []storage.PaymentDetail `json:"details"`
+	PaymentMethod   payment.Method          `validate:"required" json:"paymentMethod"`
+	PaymentAddress  string                  `validate:"required" json:"paymentAddress"`
+	IsDraft         bool                    `json:"isDraft"`
 }
 
 type PaymentConfirm struct {
@@ -39,6 +40,7 @@ func (p *PaymentRequest) Payment(creatorId uint64, payment *storage.Payment) err
 	payment.PaymentAddress = p.PaymentAddress
 	payment.SenderId = p.SenderId
 	payment.ReceiverId = p.ReceiverId
+	payment.PaymentSettings = p.PaymentSettings
 	if p.ContactMethod == storage.PaymentTypeInternal {
 		payment.ExternalEmail = ""
 	}
@@ -62,8 +64,8 @@ func (p *PaymentRequest) Payment(creatorId uint64, payment *storage.Payment) err
 			if detail.Cost == 0 {
 				return fmt.Errorf("payment detail is 0 cost at line %d", i+1)
 			}
-			amount += detail.Cost
 		}
+		amount += detail.Cost
 	}
 	payment.Amount = amount
 	return nil
@@ -76,6 +78,8 @@ func (p *PaymentConfirm) Process(payment *storage.Payment) {
 }
 
 type PaymentRequestRate struct {
-	Id    uint64 `json:"id" validate:"required"`
-	Token string `json:"token"`
+	Id             uint64         `json:"id" validate:"required"`
+	Token          string         `json:"token"`
+	PaymentMethod  payment.Method `json:"paymentMethod"`
+	PaymentAddress string         `json:"paymentAddress"`
 }

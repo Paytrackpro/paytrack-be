@@ -118,28 +118,28 @@ func (a *PaymentDetails) Scan(value interface{}) error {
 }
 
 type Payment struct {
-	Id             uint64         `gorm:"primarykey" json:"id"`
-	CreatorId      uint64         `json:"creatorId"`
-	SenderId       uint64         `json:"senderId"`
-	SenderName     string         `json:"senderName" gorm:"->"`
-	ReceiverId     uint64         `json:"receiverId"`
-	ReceiverName   string         `json:"receiverName" gorm:"->"`
-	ExternalEmail  string         `json:"externalEmail"`
-	Amount         float64        `json:"amount"`
-	HourlyRate     float64        `json:"hourlyRate"`
-	Details        PaymentDetails `json:"details" gorm:"type:jsonb"`
-	ConvertRate    float64        `json:"convertRate"`
-	ConvertTime    time.Time      `json:"convertTime"`
-	ExpectedAmount float64        `json:"expectedAmount"`
-	Description    string         `json:"description"`
-	TxId           string         `json:"txId"`
-	Status         PaymentStatus  `json:"status"`
-	PaymentMethod  payment.Method `json:"paymentMethod"`
-	PaymentAddress string         `json:"paymentAddress"`
-	ContactMethod  PaymentContact `json:"contactMethod"`
-	CreatedAt      time.Time      `json:"createdAt"`
-	SentAt         time.Time      `json:"sentAt"`
-	PaidAt         time.Time      `json:"paidAt"`
+	Id              uint64          `gorm:"primarykey" json:"id"`
+	CreatorId       uint64          `json:"creatorId"`
+	SenderId        uint64          `json:"senderId"`
+	SenderName      string          `json:"senderName" gorm:"->"`
+	ReceiverId      uint64          `json:"receiverId"`
+	ReceiverName    string          `json:"receiverName" gorm:"->"`
+	ExternalEmail   string          `json:"externalEmail"`
+	Amount          float64         `json:"amount"`
+	HourlyRate      float64         `json:"hourlyRate"`
+	PaymentSettings PaymentSettings `json:"paymentSetting" gorm:"type:jsonb"`
+	Details         PaymentDetails  `json:"details" gorm:"type:jsonb"`
+	ConvertRate     float64         `json:"convertRate"`
+	ConvertTime     time.Time       `json:"convertTime"`
+	ExpectedAmount  float64         `json:"expectedAmount"`
+	TxId            string          `json:"txId"`
+	Status          PaymentStatus   `json:"status"`
+	PaymentMethod   payment.Method  `json:"paymentMethod"`
+	PaymentAddress  string          `json:"paymentAddress"`
+	ContactMethod   PaymentContact  `json:"contactMethod"`
+	CreatedAt       time.Time       `json:"createdAt"`
+	SentAt          time.Time       `json:"sentAt"`
+	PaidAt          time.Time       `json:"paidAt"`
 }
 
 type PaymentFilter struct {

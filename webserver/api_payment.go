@@ -128,19 +128,23 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 // verifyAccessPayment checking if the user is the requested user
 func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, r *http.Request) error {
 	claims, _ := a.parseBearer(r)
-	if payment.ContactMethod == storage.PaymentTypeInternal && (claims == nil || claims.Id != payment.SenderId) {
-		return fmt.Errorf("only requested user has the access to process the payment")
-	}
-	if payment.ContactMethod == storage.PaymentTypeEmail {
-		var plainText, err = a.crypto.Decrypt(token)
-		if err != nil {
-			return err
+	if claims == nil {
+		if payment.ContactMethod == storage.PaymentTypeEmail {
+			var plainText, err = a.crypto.Decrypt(token)
+			if err != nil {
+				return err
+			}
+			if plainText != utils.PaymentPlainText(payment.Id) {
+				return fmt.Errorf("the token is invalid")
+			}
+			return nil
 		}
-		if plainText != utils.PaymentPlainText(payment.Id) {
-			return fmt.Errorf("the token is invalid")
-		}
+		return fmt.Errorf("you do not have access")
 	}
-	return nil
+	if claims.Id == payment.SenderId || claims.Id == payment.ReceiverId {
+		return nil
+	}
+	return fmt.Errorf("you do not have access")
 }
 
 // requestRate used for the requested user to request the cryptocurrency rate with USDT
@@ -164,11 +168,13 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
-	price, err := paymentService.GetPrice(p.PaymentMethod)
+	price, err := paymentService.GetPrice(f.PaymentMethod)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
 	}
+	p.PaymentMethod = f.PaymentMethod
+	p.PaymentAddress = f.PaymentAddress
 	p.ConvertRate = price
 	p.ConvertTime = time.Now()
 	p.ExpectedAmount = utils.BtcRoundFloat(p.Amount / price)
