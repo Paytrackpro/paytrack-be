@@ -19,6 +19,11 @@ type LoginForm struct {
 	Password string `validate:"required"`
 }
 
+type OtpForm struct {
+	UserId string `validate:"required"`
+	Otp    string `validate:"required"`
+}
+
 func (f RegisterForm) User() (*storage.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(f.Password), bcrypt.DefaultCost)
 	if err != nil {
