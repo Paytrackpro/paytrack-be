@@ -1,14 +1,16 @@
 package webserver
 
 import (
+	"errors"
+	"net/http"
+
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
-	"errors"
 	"github.com/go-chi/chi/v5"
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"net/http"
 )
 
 type apiUser struct {
@@ -129,5 +131,35 @@ func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
 		"found":    true,
 		"id":       user.Id,
 		"userName": user.UserName,
+	})
+}
+
+func (a *apiUser) generateQr(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	user, err := a.db.QueryUser(storage.UserFieldId, claims.Id)
+
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "MGMT",
+		AccountName: user.UserName,
+	})
+	qrImage, err := key.Image(200, 200)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+	}
+
+	imgBase64Str, err := utils.ImageToBase64(qrImage)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+	}
+
+	utils.SetValue(&user.Secret, key.Secret())
+	err = a.db.UpdateUser(user)
+
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+	}
+
+	utils.ResponseOK(w, Map{
+		"mfa_qr_image": imgBase64Str,
 	})
 }
