@@ -139,6 +139,16 @@ func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if f.FirstTime {
+		utils.SetValue(&user.Otp, f.FirstTime)
+		err := a.db.UpdateUser(user)
+
+		if err != nil {
+			utils.Response(w, http.StatusInternalServerError, err, nil)
+			return
+		}
+	}
+
 	var authClaim = authClaims{
 		Id:       user.Id,
 		UserRole: user.Role,

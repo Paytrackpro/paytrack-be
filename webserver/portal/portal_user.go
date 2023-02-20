@@ -20,8 +20,9 @@ type LoginForm struct {
 }
 
 type OtpForm struct {
-	UserId string `validate:"required"`
-	Otp    string `validate:"required"`
+	UserId    string `validate:"required"`
+	Otp       string `validate:"required"`
+	FirstTime bool
 }
 
 func (f RegisterForm) User() (*storage.User, error) {
