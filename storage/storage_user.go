@@ -84,6 +84,10 @@ type UserFilter struct {
 
 func (f *UserFilter) BindQuery(db *gorm.DB) *gorm.DB {
 	db = f.Sort.BindQuery(db)
+	return f.BindCount(db)
+}
+
+func (f *UserFilter) BindCount(db *gorm.DB) *gorm.DB {
 	if !utils.IsEmpty(f.KeySearch) {
 		keySearch := fmt.Sprintf("%%%s%%", strings.TrimSpace(f.KeySearch))
 		db = db.Where("user_name LIKE ?", keySearch)

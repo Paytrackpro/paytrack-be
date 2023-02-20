@@ -236,5 +236,9 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
-	utils.ResponseOK(w, payments)
+	count, _ := a.db.Count(&f, &storage.User{})
+	utils.ResponseOK(w, Map{
+		"payments": payments,
+		"count":    count,
+	})
 }

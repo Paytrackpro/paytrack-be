@@ -157,9 +157,7 @@ func (f *PaymentFilter) selectFields(db *gorm.DB) *gorm.DB {
 		Joins("left join users sender on payments.sender_id = sender.id")
 }
 
-func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
-	db = f.selectFields(db)
-	db = f.Sort.BindQuery(db)
+func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 	if len(f.Ids) > 0 {
 		db = db.Where("payments.id", f.Ids)
 	}
@@ -181,6 +179,12 @@ func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
 		db = db.Where("contact_method", f.ContactMethods)
 	}
 	return db
+}
+
+func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
+	db = f.selectFields(db)
+	db = f.Sort.BindQuery(db)
+	return f.BindCount(db)
 }
 
 func (f *PaymentFilter) BindFirst(db *gorm.DB) *gorm.DB {

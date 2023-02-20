@@ -102,7 +102,11 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
-	utils.ResponseOK(w, users)
+	count, _ := a.db.Count(&f, &storage.User{})
+	utils.ResponseOK(w, Map{
+		"users": users,
+		"count": count,
+	})
 }
 
 func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
