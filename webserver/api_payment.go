@@ -33,6 +33,10 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
+	if payment.Status == storage.PaymentStatusPaid {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("the payment was marked as paid"), utils.ErrorBadRequest), nil)
+		return
+	}
 	var oldStatus = payment.Status
 	claims, _ := a.credentialsInfo(r)
 	err = f.Payment(claims.Id, &payment)
@@ -163,6 +167,10 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
+	if p.Status == storage.PaymentStatusPaid {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("the payment was marked as paid"), utils.ErrorBadRequest), nil)
+		return
+	}
 	// only the requested user has the access to process the payment
 	if err := a.verifyAccessPayment(f.Token, p, r); err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
@@ -198,6 +206,10 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := a.db.First(&filter, &payment); err != nil {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
+		return
+	}
+	if payment.Status == storage.PaymentStatusPaid {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("the payment was marked as paid"), utils.ErrorBadRequest), nil)
 		return
 	}
 	// only the requested user has the access to process the payment
@@ -236,7 +248,7 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
-	count, _ := a.db.Count(&f, &storage.User{})
+	count, _ := a.db.Count(&f, &storage.Payment{})
 	utils.ResponseOK(w, Map{
 		"payments": payments,
 		"count":    count,

@@ -15,17 +15,19 @@ type PaymentRequest struct {
 	ExternalEmail   string                  `validate:"required_if=ContactMethod 1,omitempty,email" json:"externalEmail"`
 	ContactMethod   storage.PaymentContact  `json:"contactMethod"`
 	HourlyRate      float64                 `json:"hourlyRate"`
-	PaymentSettings storage.PaymentSettings `json:"paymentSetting" gorm:"type:jsonb"`
+	PaymentSettings storage.PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
 	Details         []storage.PaymentDetail `json:"details"`
-	PaymentMethod   payment.Method          `validate:"required" json:"paymentMethod"`
-	PaymentAddress  string                  `validate:"required" json:"paymentAddress"`
+	PaymentMethod   payment.Method          `json:"paymentMethod"`
+	PaymentAddress  string                  `json:"paymentAddress"`
 	IsDraft         bool                    `json:"isDraft"`
 }
 
 type PaymentConfirm struct {
-	Id    uint64 `validate:"required" json:"id"`
-	TxId  string `json:"txId"`
-	Token string `json:"token"`
+	Id             uint64         `validate:"required" json:"id"`
+	TxId           string         `json:"txId"`
+	Token          string         `json:"token"`
+	PaymentMethod  payment.Method `validate:"required" json:"paymentMethod"`
+	PaymentAddress string         `validate:"required" json:"paymentAddress"`
 }
 
 func (p *PaymentRequest) Payment(creatorId uint64, payment *storage.Payment) error {
