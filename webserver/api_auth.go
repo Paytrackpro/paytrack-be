@@ -83,6 +83,12 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(f.Password))
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.LoginFail, nil)
+		return
+	}
+
 	if user.Otp {
 		utils.ResponseOK(w, Map{
 			"userId": user.Id,
@@ -91,11 +97,6 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(f.Password))
-	if err != nil {
-		utils.Response(w, http.StatusBadRequest, utils.LoginFail, nil)
-		return
-	}
 	var authClaim = authClaims{
 		Id:       user.Id,
 		UserRole: user.Role,

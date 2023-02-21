@@ -74,6 +74,8 @@ func IsEmpty(x interface{}) bool {
 		return value == 0
 	case float64:
 		return value == 0
+	case bool:
+		return false
 	default:
 		return true
 	}
