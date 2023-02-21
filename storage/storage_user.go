@@ -31,6 +31,8 @@ type User struct {
 	CreatedAt      time.Time      `json:"createdAt"`
 	UpdatedAt      time.Time      `json:"updatedAt"`
 	LastSeen       time.Time      `json:"lastSeen"`
+	Secret         string         `json:"-"`
+	Otp            bool           `json:"otp"`
 }
 
 func (User) TableName() string {

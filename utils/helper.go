@@ -1,7 +1,11 @@
 package utils
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
+	"image"
+	"image/jpeg"
 	"net/http"
 	"net/url"
 
@@ -70,6 +74,8 @@ func IsEmpty(x interface{}) bool {
 		return value == 0
 	case float64:
 		return value == 0
+	case bool:
+		return false
 	default:
 		return true
 	}
@@ -88,4 +94,17 @@ func SetValue[T any](source *T, value T) {
 	if !IsEmpty(value) && source != &value {
 		*source = value
 	}
+}
+
+func ImageToBase64(img image.Image) (string, error) {
+	buf := new(bytes.Buffer)
+	err := jpeg.Encode(buf, img, nil)
+	if err != nil {
+		return "", err
+	}
+
+	qrBytesString := buf.Bytes()
+	imgBase64Str := "data:image/png;base64," + base64.StdEncoding.EncodeToString(qrBytesString)
+
+	return imgBase64Str, nil
 }

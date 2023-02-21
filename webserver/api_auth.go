@@ -11,6 +11,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -24,6 +25,7 @@ type authClaims struct {
 	UserRole utils.UserRole
 	Expire   int64
 	UserName string
+	Otp      bool
 }
 
 func (c authClaims) Valid() error {
@@ -80,11 +82,74 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(f.Password))
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, utils.LoginFail, nil)
 		return
 	}
+
+	if user.Otp {
+		utils.ResponseOK(w, Map{
+			"userId": user.Id,
+			"otp":    true,
+		})
+		return
+	}
+
+	var authClaim = authClaims{
+		Id:       user.Id,
+		UserRole: user.Role,
+		Expire:   time.Now().Add(time.Hour * time.Duration(a.conf.AliveSessionHours)).Unix(),
+		UserName: user.UserName,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, authClaim)
+	tokenString, err := token.SignedString([]byte(a.conf.HmacSecretKey))
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"token":    tokenString,
+		"userInfo": user,
+	})
+}
+
+func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
+	var f portal.OtpForm
+	err := a.parseJSON(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+
+	user, err := a.db.QueryUser(storage.UserFieldId, f.UserId)
+	if err != nil {
+		err := utils.NewError(fmt.Errorf("OTP is not valid"), utils.ErrorObjectExist)
+		utils.Response(w, http.StatusBadRequest, err, nil)
+
+		return
+	}
+
+	verified := totp.Validate(f.Otp, user.Secret)
+
+	if verified == false {
+		err := utils.NewError(fmt.Errorf("OTP is not valid"), utils.ErrorObjectExist)
+		utils.Response(w, http.StatusBadRequest, err, nil)
+
+		return
+	}
+
+	if f.FirstTime {
+		utils.SetValue(&user.Otp, f.FirstTime)
+		err := a.db.UpdateUser(user)
+
+		if err != nil {
+			utils.Response(w, http.StatusInternalServerError, err, nil)
+			return
+		}
+	}
+
 	var authClaim = authClaims{
 		Id:       user.Id,
 		UserRole: user.Role,
