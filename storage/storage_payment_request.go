@@ -2,7 +2,9 @@ package storage
 
 import (
 	"code.cryptopower.dev/mgmt-ng/be/payment"
+	"database/sql/driver"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"gorm.io/gorm"
 	"time"
@@ -14,6 +16,8 @@ func (p PaymentStatus) String() string {
 	switch p {
 	case PaymentStatusCreated:
 		return "created"
+	case PaymentStatusSent:
+		return "sent"
 	case PaymentStatusPaid:
 		return "paid"
 	}
@@ -29,6 +33,8 @@ func (p *PaymentStatus) UnmarshalText(val []byte) error {
 	case "created":
 		*p = PaymentStatusCreated
 		return nil
+	case "sent":
+		*p = PaymentStatusSent
 	case "paid":
 		*p = PaymentStatusPaid
 		return nil
@@ -46,6 +52,7 @@ func (p *PaymentStatus) UnmarshalJSON(v []byte) error {
 
 const (
 	PaymentStatusCreated PaymentStatus = iota
+	PaymentStatusSent
 	PaymentStatusPaid
 )
 
@@ -88,25 +95,51 @@ const (
 	PaymentTypeEmail
 )
 
+type PaymentDetail struct {
+	Hours       float64 `json:"hours"`
+	Cost        float64 `json:"cost"`
+	Description string  `json:"description"`
+}
+
+type PaymentDetails []PaymentDetail
+
+// Value Marshal
+func (a PaymentDetails) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+// Scan Unmarshal
+func (a *PaymentDetails) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return json.Unmarshal(b, &a)
+}
+
 type Payment struct {
-	Id             uint64         `gorm:"primarykey" json:"id"`
-	RequesterId    uint64         `json:"requesterId"`
-	RequesterName  string         `json:"requesterName" gorm:"->"`
-	SenderId       uint64         `json:"senderId"`
-	SenderName     string         `json:"senderName" gorm:"->"`
-	SenderEmail    string         `json:"senderEmail"`
-	Amount         float64        `json:"amount"`
-	ConvertRate    float64        `json:"convertRate"`
-	ConvertTime    time.Time      `json:"convertTime"`
-	ExpectedAmount float64        `json:"expectedAmount"`
-	Description    string         `json:"description"`
-	TxId           string         `json:"txId"`
-	Status         PaymentStatus  `json:"status"`
-	PaymentMethod  payment.Method `json:"paymentMethod"`
-	PaymentAddress string         `json:"paymentAddress"`
-	ContactMethod  PaymentContact `json:"contactMethod"`
-	CreatedAt      time.Time      `json:"createdAt"`
-	PaidAt         time.Time      `json:"paidAt"`
+	Id              uint64          `gorm:"primarykey" json:"id"`
+	CreatorId       uint64          `json:"creatorId"`
+	SenderId        uint64          `json:"senderId"`
+	SenderName      string          `json:"senderName" gorm:"->"`
+	ReceiverId      uint64          `json:"receiverId"`
+	ReceiverName    string          `json:"receiverName" gorm:"->"`
+	ExternalEmail   string          `json:"externalEmail"`
+	Amount          float64         `json:"amount"`
+	HourlyRate      float64         `json:"hourlyRate"`
+	PaymentSettings PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
+	Details         PaymentDetails  `json:"details" gorm:"type:jsonb"`
+	ConvertRate     float64         `json:"convertRate"`
+	ConvertTime     time.Time       `json:"convertTime"`
+	ExpectedAmount  float64         `json:"expectedAmount"`
+	TxId            string          `json:"txId"`
+	Status          PaymentStatus   `json:"status"`
+	PaymentMethod   payment.Method  `json:"paymentMethod"`
+	PaymentAddress  string          `json:"paymentAddress"`
+	ContactMethod   PaymentContact  `json:"contactMethod"`
+	CreatedAt       time.Time       `json:"createdAt"`
+	SentAt          time.Time       `json:"sentAt"`
+	PaidAt          time.Time       `json:"paidAt"`
 }
 
 type PaymentFilter struct {
@@ -119,19 +152,17 @@ type PaymentFilter struct {
 }
 
 func (f *PaymentFilter) selectFields(db *gorm.DB) *gorm.DB {
-	return db.Select("payments.*, requester.user_name as requester_name, sender.user_name as sender_name").
-		Joins("left join users requester on payments.requester_id = requester.id").
+	return db.Select("payments.*, receiver.user_name as receiver_name, sender.user_name as sender_name").
+		Joins("left join users receiver on payments.receiver_id = receiver.id").
 		Joins("left join users sender on payments.sender_id = sender.id")
 }
 
-func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
-	db = f.selectFields(db)
-	db = f.Sort.BindQuery(db)
+func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 	if len(f.Ids) > 0 {
 		db = db.Where("payments.id", f.Ids)
 	}
 	if len(f.RequesterIds) > 0 && len(f.SenderIds) > 0 {
-		db = db.Where("requester_id IN ? OR sender_id IN ?", f.RequesterIds, f.SenderIds)
+		db = db.Where("receiver_id IN ? OR sender_id IN ?", f.RequesterIds, f.SenderIds)
 	} else {
 		if len(f.RequesterIds) > 0 {
 			db = db.Where("requester_id", f.SenderIds)
@@ -148,6 +179,12 @@ func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
 		db = db.Where("contact_method", f.ContactMethods)
 	}
 	return db
+}
+
+func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
+	db = f.selectFields(db)
+	db = f.Sort.BindQuery(db)
+	return f.BindCount(db)
 }
 
 func (f *PaymentFilter) BindFirst(db *gorm.DB) *gorm.DB {

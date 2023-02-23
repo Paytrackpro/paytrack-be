@@ -47,10 +47,8 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 	}
 	utils.SetValue(&user.DisplayName, req.DisplayName)
 	utils.SetValue(&user.Email, req.Email)
-	utils.SetValue(&user.PaymentType, req.PaymentType)
-	utils.SetValue(&user.PaymentAddress, req.PaymentAddress)
 	utils.SetValue(&user.Otp, req.Otp)
-
+	user.PaymentSettings = req.PaymentSettings
 	if !utils.IsEmpty(req.Password) {
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
@@ -104,7 +102,11 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
-	utils.ResponseOK(w, users)
+	count, _ := a.db.Count(&f, &storage.User{})
+	utils.ResponseOK(w, Map{
+		"users": users,
+		"count": count,
+	})
 }
 
 func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
@@ -130,9 +132,10 @@ func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.ResponseOK(w, Map{
-		"found":    true,
-		"id":       user.Id,
-		"userName": user.UserName,
+		"found":           true,
+		"id":              user.Id,
+		"userName":        user.UserName,
+		"paymentSettings": user.PaymentSettings,
 	})
 }
 
