@@ -1,6 +1,9 @@
 package storage
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -19,20 +22,41 @@ type UserStorage interface {
 	QueryUser(field string, val interface{}) (*User, error)
 }
 
+type PaymentSetting struct {
+	Type      payment.Method `json:"type"`
+	Address   string         `json:"address"`
+	IsDefault bool           `json:"isDefault"`
+}
+
+type PaymentSettings []PaymentSetting
+
+// Value Marshal
+func (a PaymentSettings) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+// Scan Unmarshal
+func (a *PaymentSettings) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return json.Unmarshal(b, &a)
+}
+
 type User struct {
-	Id             uint64         `json:"id" gorm:"primarykey"`
-	UserName       string         `json:"userName" gorm:"index:users_user_name_idx,unique"`
-	DisplayName    string         `json:"displayName"`
-	PasswordHash   string         `json:"-"`
-	Email          string         `json:"email"`
-	PaymentType    payment.Method `json:"paymentType"`
-	PaymentAddress string         `json:"paymentAddress"`
-	Role           utils.UserRole `json:"role"`
-	CreatedAt      time.Time      `json:"createdAt"`
-	UpdatedAt      time.Time      `json:"updatedAt"`
-	LastSeen       time.Time      `json:"lastSeen"`
-	Secret         string         `json:"-"`
-	Otp            bool           `json:"otp"`
+	Id              uint64           `json:"id" gorm:"primarykey"`
+	UserName        string           `json:"userName" gorm:"index:users_user_name_idx,unique"`
+	DisplayName     string           `json:"displayName"`
+	PasswordHash    string           `json:"-"`
+	Email           string           `json:"email"`
+	PaymentSettings []PaymentSetting `json:"paymentSetting" gorm:"serializer:json;type:jsonb"`
+	Role            utils.UserRole   `json:"role"`
+	CreatedAt       time.Time        `json:"createdAt"`
+	UpdatedAt       time.Time        `json:"updatedAt"`
+	LastSeen        time.Time        `json:"lastSeen"`
+	Secret          string           `json:"-"`
+	Otp             bool             `json:"otp"`
 }
 
 func (User) TableName() string {
@@ -60,6 +84,10 @@ type UserFilter struct {
 
 func (f *UserFilter) BindQuery(db *gorm.DB) *gorm.DB {
 	db = f.Sort.BindQuery(db)
+	return f.BindCount(db)
+}
+
+func (f *UserFilter) BindCount(db *gorm.DB) *gorm.DB {
 	if !utils.IsEmpty(f.KeySearch) {
 		keySearch := fmt.Sprintf("%%%s%%", strings.TrimSpace(f.KeySearch))
 		db = db.Where("user_name LIKE ?", keySearch)

@@ -11,6 +11,7 @@ type Storage interface {
 	GetById(id interface{}, obj interface{}) error
 	GetList(f Filter, obj interface{}) error
 	First(f Filter, obj interface{}) error
+	Count(f Filter, obj interface{}) (int64, error)
 	UserStorage
 }
 
@@ -19,6 +20,7 @@ type Filter interface {
 	RequestedSort() string
 	BindQuery(db *gorm.DB) *gorm.DB
 	BindFirst(db *gorm.DB) *gorm.DB
+	BindCount(db *gorm.DB) *gorm.DB
 }
 
 type psql struct {
@@ -68,4 +70,10 @@ func (p *psql) GetList(f Filter, obj interface{}) error {
 
 func (p *psql) First(f Filter, obj interface{}) error {
 	return f.BindFirst(p.db).Find(obj).Error
+}
+
+func (p *psql) Count(f Filter, obj interface{}) (int64, error) {
+	var count int64
+	var err = f.BindCount(p.db.Model(obj)).Count(&count).Error
+	return count, err
 }

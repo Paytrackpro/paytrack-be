@@ -34,10 +34,22 @@ func (f RegisterForm) User() (*storage.User, error) {
 		UserName:     f.UserName,
 		PasswordHash: string(hash),
 		Email:        f.Email,
-		PaymentType:  f.DefaultPayment,
 	}
-	if user.PaymentType != payment.PaymentTypeNotSet {
-		user.PaymentAddress = f.PaymentAddress
+	if f.DefaultPayment != payment.PaymentTypeNotSet {
+		user.PaymentSettings = []storage.PaymentSetting{
+			{Type: f.DefaultPayment, Address: f.PaymentAddress},
+		}
 	}
 	return &user, nil
+}
+
+type UpdateUserRequest struct {
+	DisplayName     string                   `json:"displayName"`
+	Password        string                   `json:"password"`
+	Email           string                   `validate:"omitempty,email" json:"email"`
+	PaymentType     payment.Method           `json:"paymentType"`
+	PaymentAddress  string                   `json:"paymentAddress"`
+	UserId          int                      `json:"userId"`
+	Otp             bool                     `json:"otp"`
+	PaymentSettings []storage.PaymentSetting `json:"paymentSettings"`
 }
