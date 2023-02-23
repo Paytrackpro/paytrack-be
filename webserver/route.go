@@ -20,6 +20,10 @@ func (s *WebServer) Route() {
 			var authRouter = apiAuth{WebServer: s}
 			r.Post("/register", authRouter.register)
 			r.Post("/login", authRouter.login)
+
+			r.Group(func(r chi.Router) {
+				r.Post("/verify-otp", authRouter.verifyOtp)
+			})
 		})
 		r.Route("/user", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)
@@ -27,6 +31,7 @@ func (s *WebServer) Route() {
 			r.Get("/info", userRouter.info)
 			r.Put("/info", userRouter.update)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
+			r.Get("/generate-otp", userRouter.generateQr)
 		})
 
 		r.Route("/admin", func(r chi.Router) {

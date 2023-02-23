@@ -11,4 +11,5 @@ type UpdateUserRequest struct {
 	PaymentType    payment.Method `json:"paymentType"`
 	PaymentAddress string         `json:"paymentAddress"`
 	UserId         int            `json:"userId"`
+	Otp            bool           `json:"otp"`
 }
