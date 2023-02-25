@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+const (
+	PaymentTypeRequest  = "request"
+	PaymentTypeReminder = "reminder"
+)
+
 type PaymentStatus int
 
 func (p PaymentStatus) String() string {
@@ -144,8 +149,9 @@ type Payment struct {
 
 type PaymentFilter struct {
 	Sort
+	RequestType    string           `schema:"requestType"`
 	Ids            []uint64         `schema:"ids"`
-	RequesterIds   []uint64         `schema:"requesterIds"`
+	ReceiverIds    []uint64         `schema:"receiverIds"`
 	SenderIds      []uint64         `schema:"senderIds"`
 	Statuses       []PaymentStatus  `schema:"statuses"`
 	ContactMethods []PaymentContact `schema:"contactMethods"`
@@ -161,11 +167,11 @@ func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 	if len(f.Ids) > 0 {
 		db = db.Where("payments.id", f.Ids)
 	}
-	if len(f.RequesterIds) > 0 && len(f.SenderIds) > 0 {
-		db = db.Where("receiver_id IN ? OR sender_id IN ?", f.RequesterIds, f.SenderIds)
+	if len(f.ReceiverIds) > 0 && len(f.SenderIds) > 0 {
+		db = db.Where("receiver_id IN ? OR sender_id IN ?", f.ReceiverIds, f.SenderIds)
 	} else {
-		if len(f.RequesterIds) > 0 {
-			db = db.Where("requester_id", f.SenderIds)
+		if len(f.ReceiverIds) > 0 {
+			db = db.Where("receiver_id", f.ReceiverIds)
 		}
 		if len(f.SenderIds) > 0 {
 			db = db.Where("sender_id", f.SenderIds)

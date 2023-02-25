@@ -20,6 +20,7 @@ type PaymentRequest struct {
 	PaymentMethod   payment.Method          `json:"paymentMethod"`
 	PaymentAddress  string                  `json:"paymentAddress"`
 	IsDraft         bool                    `json:"isDraft"`
+	Token           string                  `json:"token"`
 }
 
 type PaymentConfirm struct {
