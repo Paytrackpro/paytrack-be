@@ -50,7 +50,7 @@ type User struct {
 	DisplayName     string           `json:"displayName"`
 	PasswordHash    string           `json:"-"`
 	Email           string           `json:"email"`
-	PaymentSettings []PaymentSetting `json:"paymentSetting" gorm:"serializer:json;type:jsonb"`
+	PaymentSettings []PaymentSetting `json:"paymentSettings" gorm:"type:jsonb"`
 	Role            utils.UserRole   `json:"role"`
 	CreatedAt       time.Time        `json:"createdAt"`
 	UpdatedAt       time.Time        `json:"updatedAt"`
