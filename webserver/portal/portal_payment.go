@@ -35,8 +35,10 @@ func (p *PaymentRequest) Payment(creatorId uint64, payment *storage.Payment) err
 	if !(creatorId == p.SenderId || creatorId == p.ReceiverId) {
 		return fmt.Errorf("the sender or receiver must be you")
 	}
+	if payment.Id == 0 {
+		payment.CreatorId = creatorId
+	}
 	payment.ContactMethod = p.ContactMethod
-	payment.CreatorId = creatorId
 	payment.HourlyRate = p.HourlyRate
 	payment.Details = p.Details
 	payment.PaymentMethod = p.PaymentMethod
@@ -44,14 +46,16 @@ func (p *PaymentRequest) Payment(creatorId uint64, payment *storage.Payment) err
 	payment.SenderId = p.SenderId
 	payment.ReceiverId = p.ReceiverId
 	payment.PaymentSettings = p.PaymentSettings
-	if p.ContactMethod == storage.PaymentTypeInternal {
-		payment.ExternalEmail = ""
-	}
-	if p.ContactMethod == storage.PaymentTypeEmail {
-		if p.SenderId != 0 && p.ReceiverId != 0 {
-			return fmt.Errorf("invalid method")
+	if payment.Id == 0 || payment.CreatorId == creatorId {
+		if p.ContactMethod == storage.PaymentTypeInternal {
+			payment.ExternalEmail = ""
 		}
-		payment.ExternalEmail = p.ExternalEmail
+		if p.ContactMethod == storage.PaymentTypeEmail {
+			if p.SenderId != 0 && p.ReceiverId != 0 {
+				return fmt.Errorf("invalid method")
+			}
+			payment.ExternalEmail = p.ExternalEmail
+		}
 	}
 	if !p.IsDraft && payment.Status == storage.PaymentStatusCreated {
 		payment.Status = storage.PaymentStatusSent

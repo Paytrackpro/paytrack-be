@@ -37,9 +37,17 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("the payment was marked as paid"), utils.ErrorBadRequest), nil)
 		return
 	}
+	if err := a.verifyAccessPayment(f.Token, payment, r); err != nil {
+		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
+		return
+	}
 	var oldStatus = payment.Status
+	var userId uint64
 	claims, _ := a.credentialsInfo(r)
-	err = f.Payment(claims.Id, &payment)
+	if claims != nil {
+		userId = claims.Id
+	}
+	err = f.Payment(userId, &payment)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
@@ -57,6 +65,9 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 
 func (a *apiPayment) sendNotification(oldStatus storage.PaymentStatus, p storage.Payment, claims *authClaims) (string, *utils.Error) {
 	if !(oldStatus == storage.PaymentStatusCreated && p.Status == storage.PaymentStatusSent) {
+		return "", nil
+	}
+	if claims == nil {
 		return "", nil
 	}
 	accessToken, _ := a.crypto.Encrypt(utils.PaymentPlainText(p.Id))
