@@ -2,6 +2,7 @@ package webserver
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
@@ -150,11 +151,13 @@ func (a *apiUser) generateQr(w http.ResponseWriter, r *http.Request) {
 	qrImage, err := key.Image(200, 200)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
 	}
 
 	imgBase64Str, err := utils.ImageToBase64(qrImage)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
 	}
 
 	utils.SetValue(&user.Secret, key.Secret())
@@ -162,9 +165,42 @@ func (a *apiUser) generateQr(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
 	}
 
 	utils.ResponseOK(w, Map{
 		"mfa_qr_image": imgBase64Str,
 	})
+}
+
+func (a *apiUser) disableOtp(w http.ResponseWriter, r *http.Request) {
+	var f portal.OtpForm
+	err := a.parseJSON(r, &f)
+
+	claims, _ := a.credentialsInfo(r)
+
+	user, err := a.db.QueryUser(storage.UserFieldId, claims.Id)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	verified := totp.Validate(f.Otp, user.Secret)
+
+	if verified == false {
+		err := utils.NewError(fmt.Errorf("OTP is not valid"), utils.ErrorObjectExist)
+		utils.Response(w, http.StatusBadRequest, err, nil)
+
+		return
+	}
+
+	utils.SetValue(&user.Otp, false)
+	err = a.db.UpdateUser(user)
+
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	utils.ResponseOK(w, Map{})
 }
