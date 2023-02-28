@@ -43,7 +43,7 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 	}
 	var oldStatus = payment.Status
 	var userId uint64
-	claims, _ := a.credentialsInfo(r)
+	claims, _ := a.parseBearer(r)
 	if claims != nil {
 		userId = claims.Id
 	}
