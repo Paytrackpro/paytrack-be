@@ -49,6 +49,11 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 	utils.SetValue(&user.Email, req.Email)
 	utils.SetValue(&user.Otp, req.Otp)
 	user.PaymentSettings = req.PaymentSettings
+	err = a.db.CheckDuplicate(user)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
 	if !utils.IsEmpty(req.Password) {
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {

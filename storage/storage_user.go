@@ -17,6 +17,7 @@ const UserFieldUName = "user_name"
 const UserFieldId = "id"
 
 type UserStorage interface {
+	CheckDuplicate(user *User) error
 	CreateUser(user *User) error
 	UpdateUser(user *User) error
 	QueryUser(field string, val interface{}) (*User, error)
@@ -71,6 +72,18 @@ func (p *psql) UpdateUser(user *User) error {
 	return p.db.Save(user).Error
 }
 
+func (p *psql) CheckDuplicate(user *User) error {
+	if user.Email == "" {
+		return nil
+	}
+	var oldUser User
+	var err = p.db.Where("email", user.Email).Not("id", user.Id).First(&oldUser).Error
+	if err == nil {
+		return fmt.Errorf("the email is already taken")
+	}
+	return nil
+}
+
 func (p *psql) QueryUser(field string, val interface{}) (*User, error) {
 	var user User
 	var err = p.db.Where(fmt.Sprintf("%s = ?", field), val).First(&user).Error
@@ -80,6 +93,7 @@ func (p *psql) QueryUser(field string, val interface{}) (*User, error) {
 type UserFilter struct {
 	Sort
 	KeySearch string
+	Email     string
 }
 
 func (f *UserFilter) BindQuery(db *gorm.DB) *gorm.DB {
@@ -96,6 +110,9 @@ func (f *UserFilter) BindCount(db *gorm.DB) *gorm.DB {
 }
 
 func (f *UserFilter) BindFirst(db *gorm.DB) *gorm.DB {
+	if len(f.Email) > 0 {
+		db = db.Where("email", f.Email)
+	}
 	return db
 }
 

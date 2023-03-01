@@ -48,6 +48,11 @@ func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
+	err = a.db.CheckDuplicate(user)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
 	if err := a.db.CreateUser(user); err != nil {
 		// 23505 is  duplicate key value error for postgresql
 		if e, ok := err.(*pgconn.PgError); ok && e.Code == utils.PgsqlDuplicateErrorCode {
