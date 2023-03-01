@@ -33,7 +33,7 @@ func ValidateSortField(validMapFields map[string]bool, sortStr string) error {
 
 			return fmt.Errorf("invalid format: '%s', expected formart is 'fied_name desc/asc'", field)
 		}
-		if validMapFields[orderInfo[0]] {
+		if !validMapFields[orderInfo[0]] {
 			var validFields []string
 			for f := range validMapFields {
 				validFields = append(validFields, f)

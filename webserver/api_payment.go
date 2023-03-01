@@ -37,9 +37,17 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("the payment was marked as paid"), utils.ErrorBadRequest), nil)
 		return
 	}
+	if err := a.verifyAccessPayment(f.Token, payment, r); err != nil {
+		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
+		return
+	}
 	var oldStatus = payment.Status
-	claims, _ := a.credentialsInfo(r)
-	err = f.Payment(claims.Id, &payment)
+	var userId uint64
+	claims, _ := a.parseBearer(r)
+	if claims != nil {
+		userId = claims.Id
+	}
+	err = f.Payment(userId, &payment)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
@@ -59,6 +67,9 @@ func (a *apiPayment) sendNotification(oldStatus storage.PaymentStatus, p storage
 	if !(oldStatus == storage.PaymentStatusCreated && p.Status == storage.PaymentStatusSent) {
 		return "", nil
 	}
+	if claims == nil {
+		return "", nil
+	}
 	accessToken, _ := a.crypto.Encrypt(utils.PaymentPlainText(p.Id))
 	var customErr *utils.Error
 	if p.ContactMethod == storage.PaymentTypeEmail {
@@ -67,7 +78,7 @@ func (a *apiPayment) sendNotification(oldStatus storage.PaymentStatus, p storage
 			Receiver:  p.ExternalEmail,
 			Sender:    claims.UserName,
 			Link:      a.conf.ClientAddr,
-			Path:      fmt.Sprintf("/payment/%d?token=%s", p.Id, accessToken),
+			Path:      fmt.Sprintf("/payment/%d/%s", p.Id, accessToken),
 			IsRequest: claims.Id == p.ReceiverId,
 		}, p.ExternalEmail)
 		if err != nil {
@@ -239,10 +250,20 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	// checking error on claims is not needed since listPayments is for logged in api,
 	// the checking is from the logged in middleware
 	claims, _ := a.parseBearer(r)
-	if claims.UserRole != utils.UserRoleAdmin {
-		f.SenderIds = append(f.SenderIds, claims.Id)
-		f.RequesterIds = append(f.RequesterIds, claims.Id)
+	switch f.RequestType {
+	case storage.PaymentTypeRequest:
+		f.ReceiverIds = []uint64{claims.Id}
+		break
+	case storage.PaymentTypeReminder:
+		f.SenderIds = []uint64{claims.Id}
+		break
+	default:
+		if claims.UserRole != utils.UserRoleAdmin {
+			f.SenderIds = append(f.SenderIds, claims.Id)
+			f.ReceiverIds = append(f.ReceiverIds, claims.Id)
+		}
 	}
+
 	var payments []storage.Payment
 	if err := a.db.GetList(&f, &payments); err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
