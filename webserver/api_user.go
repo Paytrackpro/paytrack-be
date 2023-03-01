@@ -40,7 +40,6 @@ func (a *apiUser) infoWithId(w http.ResponseWriter, r *http.Request) {
 
 // This function use for update user for admin and user
 func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest) {
-
 	user, err := a.db.QueryUser(storage.UserFieldId, req.UserId)
 	if err != nil {
 		utils.Response(w, http.StatusNotFound, err, nil)
