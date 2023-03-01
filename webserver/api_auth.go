@@ -48,8 +48,7 @@ func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-	err = a.db.CheckDuplicate(user)
-	if err != nil {
+	if err := a.db.CheckDuplicate(user); err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
