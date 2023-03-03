@@ -17,12 +17,18 @@ type RegisterForm struct {
 type LoginForm struct {
 	UserName string `validate:"required,alphanum,gte=4,lte=32"`
 	Password string `validate:"required"`
+	IsOtp    bool   `validate:"required"`
+	Otp      string
 }
 
 type OtpForm struct {
-	UserId    string `validate:"required"`
 	Otp       string `validate:"required"`
+	Password  string `validate:"required"`
 	FirstTime bool
+}
+
+type GenerateQRForm struct {
+	Password string `validate:"required"`
 }
 
 func (f RegisterForm) User() (*storage.User, error) {

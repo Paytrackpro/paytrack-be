@@ -145,8 +145,31 @@ func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiUser) generateQr(w http.ResponseWriter, r *http.Request) {
+	var f portal.GenerateQRForm
+	err := a.parseJSON(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+
 	claims, _ := a.credentialsInfo(r)
-	user, err := a.db.QueryUser(storage.UserFieldId, claims.Id)
+	user, err := a.db.QueryUser(storage.UserFieldUName, claims.UserName)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.Response(w, http.StatusNotFound, utils.InvalidCredential, nil)
+			return
+		}
+
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(f.Password))
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
+		return
+	}
 
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      "MGMT",
@@ -180,12 +203,25 @@ func (a *apiUser) generateQr(w http.ResponseWriter, r *http.Request) {
 func (a *apiUser) disableOtp(w http.ResponseWriter, r *http.Request) {
 	var f portal.OtpForm
 	err := a.parseJSON(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
 
 	claims, _ := a.credentialsInfo(r)
-
-	user, err := a.db.QueryUser(storage.UserFieldId, claims.Id)
+	user, err := a.db.QueryUser(storage.UserFieldUName, claims.UserName)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.Response(w, http.StatusNotFound, utils.InvalidCredential, nil)
+			return
+		}
 		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(f.Password))
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
 		return
 	}
 
