@@ -7,6 +7,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/log"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/webserver"
+	"github.com/go-webauthn/webauthn/webauthn"
 )
 
 func main() {
@@ -15,6 +16,17 @@ func main() {
 }
 
 func _main() error {
+	wconfig := &webauthn.Config{
+		RPDisplayName: "Go Webauthn",                               // Display Name for your site
+		RPID:          "go-webauthn.local",                         // Generally the FQDN for your site
+		RPOrigins:     []string{"https://login.go-webauthn.local"}, // The origin URLs allowed for WebAuthn requests
+	}
+
+	webAuthn, err := webauthn.New(wconfig)
+	if err != nil {
+		return err
+	}
+
 	conf, err := loadConfig()
 	if err != nil {
 		return err
@@ -34,7 +46,7 @@ func _main() error {
 	if err != nil {
 		return err
 	}
-	web, err := webserver.NewWebServer(conf.WebServer, db, mailClient)
+	web, err := webserver.NewWebServer(conf.WebServer, db, mailClient, webAuthn)
 	if err != nil {
 		return err
 	}

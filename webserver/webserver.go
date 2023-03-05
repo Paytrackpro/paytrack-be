@@ -1,16 +1,18 @@
 package webserver
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/email"
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/schema"
 	"log"
 	"net/http"
 	"strings"
+
+	"code.cryptopower.dev/mgmt-ng/be/email"
+	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/gorilla/schema"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -32,13 +34,14 @@ type WebServer struct {
 	validator *validator.Validate
 	mail      *email.MailClient
 	crypto    *utils.Cryptography
+	webAuthn  *webauthn.WebAuthn
 }
 
 const authClaimsCtxKey = "authClaimsCtxKey"
 
 type Map map[string]interface{}
 
-func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*WebServer, error) {
+func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient, webAuthn *webauthn.WebAuthn) (*WebServer, error) {
 	if c.Port == 0 {
 		return nil, fmt.Errorf("please set up server port")
 	}
@@ -60,6 +63,7 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 		validator: validator.New(),
 		mail:      mailClient,
 		crypto:    crypto,
+		webAuthn:  webAuthn,
 	}, nil
 }
 
