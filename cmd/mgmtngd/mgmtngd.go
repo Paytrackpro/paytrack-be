@@ -1,13 +1,17 @@
 package main
 
 import (
+	"encoding/gob"
 	"fmt"
+	"os"
 
 	"code.cryptopower.dev/mgmt-ng/be/email"
 	"code.cryptopower.dev/mgmt-ng/be/log"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/webserver"
 	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/gorilla/sessions"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -22,10 +26,20 @@ func _main() error {
 		RPOrigins:     []string{"https://login.go-webauthn.local"}, // The origin URLs allowed for WebAuthn requests
 	}
 
+	gob.Register(webauthn.SessionData{})
 	webAuthn, err := webauthn.New(wconfig)
 	if err != nil {
 		return err
 	}
+
+	// load
+	err = godotenv.Load()
+	if err != nil {
+		return fmt.Errorf("err loading: %v", err)
+	}
+
+	store := sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
+	fmt.Println(os.Getenv("SESSION_KEY"))
 
 	conf, err := loadConfig()
 	if err != nil {
@@ -46,7 +60,7 @@ func _main() error {
 	if err != nil {
 		return err
 	}
-	web, err := webserver.NewWebServer(conf.WebServer, db, mailClient, webAuthn)
+	web, err := webserver.NewWebServer(conf.WebServer, db, mailClient, webAuthn, store)
 	if err != nil {
 		return err
 	}

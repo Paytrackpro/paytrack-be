@@ -13,6 +13,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/gorilla/schema"
+	"github.com/gorilla/sessions"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -28,20 +29,21 @@ type Config struct {
 }
 
 type WebServer struct {
-	mux       *chi.Mux
-	conf      *Config
-	db        storage.Storage
-	validator *validator.Validate
-	mail      *email.MailClient
-	crypto    *utils.Cryptography
-	webAuthn  *webauthn.WebAuthn
+	mux          *chi.Mux
+	conf         *Config
+	db           storage.Storage
+	validator    *validator.Validate
+	mail         *email.MailClient
+	crypto       *utils.Cryptography
+	webAuthn     *webauthn.WebAuthn
+	sessionStore *sessions.CookieStore
 }
 
 const authClaimsCtxKey = "authClaimsCtxKey"
 
 type Map map[string]interface{}
 
-func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient, webAuthn *webauthn.WebAuthn) (*WebServer, error) {
+func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient, webAuthn *webauthn.WebAuthn, sessionStore *sessions.CookieStore) (*WebServer, error) {
 	if c.Port == 0 {
 		return nil, fmt.Errorf("please set up server port")
 	}
@@ -57,13 +59,14 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient, we
 	}
 
 	return &WebServer{
-		mux:       chi.NewRouter(),
-		conf:      &c,
-		db:        db,
-		validator: validator.New(),
-		mail:      mailClient,
-		crypto:    crypto,
-		webAuthn:  webAuthn,
+		mux:          chi.NewRouter(),
+		conf:         &c,
+		db:           db,
+		validator:    validator.New(),
+		mail:         mailClient,
+		crypto:       crypto,
+		webAuthn:     webAuthn,
+		sessionStore: sessionStore,
 	}, nil
 }
 

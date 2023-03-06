@@ -20,6 +20,8 @@ func (s *WebServer) Route() {
 			var authRouter = apiAuth{WebServer: s}
 			r.Post("/register", authRouter.register)
 			r.Post("/login", authRouter.login)
+			r.Post("/passkey/begin-login", authRouter.BeginLogin)
+			r.Post("/passkey/finish-login", authRouter.FinishLogin)
 
 			r.Group(func(r chi.Router) {
 				r.Post("/verify-otp", authRouter.verifyOtp)
