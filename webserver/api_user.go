@@ -9,6 +9,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -207,4 +208,32 @@ func (a *apiUser) disableOtp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.ResponseOK(w, Map{})
+}
+
+func (a *apiUser) BeginRegistration(w http.ResponseWriter, r *http.Request) {
+	var f portal.PasskeyLoginForm
+	err := a.parseJSON(r, &f)
+
+	user, err := a.db.QueryUser(storage.UserFieldUName, f.UserName)
+
+	registerOptions := func(credCreationOpts *protocol.PublicKeyCredentialCreationOptions) {
+		credCreationOpts.CredentialExcludeList = user.CredentialExcludeList()
+	}
+
+	options, _, err := a.webAuthn.BeginRegistration(user, registerOptions)
+
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	// store session data as marshaled JSON
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	utils.ResponseOK(w, Map{
+		"options": options,
+	})
 }

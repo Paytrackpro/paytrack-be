@@ -1,7 +1,9 @@
 package storage
 
 import (
+	"crypto/rand"
 	"database/sql/driver"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +12,8 @@ import (
 
 	"code.cryptopower.dev/mgmt-ng/be/payment"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"gorm.io/gorm"
 )
 
@@ -58,6 +62,7 @@ type User struct {
 	LastSeen        time.Time       `json:"lastSeen"`
 	Secret          string          `json:"-"`
 	Otp             bool            `json:"otp"`
+	credentials     []webauthn.Credential
 }
 
 func (User) TableName() string {
@@ -121,4 +126,55 @@ func (f *UserFilter) Sortable() map[string]bool {
 		"createdAt": true,
 		"lastSeen":  true,
 	}
+}
+
+func (u User) WebAuthnCredentials() []webauthn.Credential {
+	return u.credentials
+}
+
+func (u User) WebAuthnName() string {
+	return u.UserName
+}
+
+// WebAuthnDisplayName returns the user's display name
+func (u User) WebAuthnDisplayName() string {
+	return u.DisplayName
+}
+
+func randomUint64() uint64 {
+	buf := make([]byte, 8)
+	rand.Read(buf)
+	return binary.LittleEndian.Uint64(buf)
+}
+
+// WebAuthnID returns the user's ID
+func (u User) WebAuthnID() []byte {
+	buf := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(buf, uint64(u.Id))
+	return buf
+}
+
+func (u User) WebAuthnIcon() string {
+	return ""
+}
+
+// AddCredential associates the credential to the user
+func (u *User) AddCredential(cred webauthn.Credential) {
+	u.credentials = append(u.credentials, cred)
+}
+
+// CredentialExcludeList returns a CredentialDescriptor array filled
+// with all the user's credentials
+func (u User) CredentialExcludeList() []protocol.CredentialDescriptor {
+
+	credentialExcludeList := []protocol.CredentialDescriptor{}
+	for _, cred := range u.credentials {
+		descriptor := protocol.CredentialDescriptor{
+			Type:         protocol.PublicKeyCredentialType,
+			CredentialID: cred.ID,
+		}
+		credentialExcludeList = append(credentialExcludeList, descriptor)
+	}
+
+	return credentialExcludeList
 }
