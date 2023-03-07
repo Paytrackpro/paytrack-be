@@ -22,6 +22,7 @@ func (s *WebServer) Route() {
 			r.Post("/login", authRouter.login)
 
 			r.Group(func(r chi.Router) {
+				r.Use(s.loggedInMiddleware)
 				r.Post("/verify-otp", authRouter.verifyOtp)
 			})
 		})
@@ -31,7 +32,7 @@ func (s *WebServer) Route() {
 			r.Get("/info", userRouter.info)
 			r.Put("/info", userRouter.update)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
-			r.Get("/generate-otp", userRouter.generateQr)
+			r.Post("/generate-otp", userRouter.generateQr)
 			r.Post("/disable-otp", userRouter.disableOtp)
 		})
 

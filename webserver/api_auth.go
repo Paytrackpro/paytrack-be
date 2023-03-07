@@ -77,6 +77,7 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
+
 	user, err := a.db.QueryUser(storage.UserFieldUName, f.UserName)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -93,7 +94,18 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.Otp {
+	if f.IsOtp {
+		verified := totp.Validate(f.Otp, user.Secret)
+
+		if verified == false {
+			err := utils.NewError(fmt.Errorf("OTP is not valid"), utils.ErrorObjectExist)
+			utils.Response(w, http.StatusBadRequest, err, nil)
+
+			return
+		}
+	}
+
+	if user.Otp && !f.IsOtp {
 		utils.ResponseOK(w, Map{
 			"userId": user.Id,
 			"otp":    true,
@@ -127,11 +139,20 @@ func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := a.db.QueryUser(storage.UserFieldId, f.UserId)
+	claims, _ := a.credentialsInfo(r)
+	user, err := a.db.QueryUser(storage.UserFieldUName, claims.UserName)
 	if err != nil {
-		err := utils.NewError(fmt.Errorf("OTP is not valid"), utils.ErrorObjectExist)
-		utils.Response(w, http.StatusBadRequest, err, nil)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.Response(w, http.StatusNotFound, utils.InvalidCredential, nil)
+			return
+		}
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
 
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(f.Password))
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
 		return
 	}
 
@@ -140,7 +161,6 @@ func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
 	if verified == false {
 		err := utils.NewError(fmt.Errorf("OTP is not valid"), utils.ErrorObjectExist)
 		utils.Response(w, http.StatusBadRequest, err, nil)
-
 		return
 	}
 
