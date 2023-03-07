@@ -8,11 +8,11 @@ import (
 
 func (s *WebServer) Route() {
 	s.mux.Use(middleware.Recoverer, cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://*", "http://*"},
+		AllowedOrigins:   []string{"http://localhost:6789", "http://localhost:8081"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
+		AllowCredentials: true,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 	s.mux.Route("/api", func(r chi.Router) {
@@ -36,6 +36,7 @@ func (s *WebServer) Route() {
 			r.Get("/generate-otp", userRouter.generateQr)
 			r.Post("/disable-otp", userRouter.disableOtp)
 			r.Post("/begin-registration", userRouter.BeginRegistration)
+			r.Post("/finish-registration", userRouter.FinishRegistration)
 		})
 
 		r.Route("/admin", func(r chi.Router) {

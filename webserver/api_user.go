@@ -10,6 +10,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -220,14 +221,22 @@ func (a *apiUser) BeginRegistration(w http.ResponseWriter, r *http.Request) {
 		credCreationOpts.CredentialExcludeList = user.CredentialExcludeList()
 	}
 
-	options, _, err := a.webAuthn.BeginRegistration(user, registerOptions)
+	options, sessionData, err := a.webAuthn.BeginRegistration(user, registerOptions)
 
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
 
-	// store session data as marshaled JSON
+	session, err := a.sessionStore.Get(r, "registration")
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	session.Values["sessionData"] = sessionData
+	err = session.Save(r, w)
+
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
@@ -235,5 +244,35 @@ func (a *apiUser) BeginRegistration(w http.ResponseWriter, r *http.Request) {
 
 	utils.ResponseOK(w, Map{
 		"options": options,
+	})
+}
+
+func (a *apiUser) FinishRegistration(w http.ResponseWriter, r *http.Request) {
+	user, err := a.db.QueryUser(storage.UserFieldUName, "testmgmt")
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	session, err := a.sessionStore.Get(r, "registration")
+	var sessionData = webauthn.SessionData{}
+	var ok bool
+
+	if sessionData, ok = session.Values["sessionData"].(webauthn.SessionData); !ok {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	credential, err := a.webAuthn.FinishRegistration(user, sessionData, r)
+
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	user.AddCredential(*credential)
+
+	utils.ResponseOK(w, Map{
+		"message": "Registration Success",
 	})
 }

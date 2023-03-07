@@ -21,9 +21,9 @@ func main() {
 
 func _main() error {
 	wconfig := &webauthn.Config{
-		RPDisplayName: "Go Webauthn",                               // Display Name for your site
-		RPID:          "go-webauthn.local",                         // Generally the FQDN for your site
-		RPOrigins:     []string{"https://login.go-webauthn.local"}, // The origin URLs allowed for WebAuthn requests
+		RPDisplayName: "MGMT",                            // Display Name for your site
+		RPID:          "localhost",                       // Generally the FQDN for your site
+		RPOrigins:     []string{"http://localhost:8081"}, // The origin URLs allowed for WebAuthn requests
 	}
 
 	gob.Register(webauthn.SessionData{})
