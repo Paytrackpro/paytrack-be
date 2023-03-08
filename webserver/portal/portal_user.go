@@ -59,3 +59,9 @@ type UpdateUserRequest struct {
 	Otp             bool                     `json:"otp"`
 	PaymentSettings []storage.PaymentSetting `json:"paymentSettings"`
 }
+
+type ChangePasswordRequest struct {
+	Password    string `json:"password"`
+	OldPassword string `json:"oldPassword"`
+	Otp         string `json:"otp"`
+}
