@@ -19,6 +19,8 @@ type PaymentRequest struct {
 	Details         []storage.PaymentDetail `json:"details"`
 	PaymentMethod   payment.Method          `json:"paymentMethod"`
 	PaymentAddress  string                  `json:"paymentAddress"`
+	Status          storage.PaymentStatus   `json:"status"`
+	TxId            string                  `json:"txId"`
 	IsDraft         bool                    `json:"isDraft"`
 	Token           string                  `json:"token"`
 }
@@ -31,12 +33,12 @@ type PaymentConfirm struct {
 	PaymentAddress string         `validate:"required" json:"paymentAddress"`
 }
 
-func (p *PaymentRequest) Payment(creatorId uint64, payment *storage.Payment) error {
-	if !(creatorId == p.SenderId || creatorId == p.ReceiverId) {
+func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment) error {
+	if !(userId == p.SenderId || userId == p.ReceiverId) {
 		return fmt.Errorf("the sender or receiver must be you")
 	}
 	if payment.Id == 0 {
-		payment.CreatorId = creatorId
+		payment.CreatorId = userId
 	}
 	payment.ContactMethod = p.ContactMethod
 	payment.HourlyRate = p.HourlyRate
@@ -46,7 +48,7 @@ func (p *PaymentRequest) Payment(creatorId uint64, payment *storage.Payment) err
 	payment.SenderId = p.SenderId
 	payment.ReceiverId = p.ReceiverId
 	payment.PaymentSettings = p.PaymentSettings
-	if payment.Id == 0 || payment.CreatorId == creatorId {
+	if payment.Id == 0 || payment.CreatorId == userId {
 		if p.ContactMethod == storage.PaymentTypeInternal {
 			payment.ExternalEmail = ""
 		}
@@ -57,9 +59,13 @@ func (p *PaymentRequest) Payment(creatorId uint64, payment *storage.Payment) err
 			payment.ExternalEmail = p.ExternalEmail
 		}
 	}
-	if !p.IsDraft && payment.Status == storage.PaymentStatusCreated {
+	if userId == payment.ReceiverId && payment.Status == storage.PaymentStatusCreated && p.Status == storage.PaymentStatusSent {
 		payment.Status = storage.PaymentStatusSent
 		payment.SentAt = time.Now()
+	}
+	if userId == payment.SenderId && p.Status != storage.PaymentStatusCreated {
+		payment.Status = p.Status
+		payment.TxId = p.TxId
 	}
 	var amount float64
 	for i, detail := range p.Details {
