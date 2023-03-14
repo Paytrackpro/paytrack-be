@@ -1,10 +1,12 @@
 package portal
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/payment"
-	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"fmt"
 	"time"
+
+	"code.cryptopower.dev/mgmt-ng/be/payment"
+	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"gorm.io/gorm"
 )
 
 type PaymentRequest struct {
@@ -89,4 +91,31 @@ type PaymentRequestRate struct {
 	Token          string         `json:"token"`
 	PaymentMethod  payment.Method `json:"paymentMethod"`
 	PaymentAddress string         `json:"paymentAddress"`
+}
+
+type ListPaymentSettingRequest struct {
+	Id   uint64
+	List []ApproversSettingRequest `json:"list"`
+}
+
+type ApproversSettingRequest struct {
+	ApproverId  uint64 `json:"approverId"`
+	SendUserId  uint64 `json:"sendUserId"`
+	RecipientId uint64 `json:"recipientId"`
+}
+
+// func (p *ListPaymentSettingRequest) MakeApproverSetting() []storage.ApproverSettings {
+// 	sets := make([]storage.ApproverSettings, 0)
+// 	for _, setting := range p.List {
+// 		sets = append(sets, storage.ApproverSettings{
+// 			ApproverId:  setting.ApproverId,
+// 			SendUserId:  setting.SendUserId,
+// 			RecipientId: setting.RecipientId,
+// 		})
+// 	}
+// 	return sets
+// }
+
+func (a *ListPaymentSettingRequest) BindQueryDelete(db *gorm.DB) *gorm.DB {
+	return db.Where("recipient_id", a.Id)
 }

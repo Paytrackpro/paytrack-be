@@ -12,7 +12,12 @@ type Storage interface {
 	GetList(f Filter, obj interface{}) error
 	First(f Filter, obj interface{}) error
 	Count(f Filter, obj interface{}) (int64, error)
+	Delete(d DeleteFilter, obj interface{}) error
 	UserStorage
+}
+
+type DeleteFilter interface {
+	BindQueryDelete(db *gorm.DB) *gorm.DB
 }
 
 type Filter interface {
@@ -46,7 +51,7 @@ func NewStorage(c Config) (Storage, error) {
 }
 
 func autoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(&User{}, &Payment{})
+	return db.AutoMigrate(&User{}, &Payment{}, &ApproverSettings{})
 }
 
 func (p *psql) Create(obj interface{}) error {
@@ -66,6 +71,10 @@ func (p *psql) GetList(f Filter, obj interface{}) error {
 		return nil
 	}
 	return err
+}
+
+func (p *psql) Delete(d DeleteFilter, obj interface{}) error {
+	return d.BindQueryDelete(p.db).Delete(obj).Error
 }
 
 func (p *psql) First(f Filter, obj interface{}) error {

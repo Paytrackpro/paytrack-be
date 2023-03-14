@@ -244,3 +244,29 @@ func (a *apiUser) disableOtp(w http.ResponseWriter, r *http.Request) {
 
 	utils.ResponseOK(w, Map{})
 }
+
+func (a *apiUser) updatePaymentSetting(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	var f portal.ListPaymentSettingRequest
+	err := a.parseJSON(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	f.Id = claims.Id
+
+	// a.db.Delete(f, storage.ApproverSettings{})
+}
+
+func (a *apiUser) getPaymentSetting(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	setting, err := a.db.QueryAprroverSettings(storage.RecipientId, claims.Id)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	utils.ResponseOK(w, Map{
+		"setting": setting,
+	})
+}

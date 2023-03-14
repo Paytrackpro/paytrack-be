@@ -15,12 +15,14 @@ import (
 
 const UserFieldUName = "user_name"
 const UserFieldId = "id"
+const RecipientId = "recipient_id"
 
 type UserStorage interface {
 	CheckDuplicate(user *User) error
 	CreateUser(user *User) error
 	UpdateUser(user *User) error
 	QueryUser(field string, val interface{}) (*User, error)
+	QueryAprroverSettings(field string, val interface{}) ([]ApproverSettings, error)
 }
 
 type PaymentSetting struct {
@@ -30,6 +32,13 @@ type PaymentSetting struct {
 }
 
 type PaymentSettings []PaymentSetting
+
+type ApproverSettings struct {
+	Id          uint64 `gorm:"primarykey" json:"id"`
+	ApproverId  uint64 `json:"approverId"`
+	SendUserId  uint64 `json:"sendUserId"`
+	RecipientId uint64 `json:"recipientId"`
+}
 
 // Value Marshal
 func (a PaymentSettings) Value() (driver.Value, error) {
@@ -88,6 +97,12 @@ func (p *psql) QueryUser(field string, val interface{}) (*User, error) {
 	var user User
 	var err = p.db.Where(fmt.Sprintf("%s = ?", field), val).First(&user).Error
 	return &user, err
+}
+
+func (p *psql) QueryAprroverSettings(field string, val interface{}) ([]ApproverSettings, error) {
+	approvers := make([]ApproverSettings, 0)
+	var err = p.db.Where(fmt.Sprintf("%s = ?", field), val).Find(&approvers).Error
+	return approvers, err
 }
 
 type UserFilter struct {
