@@ -255,7 +255,18 @@ func (a *apiUser) updatePaymentSetting(w http.ResponseWriter, r *http.Request) {
 	}
 	f.Id = claims.Id
 
-	// a.db.Delete(f, storage.ApproverSettings{})
+	// delete all old approver setting
+	if err := a.db.Delete(f, storage.ApproverSettings{}); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	if err := a.db.Create(f.MakeApproverSetting(claims.Id)); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	utils.ResponseOK(w, f.MakeApproverSetting(claims.Id))
 }
 
 func (a *apiUser) getPaymentSetting(w http.ResponseWriter, r *http.Request) {

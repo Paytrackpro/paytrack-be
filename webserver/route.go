@@ -35,8 +35,8 @@ func (s *WebServer) Route() {
 			r.Post("/generate-otp", userRouter.generateQr)
 			r.Post("/disable-otp", userRouter.disableOtp)
 			r.Route("/setting", func(r chi.Router) {
-				r.Get("/paymemt", userRouter.getPaymentSetting)
-				r.Put("/paymemt", userRouter.updatePaymentSetting)
+				r.Get("/payment", userRouter.getPaymentSetting)
+				r.Put("/payment", userRouter.updatePaymentSetting)
 			})
 		})
 

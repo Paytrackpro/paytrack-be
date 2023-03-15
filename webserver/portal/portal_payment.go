@@ -99,23 +99,22 @@ type ListPaymentSettingRequest struct {
 }
 
 type ApproversSettingRequest struct {
-	ApproverId  uint64 `json:"approverId"`
-	SendUserId  uint64 `json:"sendUserId"`
-	RecipientId uint64 `json:"recipientId"`
+	ApproverId uint64 `json:"approverId"`
+	SendUserId uint64 `json:"sendUserId"`
 }
 
-// func (p *ListPaymentSettingRequest) MakeApproverSetting() []storage.ApproverSettings {
-// 	sets := make([]storage.ApproverSettings, 0)
-// 	for _, setting := range p.List {
-// 		sets = append(sets, storage.ApproverSettings{
-// 			ApproverId:  setting.ApproverId,
-// 			SendUserId:  setting.SendUserId,
-// 			RecipientId: setting.RecipientId,
-// 		})
-// 	}
-// 	return sets
-// }
+func (p *ListPaymentSettingRequest) MakeApproverSetting(id uint64) []storage.ApproverSettings {
+	sets := make([]storage.ApproverSettings, 0)
+	for _, setting := range p.List {
+		sets = append(sets, storage.ApproverSettings{
+			ApproverId:  setting.ApproverId,
+			SendUserId:  setting.SendUserId,
+			RecipientId: id,
+		})
+	}
+	return sets
+}
 
-func (a *ListPaymentSettingRequest) BindQueryDelete(db *gorm.DB) *gorm.DB {
+func (a ListPaymentSettingRequest) BindQueryDelete(db *gorm.DB) *gorm.DB {
 	return db.Where("recipient_id", a.Id)
 }
