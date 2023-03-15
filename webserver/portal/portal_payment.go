@@ -99,18 +99,23 @@ type ListPaymentSettingRequest struct {
 }
 
 type ApproversSettingRequest struct {
-	ApproverId uint64 `json:"approverId"`
-	SendUserId uint64 `json:"sendUserId"`
+	ApproverIds []uint64 `json:"approverIds"`
+	SendUserId  uint64   `json:"sendUserId"`
 }
 
-func (p *ListPaymentSettingRequest) MakeApproverSetting(id uint64) []storage.ApproverSettings {
+func (p *ListPaymentSettingRequest) MakeApproverSetting(id uint64, userMap map[uint64]storage.User) []storage.ApproverSettings {
+
 	sets := make([]storage.ApproverSettings, 0)
 	for _, setting := range p.List {
-		sets = append(sets, storage.ApproverSettings{
-			ApproverId:  setting.ApproverId,
-			SendUserId:  setting.SendUserId,
-			RecipientId: id,
-		})
+		for _, v := range setting.ApproverIds {
+			sets = append(sets, storage.ApproverSettings{
+				ApproverId:   v,
+				SendUserId:   setting.SendUserId,
+				RecipientId:  id,
+				ApproverName: userMap[v].UserName,
+				SendUserName: userMap[setting.SendUserId].UserName,
+			})
+		}
 	}
 	return sets
 }

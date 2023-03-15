@@ -255,29 +255,88 @@ func (a *apiUser) updatePaymentSetting(w http.ResponseWriter, r *http.Request) {
 	}
 	f.Id = claims.Id
 
+	list := portal.UserWithList{
+		List: make([]uint64, 0),
+	}
+
+	for _, approver := range f.List {
+		if approver.SendUserId == claims.Id {
+			e := fmt.Errorf("the sender can't be you")
+			utils.Response(w, http.StatusBadRequest, e, nil)
+			return
+		}
+		list.List = append(list.List, approver.SendUserId)
+		for _, v := range approver.ApproverIds {
+			list.List = append(list.List, v)
+			if v == claims.Id {
+				e := fmt.Errorf("not allow current user is approver")
+				utils.Response(w, http.StatusBadRequest, e, nil)
+				return
+			}
+		}
+	}
+
+	var users []storage.User
+	//get all user on setting
+	if err := a.db.GetList(&list, &users); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	userMap := make(map[uint64]storage.User, 0)
+	//conver slices user to map
+	for _, user := range users {
+		userMap[user.Id] = user
+	}
+
 	// delete all old approver setting
 	if err := a.db.Delete(f, storage.ApproverSettings{}); err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
 
-	if err := a.db.Create(f.MakeApproverSetting(claims.Id)); err != nil {
+	if err := a.db.Create(f.MakeApproverSetting(claims.Id, userMap)); err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
 
-	utils.ResponseOK(w, f.MakeApproverSetting(claims.Id))
+	utils.ResponseOK(w, f.MakeApproverSetting(claims.Id, userMap))
 }
 
 func (a *apiUser) getPaymentSetting(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
-	setting, err := a.db.QueryAprroverSettings(storage.RecipientId, claims.Id)
-	if err != nil {
+	app := portal.Approvers{}
+	app.Id = claims.Id
+	var approvers []storage.ApproverSettings
+	if err := a.db.GetList(&app, &approvers); err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
 
-	utils.ResponseOK(w, Map{
-		"setting": setting,
-	})
+	temMap := make(map[string][]storage.ApproverSettings, 0)
+
+	for _, appr := range approvers {
+		temMap[appr.SendUserName] = append(temMap[appr.SendUserName], appr)
+	}
+
+	res := make([]map[string]interface{}, 0)
+
+	for _, v := range temMap {
+		approvers := make([]map[string]interface{}, 0)
+		for _, appro := range v {
+			approvers = append(approvers, Map{
+				"approverName": appro.ApproverName,
+				"approverId":   appro.ApproverId,
+			})
+		}
+
+		res = append(res, Map{
+			"sendUserId":   v[0].SendUserId,
+			"sendUserName": v[0].SendUserName,
+			"recipientId":  v[0].RecipientId,
+			"approvers":    approvers,
+		})
+	}
+
+	utils.ResponseOK(w, res)
 }

@@ -22,7 +22,6 @@ type UserStorage interface {
 	CreateUser(user *User) error
 	UpdateUser(user *User) error
 	QueryUser(field string, val interface{}) (*User, error)
-	QueryAprroverSettings(field string, val interface{}) ([]ApproverSettings, error)
 }
 
 type PaymentSetting struct {
@@ -34,10 +33,12 @@ type PaymentSetting struct {
 type PaymentSettings []PaymentSetting
 
 type ApproverSettings struct {
-	Id          uint64 `gorm:"primarykey" json:"id"`
-	ApproverId  uint64 `json:"approverId"`
-	SendUserId  uint64 `json:"sendUserId"`
-	RecipientId uint64 `json:"recipientId"`
+	Id           uint64 `gorm:"primarykey" json:"id"`
+	ApproverId   uint64 `json:"approverId"`
+	SendUserId   uint64 `json:"sendUserId"`
+	RecipientId  uint64 `json:"recipientId"`
+	ApproverName string `json:"approverName"`
+	SendUserName string `json:"sendUserName"`
 }
 
 // Value Marshal
@@ -97,12 +98,6 @@ func (p *psql) QueryUser(field string, val interface{}) (*User, error) {
 	var user User
 	var err = p.db.Where(fmt.Sprintf("%s = ?", field), val).First(&user).Error
 	return &user, err
-}
-
-func (p *psql) QueryAprroverSettings(field string, val interface{}) ([]ApproverSettings, error) {
-	approvers := make([]ApproverSettings, 0)
-	var err = p.db.Where(fmt.Sprintf("%s = ?", field), val).Find(&approvers).Error
-	return approvers, err
 }
 
 type UserFilter struct {
