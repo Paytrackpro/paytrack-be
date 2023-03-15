@@ -22,6 +22,7 @@ type UserStorage interface {
 	CreateUser(user *User) error
 	UpdateUser(user *User) error
 	QueryUser(field string, val interface{}) (*User, error)
+	QueryUserWithList(field string, val interface{}) ([]User, error)
 }
 
 type PaymentSetting struct {
@@ -98,6 +99,12 @@ func (p *psql) QueryUser(field string, val interface{}) (*User, error) {
 	var user User
 	var err = p.db.Where(fmt.Sprintf("%s = ?", field), val).First(&user).Error
 	return &user, err
+}
+
+func (p *psql) QueryUserWithList(field string, val interface{}) ([]User, error) {
+	var user []User
+	var err = p.db.Where(fmt.Sprintf("%s IN ?", field), val).Find(&user).Error
+	return user, err
 }
 
 type UserFilter struct {

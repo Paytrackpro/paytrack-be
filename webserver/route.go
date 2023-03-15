@@ -32,6 +32,7 @@ func (s *WebServer) Route() {
 			r.Get("/info", userRouter.info)
 			r.Put("/info", userRouter.update)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
+			r.Get("/exists", userRouter.usersExist)
 			r.Post("/generate-otp", userRouter.generateQr)
 			r.Post("/disable-otp", userRouter.disableOtp)
 			r.Route("/setting", func(r chi.Router) {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
@@ -142,6 +143,51 @@ func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
 		"userName":        user.UserName,
 		"paymentSettings": user.PaymentSettings,
 	})
+}
+
+func (a *apiUser) usersExist(w http.ResponseWriter, r *http.Request) {
+	userName := r.FormValue("userNames")
+	claims, _ := a.credentialsInfo(r)
+	if utils.IsEmpty(userName) {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("userNames is null or empty"), nil)
+		return
+	}
+
+	listUserName := strings.Split(userName, ",")
+	for _, v := range listUserName {
+		if v == claims.UserName {
+			utils.Response(w, http.StatusBadRequest, fmt.Errorf("userName must not be yours"), nil)
+			return
+		}
+	}
+
+	users, err := a.db.QueryUserWithList("user_name", listUserName)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
+			return
+		} else {
+			utils.Response(w, http.StatusInternalServerError, err, nil)
+			return
+		}
+	}
+
+	if len(users) == len(listUserName) {
+		utils.ResponseOK(w, users)
+		return
+	} else {
+		userMap := make(map[string]bool)
+		for _, u := range users {
+			userMap[u.UserName] = true
+		}
+
+		for _, v := range listUserName {
+			if !userMap[v] {
+				utils.Response(w, http.StatusBadRequest, fmt.Errorf("user %s not found", v), nil)
+				return
+			}
+		}
+	}
 }
 
 func (a *apiUser) generateQr(w http.ResponseWriter, r *http.Request) {
