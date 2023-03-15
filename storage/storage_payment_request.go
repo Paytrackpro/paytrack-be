@@ -174,18 +174,18 @@ func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 		db = db.Where("receiver_id IN ? OR sender_id IN ?", f.ReceiverIds, f.SenderIds)
 	} else {
 		if len(f.ReceiverIds) > 0 {
-			db = db.Where("receiver_id", f.ReceiverIds)
+			db = db.Where("receiver_id IN ?", f.ReceiverIds)
 		}
 		if len(f.SenderIds) > 0 {
-			db = db.Where("sender_id", f.SenderIds)
+			db = db.Where("sender_id IN ?", f.SenderIds)
 		}
 	}
 
 	if len(f.Statuses) > 0 {
-		db = db.Where("status", f.Statuses)
+		db = db.Where("payments.status IN ?", f.Statuses)
 	}
 	if len(f.ContactMethods) > 0 {
-		db = db.Where("contact_method", f.ContactMethods)
+		db = db.Where("contact_method IN ?", f.ContactMethods)
 	}
 	return db
 }

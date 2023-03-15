@@ -126,13 +126,6 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
-	// if the user is the creator
-	claims, _ := a.parseBearer(r)
-	if claims != nil && claims.Id == payment.ReceiverId {
-		utils.ResponseOK(w, payment)
-		return
-	}
-	// checking if the user is the receiver
 	if err := a.verifyAccessPayment(token, payment, r); err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
@@ -156,7 +149,7 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 		}
 		return fmt.Errorf("you do not have access")
 	}
-	if claims.Id == payment.SenderId || claims.Id == payment.ReceiverId {
+	if claims.Id == payment.ReceiverId || (claims.Id == payment.SenderId && payment.Status != storage.PaymentStatusCreated) {
 		return nil
 	}
 	return fmt.Errorf("you do not have access")
@@ -256,6 +249,11 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		break
 	case storage.PaymentTypeReminder:
 		f.SenderIds = []uint64{claims.Id}
+		f.Statuses = []storage.PaymentStatus{
+			storage.PaymentStatusSent,
+			storage.PaymentStatusConfirmed,
+			storage.PaymentStatusPaid,
+		}
 		break
 	default:
 		if claims.UserRole != utils.UserRoleAdmin {
