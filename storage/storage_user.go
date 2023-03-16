@@ -33,6 +33,11 @@ type PaymentSetting struct {
 
 type PaymentSettings []PaymentSetting
 
+type Approvers struct {
+	ApproverId   uint64 `json:"approverId"`
+	ApproverName uint64 `json:"approverName"`
+}
+
 type ApproverSettings struct {
 	Id           uint64 `gorm:"primarykey" json:"id"`
 	ApproverId   uint64 `json:"approverId"`

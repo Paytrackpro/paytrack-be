@@ -134,6 +134,7 @@ type Payment struct {
 	Amount          float64         `json:"amount"`
 	HourlyRate      float64         `json:"hourlyRate"`
 	PaymentSettings PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
+	Approvers       []Approvers     `json:"approvers" gorm:"type:jsonb"`
 	Details         PaymentDetails  `json:"details" gorm:"type:jsonb"`
 	ConvertRate     float64         `json:"convertRate"`
 	ConvertTime     time.Time       `json:"convertTime"`
