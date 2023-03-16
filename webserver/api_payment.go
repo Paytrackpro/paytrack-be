@@ -149,7 +149,7 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 		}
 		return fmt.Errorf("you do not have access")
 	}
-	if claims.Id == payment.ReceiverId || (claims.Id == payment.SenderId && payment.Status != storage.PaymentStatusCreated) {
+	if claims.Id == payment.SenderId || (claims.Id == payment.ReceiverId && payment.Status != storage.PaymentStatusCreated) {
 		return nil
 	}
 	return fmt.Errorf("you do not have access")
@@ -221,6 +221,14 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
+	if payment.ContactMethod == storage.PaymentTypeInternal {
+		if claims, _ := a.parseBearer(r); !(claims != nil && claims.Id == payment.ReceiverId) {
+			utils.Response(w, http.StatusForbidden,
+				utils.NewError(fmt.Errorf("you do not have access right"), utils.ErrorForbidden), nil)
+			return
+		}
+	}
+
 	if payment.Status == storage.PaymentStatusPaid {
 		utils.Response(w, http.StatusBadRequest,
 			utils.NewError(fmt.Errorf("payment was processed"), utils.ErrorBadRequest), nil)
@@ -244,16 +252,16 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	// the checking is from the logged in middleware
 	claims, _ := a.parseBearer(r)
 	switch f.RequestType {
-	case storage.PaymentTypeRequest:
-		f.ReceiverIds = []uint64{claims.Id}
-		break
 	case storage.PaymentTypeReminder:
-		f.SenderIds = []uint64{claims.Id}
+		f.ReceiverIds = []uint64{claims.Id}
 		f.Statuses = []storage.PaymentStatus{
 			storage.PaymentStatusSent,
 			storage.PaymentStatusConfirmed,
 			storage.PaymentStatusPaid,
 		}
+		break
+	case storage.PaymentTypeRequest:
+		f.SenderIds = []uint64{claims.Id}
 		break
 	default:
 		if claims.UserRole != utils.UserRoleAdmin {

@@ -34,39 +34,46 @@ type PaymentConfirm struct {
 }
 
 func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment) error {
+	if payment.Id == 0 {
+		payment.CreatorId = userId
+		payment.SenderId = userId
+		payment.ReceiverId = p.ReceiverId
+		payment.ExternalEmail = p.ExternalEmail
+		payment.ContactMethod = p.ContactMethod
+	}
 	if !(userId == p.SenderId || userId == p.ReceiverId) {
 		return fmt.Errorf("the sender or receiver must be you")
 	}
-	if payment.Id == 0 {
-		payment.CreatorId = userId
+	// allow the sender edit the receiver
+	if payment.Id > 0 && payment.SenderId == userId {
+		if p.ContactMethod == storage.PaymentTypeInternal {
+			payment.ExternalEmail = ""
+			payment.ReceiverId = p.ReceiverId
+		} else {
+			payment.ReceiverId = 0
+			payment.ExternalEmail = p.ExternalEmail
+		}
 	}
-	payment.ContactMethod = p.ContactMethod
 	payment.HourlyRate = p.HourlyRate
 	payment.Details = p.Details
 	payment.PaymentMethod = p.PaymentMethod
 	payment.PaymentAddress = p.PaymentAddress
-	payment.SenderId = p.SenderId
-	payment.ReceiverId = p.ReceiverId
 	payment.PaymentSettings = p.PaymentSettings
-	if payment.Id == 0 || payment.CreatorId == userId {
-		if p.ContactMethod == storage.PaymentTypeInternal {
-			payment.ExternalEmail = ""
-		}
-		if p.ContactMethod == storage.PaymentTypeEmail {
-			if p.SenderId != 0 && p.ReceiverId != 0 {
-				return fmt.Errorf("invalid method")
-			}
-			payment.ExternalEmail = p.ExternalEmail
-		}
-	}
-	if userId == payment.ReceiverId && payment.Status == storage.PaymentStatusCreated && p.Status == storage.PaymentStatusSent {
+
+	// sender sent the request to the recipient
+	if userId == payment.SenderId && payment.Status == storage.PaymentStatusCreated && p.Status == storage.PaymentStatusSent {
 		payment.Status = storage.PaymentStatusSent
 		payment.SentAt = time.Now()
 	}
-	if userId == payment.SenderId && p.Status != storage.PaymentStatusCreated {
-		payment.Status = p.Status
+	// recipient update status and txId
+	if userId == payment.ReceiverId && p.Status != storage.PaymentStatusCreated {
+		// allow recipient update status to sent or confirmed
+		if p.Status == storage.PaymentStatusSent || p.Status == storage.PaymentStatusConfirmed {
+			payment.Status = p.Status
+		}
 		payment.TxId = p.TxId
 	}
+	// calculate amount
 	var amount float64
 	for i, detail := range p.Details {
 		if detail.Hours > 0 {
