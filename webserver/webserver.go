@@ -1,16 +1,17 @@
 package webserver
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/email"
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/schema"
 	"log"
 	"net/http"
 	"strings"
+
+	"code.cryptopower.dev/mgmt-ng/be/email"
+	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/gorilla/schema"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"

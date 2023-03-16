@@ -1,15 +1,16 @@
 package webserver
 
 import (
+	"fmt"
+	"net/http"
+	"time"
+
 	"code.cryptopower.dev/mgmt-ng/be/email"
 	paymentService "code.cryptopower.dev/mgmt-ng/be/payment"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
-	"fmt"
 	"github.com/go-chi/chi/v5"
-	"net/http"
-	"time"
 )
 
 type apiPayment struct {
@@ -156,7 +157,16 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 		}
 		return fmt.Errorf("you do not have access")
 	}
-	if claims.Id == payment.SenderId || claims.Id == payment.ReceiverId {
+	approver := portal.Approvers{
+		Id:         payment.SenderId,
+		ApproverId: claims.Id,
+	}
+	var ap storage.ApproverSettings
+	if err := a.db.First(&approver, &ap); err != nil {
+		return err
+	}
+
+	if claims.Id == payment.SenderId || claims.Id == payment.ReceiverId || ap.ApproverId == claims.Id {
 		return nil
 	}
 	return fmt.Errorf("you do not have access")
@@ -250,6 +260,7 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	// checking error on claims is not needed since listPayments is for logged in api,
 	// the checking is from the logged in middleware
 	claims, _ := a.parseBearer(r)
+	f.UserId = claims.Id
 	switch f.RequestType {
 	case storage.PaymentTypeRequest:
 		f.ReceiverIds = []uint64{claims.Id}

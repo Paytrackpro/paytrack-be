@@ -82,7 +82,8 @@ func (a UserWithList) Sortable() map[string]bool {
 }
 
 type Approvers struct {
-	Id uint64
+	Id         uint64
+	ApproverId uint64
 }
 
 func (a Approvers) RequestedSort() string {
@@ -92,6 +93,7 @@ func (a Approvers) BindQuery(db *gorm.DB) *gorm.DB {
 	return db.Where("recipient_id = ?", a.Id)
 }
 func (a Approvers) BindFirst(db *gorm.DB) *gorm.DB {
+	db.Where("approver_id = ? AND recipient_id = ?", a.ApproverId, a.Id)
 	return db
 }
 func (a Approvers) BindCount(db *gorm.DB) *gorm.DB {

@@ -1,13 +1,14 @@
 package storage
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/payment"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gorm.io/gorm"
 	"time"
+
+	"code.cryptopower.dev/mgmt-ng/be/payment"
+	"gorm.io/gorm"
 )
 
 const (
@@ -148,6 +149,7 @@ type Payment struct {
 }
 
 type PaymentFilter struct {
+	UserId uint64
 	Sort
 	RequestType    string           `schema:"requestType"`
 	Ids            []uint64         `schema:"ids"`
@@ -158,9 +160,13 @@ type PaymentFilter struct {
 }
 
 func (f *PaymentFilter) selectFields(db *gorm.DB) *gorm.DB {
-	return db.Select("payments.*, receiver.user_name as receiver_name, sender.user_name as sender_name").
+	db = db.Select("payments.*, receiver.user_name as receiver_name, sender.user_name as sender_name").
 		Joins("left join users receiver on payments.receiver_id = receiver.id").
 		Joins("left join users sender on payments.sender_id = sender.id")
+	if len(f.SenderIds) > 0 {
+		db = db.Joins("left join approver_settings approver on approver.recipient_id = payments.sender_id")
+	}
+	return db
 }
 
 func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
@@ -174,7 +180,7 @@ func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 			db = db.Where("receiver_id", f.ReceiverIds)
 		}
 		if len(f.SenderIds) > 0 {
-			db = db.Where("sender_id", f.SenderIds)
+			db = db.Where("sender_id", f.SenderIds).Or("approver.approver_id IN ?", f.SenderIds)
 		}
 	}
 
@@ -188,6 +194,7 @@ func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 }
 
 func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
+	db = db.Debug()
 	db = f.selectFields(db)
 	db = f.Sort.BindQuery(db)
 	return f.BindCount(db)
