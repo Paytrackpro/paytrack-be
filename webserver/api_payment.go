@@ -1,15 +1,16 @@
 package webserver
 
 import (
+	"fmt"
+	"net/http"
+	"time"
+
 	"code.cryptopower.dev/mgmt-ng/be/email"
 	paymentService "code.cryptopower.dev/mgmt-ng/be/payment"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
-	"fmt"
 	"github.com/go-chi/chi/v5"
-	"net/http"
-	"time"
 )
 
 type apiPayment struct {
@@ -108,6 +109,28 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
 	}
+
+	var filter = storage.PaymentApproverFilter{}
+	var paymentApprovers []storage.PaymentApprover
+	if err = a.db.GetList(&filter, &paymentApprovers); err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
+		return
+	}
+
+	var paymentApprovalStatuses []storage.PaymentApprovalStatus
+	for _, paymentApprover := range paymentApprovers {
+		paymentApprovalStatuses = append(paymentApprovalStatuses, storage.PaymentApprovalStatus{
+			PaymentId:         payment.Id,
+			PaymentApproverId: paymentApprover.Id,
+			Status:            false,
+		})
+	}
+
+	if err = a.db.Create(&paymentApprovalStatuses); err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
+		return
+	}
+
 	accessToken, customErr := a.sendNotification(storage.PaymentStatusCreated, payment, claims)
 	utils.ResponseOK(w, Map{
 		"payment": payment,
