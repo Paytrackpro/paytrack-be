@@ -20,9 +20,11 @@ type PaymentStatus int
 func (p PaymentStatus) String() string {
 	switch p {
 	case PaymentStatusCreated:
-		return "created"
+		return "draft"
 	case PaymentStatusSent:
 		return "sent"
+	case PaymentStatusConfirmed:
+		return "confirmed"
 	case PaymentStatusPaid:
 		return "paid"
 	}
@@ -35,16 +37,16 @@ func (p PaymentStatus) MarshalJSON() ([]byte, error) {
 
 func (p *PaymentStatus) UnmarshalText(val []byte) error {
 	switch string(val) {
-	case "created":
+	case "draft":
 		*p = PaymentStatusCreated
-		return nil
 	case "sent":
 		*p = PaymentStatusSent
+	case "confirmed":
+		*p = PaymentStatusConfirmed
 	case "paid":
 		*p = PaymentStatusPaid
-		return nil
 	}
-	return fmt.Errorf("payment status invalid value")
+	return nil
 }
 
 func (p *PaymentStatus) UnmarshalJSON(v []byte) error {
@@ -58,6 +60,7 @@ func (p *PaymentStatus) UnmarshalJSON(v []byte) error {
 const (
 	PaymentStatusCreated PaymentStatus = iota
 	PaymentStatusSent
+	PaymentStatusConfirmed
 	PaymentStatusPaid
 )
 
@@ -171,18 +174,18 @@ func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 		db = db.Where("receiver_id IN ? OR sender_id IN ?", f.ReceiverIds, f.SenderIds)
 	} else {
 		if len(f.ReceiverIds) > 0 {
-			db = db.Where("receiver_id", f.ReceiverIds)
+			db = db.Where("receiver_id IN ?", f.ReceiverIds)
 		}
 		if len(f.SenderIds) > 0 {
-			db = db.Where("sender_id", f.SenderIds)
+			db = db.Where("sender_id IN ?", f.SenderIds)
 		}
 	}
 
 	if len(f.Statuses) > 0 {
-		db = db.Where("status", f.Statuses)
+		db = db.Where("payments.status IN ?", f.Statuses)
 	}
 	if len(f.ContactMethods) > 0 {
-		db = db.Where("contact_method", f.ContactMethods)
+		db = db.Where("contact_method IN ?", f.ContactMethods)
 	}
 	return db
 }

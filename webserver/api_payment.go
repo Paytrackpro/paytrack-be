@@ -126,13 +126,6 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
-	// if the user is the creator
-	claims, _ := a.parseBearer(r)
-	if claims != nil && claims.Id == payment.ReceiverId {
-		utils.ResponseOK(w, payment)
-		return
-	}
-	// checking if the user is the receiver
 	if err := a.verifyAccessPayment(token, payment, r); err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
@@ -156,7 +149,7 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 		}
 		return fmt.Errorf("you do not have access")
 	}
-	if claims.Id == payment.SenderId || claims.Id == payment.ReceiverId {
+	if claims.Id == payment.SenderId || (claims.Id == payment.ReceiverId && payment.Status != storage.PaymentStatusCreated) {
 		return nil
 	}
 	return fmt.Errorf("you do not have access")
@@ -228,6 +221,14 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
+	if payment.ContactMethod == storage.PaymentTypeInternal {
+		if claims, _ := a.parseBearer(r); !(claims != nil && claims.Id == payment.ReceiverId) {
+			utils.Response(w, http.StatusForbidden,
+				utils.NewError(fmt.Errorf("you do not have access right"), utils.ErrorForbidden), nil)
+			return
+		}
+	}
+
 	if payment.Status == storage.PaymentStatusPaid {
 		utils.Response(w, http.StatusBadRequest,
 			utils.NewError(fmt.Errorf("payment was processed"), utils.ErrorBadRequest), nil)
@@ -251,10 +252,15 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	// the checking is from the logged in middleware
 	claims, _ := a.parseBearer(r)
 	switch f.RequestType {
-	case storage.PaymentTypeRequest:
-		f.ReceiverIds = []uint64{claims.Id}
-		break
 	case storage.PaymentTypeReminder:
+		f.ReceiverIds = []uint64{claims.Id}
+		f.Statuses = []storage.PaymentStatus{
+			storage.PaymentStatusSent,
+			storage.PaymentStatusConfirmed,
+			storage.PaymentStatusPaid,
+		}
+		break
+	case storage.PaymentTypeRequest:
 		f.SenderIds = []uint64{claims.Id}
 		break
 	default:
