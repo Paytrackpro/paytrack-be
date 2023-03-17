@@ -131,6 +131,26 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
+
+	if token == "" {
+		claims, _ := a.parseBearer(r)
+		if payment.ReceiverId != claims.Id {
+			// Not approval
+			if len(payment.Approvers) == 0 {
+				payment.Status = storage.PaymentStatusWaitApproval
+			} else {
+				payment.Status = storage.PaymentStatusWaitApproval
+
+				// find record approval of user
+				for _, ap := range payment.Approvers {
+					if ap.ApproverId == claims.Id {
+						payment.Status = storage.PaymentStatus(ap.Status)
+					}
+				}
+			}
+		}
+	}
+
 	utils.ResponseOK(w, payment)
 }
 
