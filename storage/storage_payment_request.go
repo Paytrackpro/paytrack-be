@@ -63,6 +63,11 @@ const (
 	PaymentStatusSent
 	PaymentStatusConfirmed
 	PaymentStatusPaid
+
+	// for approval
+	PaymentStatusWaitApproval
+	PaymentStatusApproved
+	PaymentStatusReject
 )
 
 type PaymentContact int
@@ -137,7 +142,7 @@ type Payment struct {
 	Amount          float64         `json:"amount"`
 	HourlyRate      float64         `json:"hourlyRate"`
 	PaymentSettings PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
-	Approvers       []Approvers     `json:"approvers" gorm:"type:jsonb"`
+	Approvers       Approvers       `json:"approvers" gorm:"type:jsonb"`
 	Details         PaymentDetails  `json:"details" gorm:"type:jsonb"`
 	ConvertRate     float64         `json:"convertRate"`
 	ConvertTime     time.Time       `json:"convertTime"`
@@ -167,8 +172,8 @@ func (f *PaymentFilter) selectFields(db *gorm.DB) *gorm.DB {
 	db = db.Select("payments.*, receiver.user_name as receiver_name, sender.user_name as sender_name").
 		Joins("left join users receiver on payments.receiver_id = receiver.id").
 		Joins("left join users sender on payments.sender_id = sender.id")
-	if len(f.SenderIds) > 0 {
-		db = db.Joins("left join approver_settings approver on approver.recipient_id = payments.sender_id")
+	if len(f.ReceiverIds) > 0 && len(f.SenderIds) == 0 {
+		db = db.Joins("left join approver_settings approver on approver.recipient_id = payments.receiver_id")
 	}
 	return db
 }
@@ -181,10 +186,10 @@ func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 		db = db.Where("receiver_id IN ? OR sender_id IN ?", f.ReceiverIds, f.SenderIds)
 	} else {
 		if len(f.ReceiverIds) > 0 {
-			db = db.Where("receiver_id IN ?", f.ReceiverIds)
+			db = db.Where("receiver_id IN ?", f.ReceiverIds).Or("approver.approver_id = ?", f.UserId)
 		}
 		if len(f.SenderIds) > 0 {
-			db = db.Where("sender_id IN ?", f.SenderIds).Or("approver.approver_id IN ?", f.SenderIds)
+			db = db.Where("sender_id IN ?", f.SenderIds)
 		}
 	}
 

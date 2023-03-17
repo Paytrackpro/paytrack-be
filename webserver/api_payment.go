@@ -286,6 +286,26 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
+
+	for i, pay := range payments {
+		// request payment is approval
+		if pay.ReceiverId != claims.Id {
+			// Not approval
+			if len(pay.Approvers) == 0 {
+				payments[i].Status = storage.PaymentStatusWaitApproval
+			} else {
+				payments[i].Status = storage.PaymentStatusWaitApproval
+
+				// find record approval of user
+				for _, ap := range pay.Approvers {
+					if ap.ApproverId == claims.Id {
+						payments[i].Status = storage.PaymentStatus(ap.Status)
+					}
+				}
+			}
+		}
+	}
+
 	count, _ := a.db.Count(&f, &storage.Payment{})
 	utils.ResponseOK(w, Map{
 		"payments": payments,
@@ -294,5 +314,19 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiPayment) approveRequest(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.parseBearer(r)
+	var f portal.ApprovalRequest
+	err := a.parseJSON(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
 
+	payment, err := a.service.ApproverPaymentRequest(f.PaymentId, f.Status, claims.Id, claims.UserName)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+
+	utils.ResponseOK(w, payment)
 }

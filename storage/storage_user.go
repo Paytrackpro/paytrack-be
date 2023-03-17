@@ -17,11 +17,6 @@ const UserFieldUName = "user_name"
 const UserFieldId = "id"
 const RecipientId = "recipient_id"
 
-const (
-	STApproved = 1
-	STReject   = 2
-)
-
 type UserStorage interface {
 	CheckDuplicate(user *User) error
 	CreateUser(user *User) error
@@ -38,10 +33,26 @@ type PaymentSetting struct {
 
 type PaymentSettings []PaymentSetting
 
-type Approvers struct {
+type Approvers []Approver
+
+type Approver struct {
 	ApproverId   uint64 `json:"approverId"`
-	ApproverName uint64 `json:"approverName"`
+	ApproverName string `json:"approverName"`
 	Status       uint64 `json:"status"`
+}
+
+// Value Marshal
+func (a Approvers) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+// Scan Unmarshal
+func (a *Approvers) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return json.Unmarshal(b, &a)
 }
 
 type ApproverSettings struct {
