@@ -31,6 +31,7 @@ func (s *WebServer) Route() {
 			var userRouter = apiUser{WebServer: s}
 			r.Get("/info", userRouter.info)
 			r.Put("/info", userRouter.update)
+			r.Put("/change-password", userRouter.changePassword)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
 			r.Get("/exists", userRouter.usersExist)
 			r.Post("/generate-otp", userRouter.generateQr)

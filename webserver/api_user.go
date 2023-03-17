@@ -29,6 +29,41 @@ func (a *apiUser) info(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *apiUser) changePassword(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	user, err := a.db.QueryUser(storage.UserFieldId, claims.Id)
+	if err != nil {
+		utils.Response(w, http.StatusNotFound, err, nil)
+		return
+	}
+	var f portal.ChangePasswordRequest
+	if err := a.parseJSONAndValidate(r, &f); err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	if user.Otp && !totp.Validate(f.Otp, user.Secret) {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("failed in totp verification"), nil)
+		return
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(f.OldPassword))
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("your old password is not matched"), nil)
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(f.Password), bcrypt.DefaultCost)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("failed when trying to encrypt password"), nil)
+		return
+	}
+	user.PasswordHash = string(hash)
+	err = a.db.UpdateUser(user)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	utils.ResponseOK(w, Map{})
+}
+
 func (a *apiUser) infoWithId(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	user, err := a.db.QueryUser(storage.UserFieldId, id)
@@ -69,9 +104,7 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-	utils.ResponseOK(w, Map{
-		"userId": user.Id,
-	})
+	utils.ResponseOK(w, user)
 }
 
 func (a *apiUser) adminUpdateUser(w http.ResponseWriter, r *http.Request) {

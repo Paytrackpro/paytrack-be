@@ -102,3 +102,9 @@ func (a Approvers) BindCount(db *gorm.DB) *gorm.DB {
 func (a Approvers) Sortable() map[string]bool {
 	return map[string]bool{}
 }
+
+type ChangePasswordRequest struct {
+	Password    string `json:"password"`
+	OldPassword string `json:"oldPassword"`
+	Otp         string `json:"otp"`
+}
