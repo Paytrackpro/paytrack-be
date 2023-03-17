@@ -54,5 +54,7 @@ func (s *Service) ApproverPaymentRequest(id, status, userId uint64, userName str
 		return nil, err
 	}
 
+	payment.Status = storage.PaymentStatus(status)
+
 	return &payment, nil
 }
