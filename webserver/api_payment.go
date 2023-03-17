@@ -286,3 +286,7 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		"count":    count,
 	})
 }
+
+func (a *apiPayment) approveRequest(w http.ResponseWriter, r *http.Request) {
+
+}

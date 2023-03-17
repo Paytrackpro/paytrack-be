@@ -17,6 +17,11 @@ const UserFieldUName = "user_name"
 const UserFieldId = "id"
 const RecipientId = "recipient_id"
 
+const (
+	STApproved = 1
+	STReject   = 2
+)
+
 type UserStorage interface {
 	CheckDuplicate(user *User) error
 	CreateUser(user *User) error
@@ -36,6 +41,7 @@ type PaymentSettings []PaymentSetting
 type Approvers struct {
 	ApproverId   uint64 `json:"approverId"`
 	ApproverName uint64 `json:"approverName"`
+	Status       uint64 `json:"status"`
 }
 
 type ApproverSettings struct {

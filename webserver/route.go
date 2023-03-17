@@ -57,6 +57,7 @@ func (s *WebServer) Route() {
 			r.Post("/{id:[0-9]+}", paymentRouter.updatePayment)
 			r.Post("/request-rate", paymentRouter.requestRate)
 			r.Post("/process", paymentRouter.processPayment)
+			r.Post("/approve", paymentRouter.approveRequest)
 			r.With(s.loggedInMiddleware).Get("/list", paymentRouter.listPayments)
 		})
 	})

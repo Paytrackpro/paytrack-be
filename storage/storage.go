@@ -13,6 +13,7 @@ type Storage interface {
 	First(f Filter, obj interface{}) error
 	Count(f Filter, obj interface{}) (int64, error)
 	Delete(d DeleteFilter, obj interface{}) error
+	GetDB() *gorm.DB
 	UserStorage
 }
 
@@ -85,4 +86,7 @@ func (p *psql) Count(f Filter, obj interface{}) (int64, error) {
 	var count int64
 	var err = f.BindCount(p.db.Model(obj)).Count(&count).Error
 	return count, err
+}
+func (p *psql) GetDB() *gorm.DB {
+	return p.db
 }

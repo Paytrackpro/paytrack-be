@@ -13,6 +13,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"github.com/gorilla/schema"
 
+	"code.cryptopower.dev/mgmt-ng/be/webserver/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v4"
@@ -33,6 +34,7 @@ type WebServer struct {
 	validator *validator.Validate
 	mail      *email.MailClient
 	crypto    *utils.Cryptography
+	service   *service.Service
 }
 
 const authClaimsCtxKey = "authClaimsCtxKey"
@@ -54,6 +56,8 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 		return nil, err
 	}
 
+	sv := service.NewService(db.GetDB())
+
 	return &WebServer{
 		mux:       chi.NewRouter(),
 		conf:      &c,
@@ -61,6 +65,7 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 		validator: validator.New(),
 		mail:      mailClient,
 		crypto:    crypto,
+		service:   sv,
 	}, nil
 }
 
