@@ -69,3 +69,14 @@ func (s *Service) GetPaymentOfApprover(id uint64) ([]uint64, error) {
 	}
 	return paymentIds, nil
 }
+
+func (s *Service) GetApprovalSetting(sendId, recipientId, approverId uint64) (*storage.ApproverSettings, error) {
+	var apst storage.ApproverSettings
+	if err := s.db.First(&apst, "approver_id = ? AND recipient_id = ? AND send_user_id = ?", approverId, recipientId, sendId).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &apst, nil
+}

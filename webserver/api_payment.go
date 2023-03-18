@@ -170,16 +170,13 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 		}
 		return fmt.Errorf("you do not have access")
 	}
-	approver := portal.Approvers{
-		Id:         payment.SenderId,
-		ApproverId: claims.Id,
-	}
-	var ap storage.ApproverSettings
-	if err := a.db.First(&approver, &ap); err != nil {
+
+	approver, err := a.service.GetApprovalSetting(payment.SenderId, payment.ReceiverId, claims.Id)
+	if err != nil {
 		return err
 	}
 
-	if claims.Id == payment.SenderId || (claims.Id == payment.ReceiverId && payment.Status != storage.PaymentStatusCreated) || ap.ApproverId == claims.Id {
+	if claims.Id == payment.SenderId || (claims.Id == payment.ReceiverId && payment.Status != storage.PaymentStatusCreated) || approver != nil {
 		return nil
 	}
 	return fmt.Errorf("you do not have access")
@@ -281,7 +278,6 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	// checking error on claims is not needed since listPayments is for logged in api,
 	// the checking is from the logged in middleware
 	claims, _ := a.parseBearer(r)
-	f.UserId = claims.Id
 	switch f.RequestType {
 	case storage.PaymentTypeReminder:
 		f.ReceiverIds = []uint64{claims.Id}
@@ -289,6 +285,9 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 			storage.PaymentStatusSent,
 			storage.PaymentStatusConfirmed,
 			storage.PaymentStatusPaid,
+			storage.PaymentStatusWaitApproval,
+			storage.PaymentStatusApproved,
+			storage.PaymentStatusReject,
 		}
 	case storage.PaymentTypeRequest:
 		f.SenderIds = []uint64{claims.Id}

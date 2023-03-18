@@ -170,7 +170,6 @@ type Payment struct {
 }
 
 type PaymentFilter struct {
-	UserId uint64
 	Sort
 	RequestType    string           `schema:"requestType"`
 	Ids            []uint64         `schema:"ids"`
@@ -188,7 +187,11 @@ func (f *PaymentFilter) selectFields(db *gorm.DB) *gorm.DB {
 
 func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 	if len(f.Ids) > 0 {
-		db = db.Where("payments.id", f.Ids)
+		if f.RequestType == PaymentTypeReminder {
+			db = db.Or("payments.id", f.Ids)
+		} else {
+			db = db.Where("payments.id", f.Ids)
+		}
 	}
 	if len(f.ReceiverIds) > 0 && len(f.SenderIds) > 0 {
 		db = db.Where("receiver_id IN ? OR sender_id IN ?", f.ReceiverIds, f.SenderIds)
@@ -211,7 +214,6 @@ func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 }
 
 func (f *PaymentFilter) BindQuery(db *gorm.DB) *gorm.DB {
-	db = db.Debug()
 	db = f.selectFields(db)
 	db = f.Sort.BindQuery(db)
 	return f.BindCount(db)
