@@ -290,15 +290,22 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 			storage.PaymentStatusConfirmed,
 			storage.PaymentStatusPaid,
 		}
-		break
 	case storage.PaymentTypeRequest:
 		f.SenderIds = []uint64{claims.Id}
-		break
 	default:
 		if claims.UserRole != utils.UserRoleAdmin {
 			f.SenderIds = append(f.SenderIds, claims.Id)
 			f.ReceiverIds = append(f.ReceiverIds, claims.Id)
 		}
+	}
+
+	if f.RequestType == storage.PaymentTypeReminder {
+		paymentIDs, err := a.service.GetPaymentOfApprover(claims.Id)
+		if err != nil {
+			utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+			return
+		}
+		f.Ids = append(f.Ids, paymentIDs...)
 	}
 
 	var payments []storage.Payment

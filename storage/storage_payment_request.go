@@ -181,13 +181,9 @@ type PaymentFilter struct {
 }
 
 func (f *PaymentFilter) selectFields(db *gorm.DB) *gorm.DB {
-	db = db.Select("payments.*, receiver.user_name as receiver_name, sender.user_name as sender_name").
+	return db.Select("payments.*, receiver.user_name as receiver_name, sender.user_name as sender_name").
 		Joins("left join users receiver on payments.receiver_id = receiver.id").
 		Joins("left join users sender on payments.sender_id = sender.id")
-	if len(f.ReceiverIds) > 0 && len(f.SenderIds) == 0 {
-		db = db.Joins("left join approver_settings approver on approver.recipient_id = payments.receiver_id")
-	}
-	return db
 }
 
 func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
@@ -198,7 +194,7 @@ func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 		db = db.Where("receiver_id IN ? OR sender_id IN ?", f.ReceiverIds, f.SenderIds)
 	} else {
 		if len(f.ReceiverIds) > 0 {
-			db = db.Where("receiver_id IN ?", f.ReceiverIds).Or("approver.approver_id = ?", f.UserId)
+			db = db.Where("receiver_id IN ?", f.ReceiverIds)
 		}
 		if len(f.SenderIds) > 0 {
 			db = db.Where("sender_id IN ?", f.SenderIds)
