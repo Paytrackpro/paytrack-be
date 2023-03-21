@@ -1,15 +1,16 @@
 package webserver
 
 import (
+	"fmt"
+	"net/http"
+	"time"
+
 	"code.cryptopower.dev/mgmt-ng/be/email"
 	paymentService "code.cryptopower.dev/mgmt-ng/be/payment"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
-	"fmt"
 	"github.com/go-chi/chi/v5"
-	"net/http"
-	"time"
 )
 
 type apiPayment struct {
@@ -258,6 +259,7 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 			storage.PaymentStatusSent,
 			storage.PaymentStatusConfirmed,
 			storage.PaymentStatusPaid,
+			storage.PaymentStatusRejected,
 		}
 		break
 	case storage.PaymentTypeRequest:
@@ -280,4 +282,50 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		"payments": payments,
 		"count":    count,
 	})
+}
+
+func (a *apiPayment) rejectPayment(w http.ResponseWriter, r *http.Request) {
+	var f portal.PaymentReject
+	err := a.parseJSONAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+
+	var payment storage.Payment
+	var filter = storage.PaymentFilter{
+		Ids: []uint64{f.Id},
+	}
+	if err := a.db.First(&filter, &payment); err != nil {
+		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
+		return
+	}
+
+	if err := a.verifyAccessPayment(f.Token, payment, r); err != nil {
+		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
+		return
+	}
+
+	if payment.ContactMethod == storage.PaymentTypeInternal {
+		if claims, _ := a.parseBearer(r); !(claims != nil && claims.Id == payment.ReceiverId) {
+			utils.Response(w, http.StatusForbidden,
+				utils.NewError(fmt.Errorf("you do not have access right"), utils.ErrorForbidden), nil)
+			return
+		}
+	}
+
+	if payment.Status == storage.PaymentStatusPaid {
+		utils.Response(w, http.StatusBadRequest,
+			utils.NewError(fmt.Errorf("payment was processed"), utils.ErrorBadRequest), nil)
+		return
+	}
+
+	payment.Status = storage.PaymentStatusRejected
+	payment.RejectionReason = f.RejectionReason
+	if err = a.db.Save(&payment); err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
+		return
+	}
+
+	utils.ResponseOK(w, payment)
 }
