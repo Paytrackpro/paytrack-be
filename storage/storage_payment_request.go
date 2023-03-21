@@ -28,12 +28,6 @@ func (p PaymentStatus) String() string {
 		return "confirmed"
 	case PaymentStatusPaid:
 		return "paid"
-	case PaymentStatusWaitApproval:
-		return "wait approve"
-	case PaymentStatusApproved:
-		return "approved"
-	case PaymentStatusReject:
-		return "rejected"
 	}
 	return "unknown"
 }
@@ -52,12 +46,6 @@ func (p *PaymentStatus) UnmarshalText(val []byte) error {
 		*p = PaymentStatusConfirmed
 	case "paid":
 		*p = PaymentStatusPaid
-	case "wait approve":
-		*p = PaymentStatusWaitApproval
-	case "approved":
-		*p = PaymentStatusApproved
-	case "rejected":
-		*p = PaymentStatusReject
 	}
 	return nil
 }
@@ -75,11 +63,6 @@ const (
 	PaymentStatusSent
 	PaymentStatusConfirmed
 	PaymentStatusPaid
-
-	// for approval
-	PaymentStatusWaitApproval
-	PaymentStatusApproved
-	PaymentStatusReject
 )
 
 type PaymentContact int
