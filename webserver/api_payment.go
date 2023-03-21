@@ -280,12 +280,12 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if f.RequestType == storage.PaymentTypeReminder {
-		paymentIDs, err := a.service.GetPaymentOfApprover(claims.Id)
+		approvers, err := a.service.GetSettingOfApprover(claims.Id)
 		if err != nil {
 			utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 			return
 		}
-		f.Ids = append(f.Ids, paymentIDs...)
+		f.Approvers = approvers
 	}
 
 	var payments []storage.Payment

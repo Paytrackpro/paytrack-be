@@ -69,15 +69,12 @@ func (s *Service) ApproverPaymentRequest(id, status, userId uint64, userName str
 	return &payment, nil
 }
 
-func (s *Service) GetPaymentOfApprover(id uint64) ([]uint64, error) {
-	paymentIds := make([]uint64, 0)
-	err := s.db.Model(&storage.Payment{}).Select("payments.id").
-		Joins("left join approver_settings on payments.receiver_id = approver_settings.recipient_id AND payments.sender_id = approver_settings.send_user_id").
-		Where("approver_id = ?", id).Find(&paymentIds).Error
-	if err != nil {
+func (s *Service) GetSettingOfApprover(id uint64) ([]storage.ApproverSettings, error) {
+	approvers := make([]storage.ApproverSettings, 0)
+	if err := s.db.Where("approver_id = ?", id).Find(&approvers).Error; err != nil {
 		return nil, err
 	}
-	return paymentIds, nil
+	return approvers, nil
 }
 
 func (s *Service) GetApprovalSetting(sendId, recipientId, approverId uint64) (*storage.ApproverSettings, error) {

@@ -160,6 +160,7 @@ type PaymentFilter struct {
 	SenderIds      []uint64         `schema:"senderIds"`
 	Statuses       []PaymentStatus  `schema:"statuses"`
 	ContactMethods []PaymentContact `schema:"contactMethods"`
+	Approvers      []ApproverSettings
 }
 
 func (f *PaymentFilter) selectFields(db *gorm.DB) *gorm.DB {
@@ -193,6 +194,13 @@ func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 	if len(f.ContactMethods) > 0 {
 		db = db.Where("contact_method IN ?", f.ContactMethods)
 	}
+
+	if f.RequestType == PaymentTypeReminder && len(f.Approvers) > 0 {
+		for _, setting := range f.Approvers {
+			db = db.Or("receiver_id = ? AND sender_id = ?", setting.RecipientId, setting.SendUserId)
+		}
+	}
+
 	return db
 }
 
