@@ -134,6 +134,7 @@ type Payment struct {
 	ReceiverName    string          `json:"receiverName" gorm:"->"`
 	ExternalEmail   string          `json:"externalEmail"`
 	Amount          float64         `json:"amount"`
+	Description     string          `json:"description"`
 	HourlyRate      float64         `json:"hourlyRate"`
 	PaymentSettings PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
 	Details         PaymentDetails  `json:"details" gorm:"type:jsonb"`
