@@ -8,13 +8,6 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/payment"
 )
 
-const (
-	// for approval
-	PaymentStatusWaitApproval = 1
-	PaymentStatusApproved     = 2
-	PaymentStatusReject       = 3
-)
-
 type PaymentSetting struct {
 	Type      payment.Method `json:"type"`
 	Address   string         `json:"address"`

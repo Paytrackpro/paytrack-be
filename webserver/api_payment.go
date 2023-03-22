@@ -99,6 +99,14 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims, _ := a.credentialsInfo(r)
+
+	approvers, err := a.service.GetApproverForPayment(f.SenderId, f.ReceiverId)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
+		return
+	}
+	f.Approvers = approvers
+
 	var payment storage.Payment
 	err = f.Payment(claims.Id, &payment)
 	if err != nil {
@@ -130,6 +138,30 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 	if err := a.verifyAccessPayment(token, payment, r); err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
+	}
+
+	if token == "" {
+		claims, _ := a.parseBearer(r)
+		if payment.ReceiverId != claims.Id && payment.SenderId != claims.Id {
+			// Not approval
+			if len(payment.Approvers) == 0 {
+				payment.Status = storage.PaymentStatusWaitApproval
+			} else {
+				payment.Status = storage.PaymentStatusWaitApproval
+
+				// find record approval of user
+				for _, ap := range payment.Approvers {
+					if ap.ApproverId == claims.Id {
+						payment.Status = storage.PaymentStatus(ap.Status)
+					}
+				}
+			}
+		} else if payment.SenderId == claims.Id {
+			// for sender
+			if payment.Status == storage.PaymentStatusWaitApproval || payment.Status == storage.PaymentStatusConfirmed || payment.Status == storage.PaymentStatusApproved {
+				payment.Status = storage.PaymentStatusSent
+			}
+		}
 	}
 
 	utils.ResponseOK(w, payment)
@@ -268,7 +300,6 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 			storage.PaymentStatusPaid,
 			storage.PaymentStatusWaitApproval,
 			storage.PaymentStatusApproved,
-			storage.PaymentStatusReject,
 		}
 	case storage.PaymentTypeRequest:
 		f.SenderIds = []uint64{claims.Id}
@@ -292,6 +323,34 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	if err := a.db.GetList(&f, &payments); err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
+	}
+
+	// use for receiver and approver
+	if f.RequestType == storage.PaymentTypeReminder {
+		for i, pay := range payments {
+			// user request is not receiver
+			if pay.ReceiverId != claims.Id {
+				// Not approval
+				if len(pay.Approvers) == 0 {
+					payments[i].Status = storage.PaymentStatusWaitApproval
+				} else {
+					payments[i].Status = storage.PaymentStatusWaitApproval
+					// find record approval of user
+					for _, ap := range pay.Approvers {
+						if ap.ApproverId == claims.Id {
+							payments[i].Status = storage.PaymentStatus(ap.Status)
+						}
+					}
+				}
+			}
+		}
+	} else {
+		// use for sender
+		for i, pay := range payments {
+			if pay.Status == storage.PaymentStatusWaitApproval || pay.Status == storage.PaymentStatusConfirmed || pay.Status == storage.PaymentStatusApproved {
+				payments[i].Status = storage.PaymentStatusSent
+			}
+		}
 	}
 
 	count, _ := a.db.Count(&f, &storage.Payment{})
