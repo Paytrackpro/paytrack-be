@@ -38,13 +38,17 @@ type PaymentConfirm struct {
 func (p *PaymentRequest) calculateAmount() (float64, error) {
 	var amount float64
 	for i, detail := range p.Details {
-		if detail.Hours > 0 {
-			cost := detail.Hours * p.HourlyRate
+		if detail.Quantity > 0 {
+			var price = p.HourlyRate
+			if detail.Price > 0 {
+				price = detail.Price
+			}
+			cost := detail.Quantity * price
 			if cost != detail.Cost {
 				return 0, fmt.Errorf("payment detail is wrong amount at line %d", i+1)
 			}
-			if detail.Cost == 0 {
-				return 0, fmt.Errorf("payment detail is 0 cost at line %d", i+1)
+			if detail.Cost <= 0 {
+				return 0, fmt.Errorf("payment detail is cost is <= 0 at line %d", i+1)
 			}
 		}
 		amount += detail.Cost
@@ -85,7 +89,7 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment) error 
 			payment.Description = p.Description
 			payment.Amount = p.Amount
 		}
-		if p.Amount == 0 {
+		if payment.Amount == 0 {
 			return fmt.Errorf("amount must not be zero")
 		}
 		// allow the sender edit the receiver
@@ -97,7 +101,6 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment) error 
 			payment.ExternalEmail = p.ExternalEmail
 		}
 	}
-
 	// sender sent the request to the recipient
 	if userId == payment.SenderId && payment.Status == storage.PaymentStatusCreated && p.Status == storage.PaymentStatusSent {
 		payment.Status = storage.PaymentStatusSent

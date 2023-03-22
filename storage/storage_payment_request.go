@@ -104,7 +104,8 @@ const (
 )
 
 type PaymentDetail struct {
-	Hours       float64 `json:"hours"`
+	Quantity    float64 `json:"quantity"`
+	Price       float64 `json:"price"`
 	Cost        float64 `json:"cost"`
 	Description string  `json:"description"`
 }
