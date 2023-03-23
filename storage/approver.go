@@ -21,7 +21,6 @@ type Approvers []Approver
 type Approver struct {
 	ApproverId   uint64 `json:"approverId"`
 	ApproverName string `json:"approverName"`
-	Status       uint64 `json:"status"`
 }
 
 // Value Marshal

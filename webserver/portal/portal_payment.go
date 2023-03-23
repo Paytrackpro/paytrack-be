@@ -25,7 +25,6 @@ type PaymentRequest struct {
 	TxId            string                  `json:"txId"`
 	IsDraft         bool                    `json:"isDraft"`
 	Token           string                  `json:"token"`
-	Approvers       []storage.ApproverSettings
 }
 
 type PaymentConfirm struct {
@@ -36,7 +35,7 @@ type PaymentConfirm struct {
 	PaymentAddress string         `validate:"required" json:"paymentAddress"`
 }
 
-func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment) error {
+func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment, isHaveApprover bool) error {
 	if payment.Id == 0 {
 		payment.CreatorId = userId
 		payment.SenderId = userId
@@ -65,14 +64,11 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment) error 
 
 	// sender sent the request to the recipient
 	if userId == payment.SenderId && payment.Status == storage.PaymentStatusCreated && p.Status == storage.PaymentStatusSent {
-		// if payment have approver -> status is wait approval
-		// if payment not have approver -> status is sent
-		if len(p.Approvers) > 0 {
-			payment.Status = storage.PaymentStatusWaitApproval
-		} else {
-			payment.Status = storage.PaymentStatusSent
-		}
+		payment.Status = storage.PaymentStatusSent
 		payment.SentAt = time.Now()
+		if isHaveApprover {
+			payment.Approvers = make(storage.Approvers, 0)
+		}
 	}
 
 	// recipient update status and txId

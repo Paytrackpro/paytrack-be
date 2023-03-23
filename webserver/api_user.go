@@ -254,6 +254,10 @@ func (a *apiUser) generateQr(w http.ResponseWriter, r *http.Request) {
 		Issuer:      "MGMT",
 		AccountName: user.UserName,
 	})
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
 	qrImage, err := key.Image(200, 200)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
@@ -306,7 +310,7 @@ func (a *apiUser) disableOtp(w http.ResponseWriter, r *http.Request) {
 
 	verified := totp.Validate(f.Otp, user.Secret)
 
-	if verified == false {
+	if !verified {
 		err := utils.NewError(fmt.Errorf("OTP is not valid"), utils.ErrorObjectExist)
 		utils.Response(w, http.StatusBadRequest, err, nil)
 

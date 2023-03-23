@@ -17,7 +17,7 @@ func NewService(db *gorm.DB) *Service {
 	}
 }
 
-func (s *Service) ApproverPaymentRequest(id, status, userId uint64, userName string) (*storage.Payment, error) {
+func (s *Service) ApprovePaymentRequest(id, status, userId uint64, userName string) (*storage.Payment, error) {
 	var payment storage.Payment
 	if err := s.db.First(&payment, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -51,25 +51,12 @@ func (s *Service) ApproverPaymentRequest(id, status, userId uint64, userName str
 		payment.Approvers = append(payment.Approvers, storage.Approver{
 			ApproverId:   userId,
 			ApproverName: userName,
-			Status:       status,
 		})
 	} else {
-		isNewApprover := true
-		for i, appro := range payment.Approvers {
-			//check and change status of user approver
-			if appro.ApproverId == userId {
-				isNewApprover = false
-				payment.Approvers[i].Status = status
-				payment.Approvers[i].ApproverName = userName
-			}
-		}
-		if isNewApprover {
-			payment.Approvers = append(payment.Approvers, storage.Approver{
-				ApproverId:   userId,
-				ApproverName: userName,
-				Status:       status,
-			})
-		}
+		payment.Approvers = append(payment.Approvers, storage.Approver{
+			ApproverId:   userId,
+			ApproverName: userName,
+		})
 	}
 
 	if len(approvers) <= len(payment.Approvers) {
