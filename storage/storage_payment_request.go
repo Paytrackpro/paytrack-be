@@ -1,13 +1,14 @@
 package storage
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/payment"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gorm.io/gorm"
 	"time"
+
+	"code.cryptopower.dev/mgmt-ng/be/payment"
+	"gorm.io/gorm"
 )
 
 const (
@@ -27,6 +28,8 @@ func (p PaymentStatus) String() string {
 		return "confirmed"
 	case PaymentStatusPaid:
 		return "paid"
+	case PaymentStatusRejected:
+		return "rejected"
 	}
 	return "unknown"
 }
@@ -62,6 +65,7 @@ const (
 	PaymentStatusSent
 	PaymentStatusConfirmed
 	PaymentStatusPaid
+	PaymentStatusRejected
 )
 
 type PaymentContact int
@@ -145,6 +149,7 @@ type Payment struct {
 	PaymentMethod   payment.Method  `json:"paymentMethod"`
 	PaymentAddress  string          `json:"paymentAddress"`
 	ContactMethod   PaymentContact  `json:"contactMethod"`
+	RejectionReason string          `json:"rejectionReason"`
 	CreatedAt       time.Time       `json:"createdAt"`
 	SentAt          time.Time       `json:"sentAt"`
 	PaidAt          time.Time       `json:"paidAt"`

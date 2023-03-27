@@ -1,10 +1,11 @@
 package portal
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/payment"
-	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"fmt"
 	"time"
+
+	"code.cryptopower.dev/mgmt-ng/be/payment"
+	"code.cryptopower.dev/mgmt-ng/be/storage"
 )
 
 type PaymentRequest struct {
@@ -61,10 +62,14 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment) error 
 	payment.PaymentSettings = p.PaymentSettings
 
 	// sender sent the request to the recipient
-	if userId == payment.SenderId && payment.Status == storage.PaymentStatusCreated && p.Status == storage.PaymentStatusSent {
-		payment.Status = storage.PaymentStatusSent
-		payment.SentAt = time.Now()
+	if userId == payment.SenderId && p.Status == storage.PaymentStatusSent {
+		// If the payment is rejected and user update and re-send with new status, then we need to update the status to sent
+		if payment.Status == storage.PaymentStatusCreated || payment.Status == storage.PaymentStatusRejected {
+			payment.Status = storage.PaymentStatusSent
+			payment.SentAt = time.Now()
+		}
 	}
+
 	// recipient update status and txId
 	if userId == payment.ReceiverId && p.Status != storage.PaymentStatusCreated {
 		// allow recipient update status to sent or confirmed
@@ -102,4 +107,10 @@ type PaymentRequestRate struct {
 	Token          string         `json:"token"`
 	PaymentMethod  payment.Method `json:"paymentMethod"`
 	PaymentAddress string         `json:"paymentAddress"`
+}
+
+type PaymentReject struct {
+	Id              uint64 `json:"id" validate:"required"`
+	Token           string `json:"token"`
+	RejectionReason string `json:"rejectionReason"`
 }
