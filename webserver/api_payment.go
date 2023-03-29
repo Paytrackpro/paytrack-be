@@ -524,3 +524,25 @@ func (a *apiPayment) rejectPayment(w http.ResponseWriter, r *http.Request) {
 
 	utils.ResponseOK(w, payment)
 }
+
+func (a *apiPayment) bulkPaidBTC(w http.ResponseWriter, r *http.Request) {
+	var body portal.BulkPaidRequest
+	err := a.parseJSONAndValidate(r, &body)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+
+	if len(body.PaymentIds) == 0 {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("list payment id can't emtpy or nil"), utils.ErrorBadRequest), nil)
+		return
+	}
+
+	claims, _ := a.parseBearer(r)
+	if err := a.service.BulkPaidBTC(claims.Id, body.TXID, body.PaymentIds); err != nil {
+		utils.Response(w, http.StatusForbidden, utils.InternalError.With(err), nil)
+		return
+	}
+
+	utils.ResponseOK(w, nil)
+}
