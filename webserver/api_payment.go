@@ -87,7 +87,7 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 			payment.IsApproved = len(approvers) <= len(payment.Approvers)
 
 			// for receiver
-			if payment.Status != storage.PaymentStatusConfirmed && payment.Status != storage.PaymentStatusRejected && payment.Approvers != nil && payment.Status != storage.PaymentStatusApproved {
+			if payment.Status != storage.PaymentStatusConfirmed && payment.Status != storage.PaymentStatusRejected && payment.Approvers != nil && payment.Status != storage.PaymentStatusApproved && payment.Status != storage.PaymentStatusPaid {
 				payment.Status = storage.PaymentStatusWaitApproval
 			}
 		}
@@ -206,7 +206,7 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 				payment.IsApproved = len(approvers) <= len(payment.Approvers)
 
 				// for receiver
-				if payment.Status != storage.PaymentStatusConfirmed && payment.Status != storage.PaymentStatusRejected && payment.Approvers != nil && payment.Status != storage.PaymentStatusApproved {
+				if payment.Status != storage.PaymentStatusConfirmed && payment.Status != storage.PaymentStatusRejected && payment.Approvers != nil && payment.Status != storage.PaymentStatusApproved && payment.Status != storage.PaymentStatusPaid {
 					payment.Status = storage.PaymentStatusWaitApproval
 				}
 			}
@@ -306,7 +306,7 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			// for receiver
-			if p.Status != storage.PaymentStatusConfirmed && p.Status != storage.PaymentStatusRejected && p.Approvers != nil && p.Status != storage.PaymentStatusApproved {
+			if p.Status != storage.PaymentStatusConfirmed && p.Status != storage.PaymentStatusRejected && p.Approvers != nil && p.Status != storage.PaymentStatusApproved && p.Status != storage.PaymentStatusPaid {
 				p.Status = storage.PaymentStatusWaitApproval
 			}
 		}
@@ -421,7 +421,7 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 				}
 			} else {
 				// for receiver
-				if pay.Status != storage.PaymentStatusConfirmed && pay.Status != storage.PaymentStatusRejected && pay.Approvers != nil && pay.Status != storage.PaymentStatusApproved {
+				if pay.Status != storage.PaymentStatusConfirmed && pay.Status != storage.PaymentStatusRejected && pay.Approvers != nil && pay.Status != storage.PaymentStatusApproved && pay.Status != storage.PaymentStatusPaid {
 					payments[i].Status = storage.PaymentStatusWaitApproval
 				}
 			}
