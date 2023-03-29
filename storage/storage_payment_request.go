@@ -28,8 +28,8 @@ func (p PaymentStatus) String() string {
 		return "confirmed"
 	case PaymentStatusPaid:
 		return "paid"
-	case PaymentStatusWaitApproval:
-		return "wait approve"
+	case PaymentStatusAwaitingApproval:
+		return "awaiting approval"
 	case PaymentStatusApproved:
 		return "approved"
 	case PaymentStatusRejected:
@@ -52,8 +52,8 @@ func (p *PaymentStatus) UnmarshalText(val []byte) error {
 		*p = PaymentStatusConfirmed
 	case "paid":
 		*p = PaymentStatusPaid
-	case "wait approve":
-		*p = PaymentStatusWaitApproval
+	case "awaiting approval":
+		*p = PaymentStatusAwaitingApproval
 	case "approved":
 		*p = PaymentStatusApproved
 	}
@@ -73,7 +73,7 @@ const (
 	PaymentStatusSent
 	PaymentStatusConfirmed
 	PaymentStatusPaid
-	PaymentStatusWaitApproval
+	PaymentStatusAwaitingApproval
 	PaymentStatusApproved
 	PaymentStatusRejected
 )
