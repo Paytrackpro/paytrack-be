@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	PaymentTypeRequest  = "request"
-	PaymentTypeReminder = "reminder"
+	PaymentTypeRequest    = "request"
+	PaymentTypeReminder   = "reminder"
+	PaymentTypeBulkPayBTC = "bulk_btc"
 )
 
 type PaymentStatus int

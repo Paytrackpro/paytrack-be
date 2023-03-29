@@ -368,6 +368,26 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	// checking error on claims is not needed since listPayments is for logged in api,
 	// the checking is from the logged in middleware
 	claims, _ := a.parseBearer(r)
+
+	if f.RequestType == storage.PaymentTypeBulkPayBTC {
+		payments, count, err := a.service.GetBulkPaymentBTC(claims.Id, f.Page, f.Size)
+		if err != nil {
+			utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+			return
+		}
+		// use for sender
+		for i, pay := range payments {
+			if pay.Status == storage.PaymentStatusConfirmed || pay.Status == storage.PaymentStatusApproved {
+				payments[i].Status = storage.PaymentStatusSent
+			}
+		}
+		utils.ResponseOK(w, Map{
+			"payments": payments,
+			"count":    count,
+		})
+		return
+	}
+
 	switch f.RequestType {
 	case storage.PaymentTypeReminder:
 		f.ReceiverIds = []uint64{claims.Id}
