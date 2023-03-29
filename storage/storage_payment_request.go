@@ -28,6 +28,10 @@ func (p PaymentStatus) String() string {
 		return "confirmed"
 	case PaymentStatusPaid:
 		return "paid"
+	case PaymentStatusAwaitingApproval:
+		return "awaiting approval"
+	case PaymentStatusApproved:
+		return "approved"
 	case PaymentStatusRejected:
 		return "rejected"
 	}
@@ -48,6 +52,10 @@ func (p *PaymentStatus) UnmarshalText(val []byte) error {
 		*p = PaymentStatusConfirmed
 	case "paid":
 		*p = PaymentStatusPaid
+	case "awaiting approval":
+		*p = PaymentStatusAwaitingApproval
+	case "approved":
+		*p = PaymentStatusApproved
 	}
 	return nil
 }
@@ -65,6 +73,8 @@ const (
 	PaymentStatusSent
 	PaymentStatusConfirmed
 	PaymentStatusPaid
+	PaymentStatusAwaitingApproval
+	PaymentStatusApproved
 	PaymentStatusRejected
 )
 
@@ -140,6 +150,7 @@ type Payment struct {
 	Amount          float64         `json:"amount"`
 	HourlyRate      float64         `json:"hourlyRate"`
 	PaymentSettings PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
+	Approvers       Approvers       `json:"approvers" gorm:"type:jsonb"`
 	Details         PaymentDetails  `json:"details" gorm:"type:jsonb"`
 	ConvertRate     float64         `json:"convertRate"`
 	ConvertTime     time.Time       `json:"convertTime"`
@@ -153,6 +164,7 @@ type Payment struct {
 	CreatedAt       time.Time       `json:"createdAt"`
 	SentAt          time.Time       `json:"sentAt"`
 	PaidAt          time.Time       `json:"paidAt"`
+	IsApproved      bool            `json:"isApproved" gorm:"->"`
 }
 
 type PaymentFilter struct {
@@ -163,6 +175,7 @@ type PaymentFilter struct {
 	SenderIds      []uint64         `schema:"senderIds"`
 	Statuses       []PaymentStatus  `schema:"statuses"`
 	ContactMethods []PaymentContact `schema:"contactMethods"`
+	Approvers      []ApproverSettings
 }
 
 func (f *PaymentFilter) selectFields(db *gorm.DB) *gorm.DB {
@@ -173,7 +186,11 @@ func (f *PaymentFilter) selectFields(db *gorm.DB) *gorm.DB {
 
 func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 	if len(f.Ids) > 0 {
-		db = db.Where("payments.id", f.Ids)
+		if f.RequestType == PaymentTypeReminder {
+			db = db.Or("payments.id", f.Ids)
+		} else {
+			db = db.Where("payments.id", f.Ids)
+		}
 	}
 	if len(f.ReceiverIds) > 0 && len(f.SenderIds) > 0 {
 		db = db.Where("receiver_id IN ? OR sender_id IN ?", f.ReceiverIds, f.SenderIds)
@@ -192,6 +209,13 @@ func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {
 	if len(f.ContactMethods) > 0 {
 		db = db.Where("contact_method IN ?", f.ContactMethods)
 	}
+
+	if f.RequestType == PaymentTypeReminder && len(f.Approvers) > 0 {
+		for _, setting := range f.Approvers {
+			db = db.Or("receiver_id = ? AND sender_id = ?", setting.RecipientId, setting.SendUserId)
+		}
+	}
+
 	return db
 }
 

@@ -33,8 +33,13 @@ func (s *WebServer) Route() {
 			r.Put("/info", userRouter.update)
 			r.Put("/change-password", userRouter.changePassword)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
+			r.Get("/exists", userRouter.usersExist)
 			r.Post("/generate-otp", userRouter.generateQr)
 			r.Post("/disable-otp", userRouter.disableOtp)
+			r.Route("/setting", func(r chi.Router) {
+				r.Get("/payment", userRouter.getPaymentSetting)
+				r.Put("/payment", userRouter.updatePaymentSetting)
+			})
 		})
 
 		r.Route("/admin", func(r chi.Router) {
@@ -53,6 +58,7 @@ func (s *WebServer) Route() {
 			r.Post("/{id:[0-9]+}", paymentRouter.updatePayment)
 			r.Post("/request-rate", paymentRouter.requestRate)
 			r.Post("/process", paymentRouter.processPayment)
+			r.Post("/approve", paymentRouter.approveRequest)
 			r.Post("/reject", paymentRouter.rejectPayment)
 			r.With(s.loggedInMiddleware).Get("/list", paymentRouter.listPayments)
 		})

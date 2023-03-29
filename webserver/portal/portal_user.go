@@ -4,6 +4,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/payment"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type RegisterForm struct {
@@ -58,6 +59,48 @@ type UpdateUserRequest struct {
 	UserId          int                      `json:"userId"`
 	Otp             bool                     `json:"otp"`
 	PaymentSettings []storage.PaymentSetting `json:"paymentSettings"`
+}
+
+type UserWithList struct {
+	List []uint64
+}
+
+func (a UserWithList) RequestedSort() string {
+	return ""
+}
+func (a UserWithList) BindQuery(db *gorm.DB) *gorm.DB {
+	return db.Where("id IN ?", a.List)
+}
+func (a UserWithList) BindFirst(db *gorm.DB) *gorm.DB {
+	return db
+}
+func (a UserWithList) BindCount(db *gorm.DB) *gorm.DB {
+	return db
+}
+func (a UserWithList) Sortable() map[string]bool {
+	return map[string]bool{}
+}
+
+type Approvers struct {
+	Id         uint64
+	ApproverId uint64
+	SenderId   uint64
+}
+
+func (a Approvers) RequestedSort() string {
+	return ""
+}
+func (a Approvers) BindQuery(db *gorm.DB) *gorm.DB {
+	return db.Where("recipient_id = ?", a.Id)
+}
+func (a Approvers) BindFirst(db *gorm.DB) *gorm.DB {
+	return db
+}
+func (a Approvers) BindCount(db *gorm.DB) *gorm.DB {
+	return db
+}
+func (a Approvers) Sortable() map[string]bool {
+	return map[string]bool{}
 }
 
 type ChangePasswordRequest struct {
