@@ -97,7 +97,7 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 	if f.IsOtp {
 		verified := totp.Validate(f.Otp, user.Secret)
 
-		if verified == false {
+		if !verified {
 			err := utils.NewError(fmt.Errorf("OTP is not valid"), utils.ErrorObjectExist)
 			utils.Response(w, http.StatusBadRequest, err, nil)
 
@@ -158,7 +158,7 @@ func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
 
 	verified := totp.Validate(f.Otp, user.Secret)
 
-	if verified == false {
+	if !verified {
 		err := utils.NewError(fmt.Errorf("OTP is not valid"), utils.ErrorObjectExist)
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
