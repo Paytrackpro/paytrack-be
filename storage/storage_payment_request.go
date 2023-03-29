@@ -32,6 +32,8 @@ func (p PaymentStatus) String() string {
 		return "wait approve"
 	case PaymentStatusApproved:
 		return "approved"
+	case PaymentStatusRejected:
+		return "rejected"
 	}
 	return "unknown"
 }
@@ -71,10 +73,9 @@ const (
 	PaymentStatusSent
 	PaymentStatusConfirmed
 	PaymentStatusPaid
-
-	// for approval
 	PaymentStatusWaitApproval
 	PaymentStatusApproved
+	PaymentStatusRejected
 )
 
 type PaymentContact int
@@ -159,9 +160,11 @@ type Payment struct {
 	PaymentMethod   payment.Method  `json:"paymentMethod"`
 	PaymentAddress  string          `json:"paymentAddress"`
 	ContactMethod   PaymentContact  `json:"contactMethod"`
+	RejectionReason string          `json:"rejectionReason"`
 	CreatedAt       time.Time       `json:"createdAt"`
 	SentAt          time.Time       `json:"sentAt"`
 	PaidAt          time.Time       `json:"paidAt"`
+	IsApproved      bool            `json:"isApproved" gorm:"->"`
 }
 
 type PaymentFilter struct {

@@ -17,7 +17,7 @@ func NewService(db *gorm.DB) *Service {
 	}
 }
 
-func (s *Service) ApprovePaymentRequest(id, status, userId uint64, userName string) (*storage.Payment, error) {
+func (s *Service) ApprovePaymentRequest(id, userId uint64, userName string) (*storage.Payment, error) {
 	var payment storage.Payment
 	if err := s.db.First(&payment, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -67,7 +67,7 @@ func (s *Service) ApprovePaymentRequest(id, status, userId uint64, userName stri
 		return nil, err
 	}
 
-	payment.Status = storage.PaymentStatus(status)
+	payment.Status = storage.PaymentStatusApproved
 	return &payment, nil
 }
 

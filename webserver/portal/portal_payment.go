@@ -63,11 +63,14 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment, isHave
 	payment.PaymentSettings = p.PaymentSettings
 
 	// sender sent the request to the recipient
-	if userId == payment.SenderId && payment.Status == storage.PaymentStatusCreated && p.Status == storage.PaymentStatusSent {
-		payment.Status = storage.PaymentStatusSent
-		payment.SentAt = time.Now()
+	if userId == payment.SenderId && p.Status == storage.PaymentStatusSent {
 		if isHaveApprover {
 			payment.Approvers = make(storage.Approvers, 0)
+		}
+		// If the payment is rejected and user update and re-send with new status, then we need to update the status to sent
+		if payment.Status == storage.PaymentStatusCreated || payment.Status == storage.PaymentStatusRejected {
+			payment.Status = storage.PaymentStatusSent
+			payment.SentAt = time.Now()
 		}
 	}
 
@@ -139,4 +142,10 @@ func (p *ListPaymentSettingRequest) MakeApproverSetting(id uint64, userMap map[u
 
 func (a ListPaymentSettingRequest) BindQueryDelete(db *gorm.DB) *gorm.DB {
 	return db.Where("recipient_id", a.Id)
+}
+
+type PaymentReject struct {
+	Id              uint64 `json:"id" validate:"required"`
+	Token           string `json:"token"`
+	RejectionReason string `json:"rejectionReason"`
 }
