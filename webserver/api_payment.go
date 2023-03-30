@@ -60,9 +60,9 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 	if payment.ReceiverId != claims.Id && payment.SenderId != claims.Id {
 		// Not approval
 		if len(payment.Approvers) == 0 {
-			payment.Status = storage.PaymentStatusWaitApproval
+			payment.Status = storage.PaymentStatusAwaitingApproval
 		} else {
-			payment.Status = storage.PaymentStatusWaitApproval
+			payment.Status = storage.PaymentStatusAwaitingApproval
 
 			// find record approval of user
 			for _, ap := range payment.Approvers {
@@ -87,8 +87,8 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 			payment.IsApproved = len(approvers) <= len(payment.Approvers)
 
 			// for receiver
-			if payment.Status != storage.PaymentStatusConfirmed && payment.Status != storage.PaymentStatusRejected && payment.Approvers != nil && payment.Status != storage.PaymentStatusApproved {
-				payment.Status = storage.PaymentStatusWaitApproval
+			if payment.Status != storage.PaymentStatusConfirmed && payment.Status != storage.PaymentStatusRejected && payment.Approvers != nil && payment.Status != storage.PaymentStatusApproved && payment.Status != storage.PaymentStatusPaid {
+				payment.Status = storage.PaymentStatusAwaitingApproval
 			}
 		}
 	}
@@ -179,9 +179,9 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 		if payment.ReceiverId != claims.Id && payment.SenderId != claims.Id {
 			// Not approval
 			if len(payment.Approvers) == 0 {
-				payment.Status = storage.PaymentStatusWaitApproval
+				payment.Status = storage.PaymentStatusAwaitingApproval
 			} else {
-				payment.Status = storage.PaymentStatusWaitApproval
+				payment.Status = storage.PaymentStatusAwaitingApproval
 
 				// find record approval of user
 				for _, ap := range payment.Approvers {
@@ -206,8 +206,8 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 				payment.IsApproved = len(approvers) <= len(payment.Approvers)
 
 				// for receiver
-				if payment.Status != storage.PaymentStatusConfirmed && payment.Status != storage.PaymentStatusRejected && payment.Approvers != nil && payment.Status != storage.PaymentStatusApproved {
-					payment.Status = storage.PaymentStatusWaitApproval
+				if payment.Status != storage.PaymentStatusConfirmed && payment.Status != storage.PaymentStatusRejected && payment.Approvers != nil && payment.Status != storage.PaymentStatusApproved && payment.Status != storage.PaymentStatusPaid {
+					payment.Status = storage.PaymentStatusAwaitingApproval
 				}
 			}
 		}
@@ -287,9 +287,9 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 	if p.ReceiverId != claims.Id && p.SenderId != claims.Id {
 		// Not approval
 		if len(p.Approvers) == 0 {
-			p.Status = storage.PaymentStatusWaitApproval
+			p.Status = storage.PaymentStatusAwaitingApproval
 		} else {
-			p.Status = storage.PaymentStatusWaitApproval
+			p.Status = storage.PaymentStatusAwaitingApproval
 
 			// find record approval of user
 			for _, ap := range p.Approvers {
@@ -306,8 +306,8 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			// for receiver
-			if p.Status != storage.PaymentStatusConfirmed && p.Status != storage.PaymentStatusRejected && p.Approvers != nil && p.Status != storage.PaymentStatusApproved {
-				p.Status = storage.PaymentStatusWaitApproval
+			if p.Status != storage.PaymentStatusConfirmed && p.Status != storage.PaymentStatusRejected && p.Approvers != nil && p.Status != storage.PaymentStatusApproved && p.Status != storage.PaymentStatusPaid {
+				p.Status = storage.PaymentStatusAwaitingApproval
 			}
 		}
 	}
@@ -429,9 +429,9 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 			if pay.ReceiverId != claims.Id {
 				// Not approval
 				if len(pay.Approvers) == 0 {
-					payments[i].Status = storage.PaymentStatusWaitApproval
+					payments[i].Status = storage.PaymentStatusAwaitingApproval
 				} else {
-					payments[i].Status = storage.PaymentStatusWaitApproval
+					payments[i].Status = storage.PaymentStatusAwaitingApproval
 					// find record approval of user
 					for _, ap := range pay.Approvers {
 						if ap.ApproverId == claims.Id {
@@ -441,8 +441,8 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 				}
 			} else {
 				// for receiver
-				if pay.Status != storage.PaymentStatusConfirmed && pay.Status != storage.PaymentStatusRejected && pay.Approvers != nil && pay.Status != storage.PaymentStatusApproved {
-					payments[i].Status = storage.PaymentStatusWaitApproval
+				if pay.Status != storage.PaymentStatusConfirmed && pay.Status != storage.PaymentStatusRejected && pay.Approvers != nil && pay.Status != storage.PaymentStatusApproved && pay.Status != storage.PaymentStatusPaid {
+					payments[i].Status = storage.PaymentStatusAwaitingApproval
 				}
 			}
 		}
