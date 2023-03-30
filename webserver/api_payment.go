@@ -375,12 +375,7 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 			utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 			return
 		}
-		// use for sender
-		for i, pay := range payments {
-			if pay.Status == storage.PaymentStatusConfirmed || pay.Status == storage.PaymentStatusApproved {
-				payments[i].Status = storage.PaymentStatusSent
-			}
-		}
+
 		utils.ResponseOK(w, Map{
 			"payments": payments,
 			"count":    count,
