@@ -529,7 +529,7 @@ func (a *apiPayment) bulkPaidBTC(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(body.PaymentIds) == 0 {
-		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("list payment id can't emtpy or nil"), utils.ErrorBadRequest), nil)
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("list payment id can't be empty or nil"), utils.ErrorBadRequest), nil)
 		return
 	}
 

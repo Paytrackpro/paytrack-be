@@ -53,15 +53,15 @@ func (s *Service) BulkPaidBTC(userId uint64, txId string, paymentIds []int) erro
 	// validate payment
 	for _, paym := range payments {
 		if paym.Status != storage.PaymentStatusConfirmed {
-			return fmt.Errorf("all payments need ready for payment")
+			return fmt.Errorf("all payments need to be ready for payment")
 		}
 
 		if paym.ReceiverId != userId {
-			return fmt.Errorf("all payments must be your")
+			return fmt.Errorf("all payments must be yours")
 		}
 
 		if paym.PaymentMethod != payment.PaymentTypeBTC {
-			return fmt.Errorf("all payments need payment method is BTC")
+			return fmt.Errorf("all payments needs the payment method to be BTC")
 		}
 		paym.TxId = txId
 		paym.PaidAt = time.Now()
