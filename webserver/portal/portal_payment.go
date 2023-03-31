@@ -149,3 +149,8 @@ type PaymentReject struct {
 	Token           string `json:"token"`
 	RejectionReason string `json:"rejectionReason"`
 }
+
+type BulkPaidRequest struct {
+	PaymentIds []int  `json:"paymentIds"`
+	TXID       string `json:"txid"`
+}

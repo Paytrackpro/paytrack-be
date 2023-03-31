@@ -368,6 +368,21 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	// checking error on claims is not needed since listPayments is for logged in api,
 	// the checking is from the logged in middleware
 	claims, _ := a.parseBearer(r)
+
+	if f.RequestType == storage.PaymentTypeBulkPayBTC {
+		payments, count, err := a.service.GetBulkPaymentBTC(claims.Id, f.Page, f.Size)
+		if err != nil {
+			utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+			return
+		}
+
+		utils.ResponseOK(w, Map{
+			"payments": payments,
+			"count":    count,
+		})
+		return
+	}
+
 	switch f.RequestType {
 	case storage.PaymentTypeReminder:
 		f.ReceiverIds = []uint64{claims.Id}
@@ -503,4 +518,26 @@ func (a *apiPayment) rejectPayment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.ResponseOK(w, payment)
+}
+
+func (a *apiPayment) bulkPaidBTC(w http.ResponseWriter, r *http.Request) {
+	var body portal.BulkPaidRequest
+	err := a.parseJSONAndValidate(r, &body)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+
+	if len(body.PaymentIds) == 0 {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("list payment id can't be empty or nil"), utils.ErrorBadRequest), nil)
+		return
+	}
+
+	claims, _ := a.parseBearer(r)
+	if err := a.service.BulkPaidBTC(claims.Id, body.TXID, body.PaymentIds); err != nil {
+		utils.Response(w, http.StatusForbidden, utils.InternalError.With(err), nil)
+		return
+	}
+
+	utils.ResponseOK(w, nil)
 }
