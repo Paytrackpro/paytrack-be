@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
@@ -177,6 +178,51 @@ func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *apiUser) usersExist(w http.ResponseWriter, r *http.Request) {
+	userName := r.FormValue("userNames")
+	claims, _ := a.credentialsInfo(r)
+	if utils.IsEmpty(userName) {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("userNames is null or empty"), nil)
+		return
+	}
+
+	listUserName := strings.Split(userName, ",")
+	for _, v := range listUserName {
+		if v == claims.UserName {
+			utils.Response(w, http.StatusBadRequest, fmt.Errorf("userName must not be yours"), nil)
+			return
+		}
+	}
+
+	users, err := a.db.QueryUserWithList("user_name", listUserName)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
+			return
+		} else {
+			utils.Response(w, http.StatusInternalServerError, err, nil)
+			return
+		}
+	}
+
+	if len(users) == len(listUserName) {
+		utils.ResponseOK(w, users)
+		return
+	} else {
+		userMap := make(map[string]bool)
+		for _, u := range users {
+			userMap[u.UserName] = true
+		}
+
+		for _, v := range listUserName {
+			if !userMap[v] {
+				utils.Response(w, http.StatusBadRequest, fmt.Errorf("user %s not found", v), nil)
+				return
+			}
+		}
+	}
+}
+
 func (a *apiUser) generateQr(w http.ResponseWriter, r *http.Request) {
 	var f portal.GenerateQRForm
 	err := a.parseJSON(r, &f)
@@ -208,6 +254,10 @@ func (a *apiUser) generateQr(w http.ResponseWriter, r *http.Request) {
 		Issuer:      "MGMT",
 		AccountName: user.UserName,
 	})
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
 	qrImage, err := key.Image(200, 200)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
@@ -260,7 +310,7 @@ func (a *apiUser) disableOtp(w http.ResponseWriter, r *http.Request) {
 
 	verified := totp.Validate(f.Otp, user.Secret)
 
-	if verified == false {
+	if !verified {
 		err := utils.NewError(fmt.Errorf("OTP is not valid"), utils.ErrorObjectExist)
 		utils.Response(w, http.StatusBadRequest, err, nil)
 
@@ -276,4 +326,100 @@ func (a *apiUser) disableOtp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.ResponseOK(w, Map{})
+}
+
+func (a *apiUser) updatePaymentSetting(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	var f portal.ListPaymentSettingRequest
+	err := a.parseJSON(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	f.Id = claims.Id
+
+	list := portal.UserWithList{
+		List: make([]uint64, 0),
+	}
+
+	for _, approver := range f.List {
+		if approver.SendUserId == claims.Id {
+			e := fmt.Errorf("the sender can't be you")
+			utils.Response(w, http.StatusBadRequest, e, nil)
+			return
+		}
+		list.List = append(list.List, approver.SendUserId)
+		for _, v := range approver.ApproverIds {
+			list.List = append(list.List, v)
+			if v == claims.Id {
+				e := fmt.Errorf("not allow current user is approver")
+				utils.Response(w, http.StatusBadRequest, e, nil)
+				return
+			}
+		}
+	}
+
+	var users []storage.User
+	//get all user on setting
+	if err := a.db.GetList(&list, &users); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	userMap := make(map[uint64]storage.User, 0)
+	//conver slices user to map
+	for _, user := range users {
+		userMap[user.Id] = user
+	}
+
+	// delete all old approver setting
+	if err := a.db.Delete(f, storage.ApproverSettings{}); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	if err := a.db.Create(f.MakeApproverSetting(claims.Id, userMap)); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	utils.ResponseOK(w, f.MakeApproverSetting(claims.Id, userMap))
+}
+
+func (a *apiUser) getPaymentSetting(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	app := portal.Approvers{}
+	app.Id = claims.Id
+	var approvers []storage.ApproverSettings
+	if err := a.db.GetList(&app, &approvers); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	temMap := make(map[string][]storage.ApproverSettings, 0)
+
+	for _, appr := range approvers {
+		temMap[appr.SendUserName] = append(temMap[appr.SendUserName], appr)
+	}
+
+	res := make([]map[string]interface{}, 0)
+
+	for _, v := range temMap {
+		approvers := make([]map[string]interface{}, 0)
+		for _, appro := range v {
+			approvers = append(approvers, Map{
+				"approverName": appro.ApproverName,
+				"approverId":   appro.ApproverId,
+			})
+		}
+
+		res = append(res, Map{
+			"sendUserId":   v[0].SendUserId,
+			"sendUserName": v[0].SendUserName,
+			"recipientId":  v[0].RecipientId,
+			"approvers":    approvers,
+		})
+	}
+
+	utils.ResponseOK(w, res)
 }

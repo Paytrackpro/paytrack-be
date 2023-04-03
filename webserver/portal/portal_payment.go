@@ -1,10 +1,12 @@
 package portal
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/payment"
-	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"fmt"
 	"time"
+
+	"code.cryptopower.dev/mgmt-ng/be/payment"
+	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"gorm.io/gorm"
 )
 
 type PaymentRequest struct {
@@ -56,7 +58,7 @@ func (p *PaymentRequest) calculateAmount() (float64, error) {
 	return amount, nil
 }
 
-func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment) error {
+func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment, isHaveApprover bool) error {
 	if payment.Id == 0 {
 		payment.CreatorId = userId
 		payment.SenderId = userId
@@ -102,10 +104,17 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment) error 
 		}
 	}
 	// sender sent the request to the recipient
-	if userId == payment.SenderId && payment.Status == storage.PaymentStatusCreated && p.Status == storage.PaymentStatusSent {
-		payment.Status = storage.PaymentStatusSent
-		payment.SentAt = time.Now()
+	if userId == payment.SenderId && p.Status == storage.PaymentStatusSent {
+		if isHaveApprover {
+			payment.Approvers = make(storage.Approvers, 0)
+		}
+		// If the payment is rejected and user update and re-send with new status, then we need to update the status to sent
+		if payment.Status == storage.PaymentStatusCreated || payment.Status == storage.PaymentStatusRejected {
+			payment.Status = storage.PaymentStatusSent
+			payment.SentAt = time.Now()
+		}
 	}
+
 	// recipient update status and txId
 	if userId == payment.ReceiverId && p.Status != storage.PaymentStatusCreated {
 		// allow recipient update status to sent or confirmed
@@ -128,4 +137,46 @@ type PaymentRequestRate struct {
 	Token          string         `json:"token"`
 	PaymentMethod  payment.Method `json:"paymentMethod"`
 	PaymentAddress string         `json:"paymentAddress"`
+}
+
+type ListPaymentSettingRequest struct {
+	Id   uint64
+	List []ApproversSettingRequest `json:"list"`
+}
+
+type ApproversSettingRequest struct {
+	ApproverIds []uint64 `json:"approverIds"`
+	SendUserId  uint64   `json:"sendUserId"`
+}
+
+func (p *ListPaymentSettingRequest) MakeApproverSetting(id uint64, userMap map[uint64]storage.User) []storage.ApproverSettings {
+
+	sets := make([]storage.ApproverSettings, 0)
+	for _, setting := range p.List {
+		for _, v := range setting.ApproverIds {
+			sets = append(sets, storage.ApproverSettings{
+				ApproverId:   v,
+				SendUserId:   setting.SendUserId,
+				RecipientId:  id,
+				ApproverName: userMap[v].UserName,
+				SendUserName: userMap[setting.SendUserId].UserName,
+			})
+		}
+	}
+	return sets
+}
+
+func (a ListPaymentSettingRequest) BindQueryDelete(db *gorm.DB) *gorm.DB {
+	return db.Where("recipient_id", a.Id)
+}
+
+type PaymentReject struct {
+	Id              uint64 `json:"id" validate:"required"`
+	Token           string `json:"token"`
+	RejectionReason string `json:"rejectionReason"`
+}
+
+type BulkPaidRequest struct {
+	PaymentIds []int  `json:"paymentIds"`
+	TXID       string `json:"txid"`
 }
