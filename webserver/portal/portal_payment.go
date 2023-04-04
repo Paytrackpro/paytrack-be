@@ -47,10 +47,10 @@ func (p *PaymentRequest) calculateAmount() (float64, error) {
 			}
 			cost := detail.Quantity * price
 			if cost != detail.Cost {
-				return 0, fmt.Errorf("payment detail is wrong amount at line %d", i+1)
+				return 0, fmt.Errorf("payment detail amount is incorrect at line %d", i+1)
 			}
 			if detail.Cost <= 0 {
-				return 0, fmt.Errorf("payment detail is cost is <= 0 at line %d", i+1)
+				return 0, fmt.Errorf("payment detail cost must be greater than 0 at line %d", i+1)
 			}
 		}
 		amount += detail.Cost
