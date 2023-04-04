@@ -119,7 +119,8 @@ const (
 )
 
 type PaymentDetail struct {
-	Hours       float64 `json:"hours"`
+	Quantity    float64 `json:"quantity"`
+	Price       float64 `json:"price"`
 	Cost        float64 `json:"cost"`
 	Description string  `json:"description"`
 }
@@ -149,6 +150,7 @@ type Payment struct {
 	ReceiverName    string          `json:"receiverName" gorm:"->"`
 	ExternalEmail   string          `json:"externalEmail"`
 	Amount          float64         `json:"amount"`
+	Description     string          `json:"description"`
 	HourlyRate      float64         `json:"hourlyRate"`
 	PaymentSettings PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
 	Approvers       Approvers       `json:"approvers" gorm:"type:jsonb"`
