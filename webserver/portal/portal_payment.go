@@ -18,6 +18,8 @@ type PaymentRequest struct {
 	ContactMethod   storage.PaymentContact  `json:"contactMethod"`
 	HourlyRate      float64                 `json:"hourlyRate"`
 	PaymentSettings storage.PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
+	Amount          float64                 `json:"amount"`
+	Description     string                  `json:"description"`
 	Details         []storage.PaymentDetail `json:"details"`
 	PaymentMethod   payment.Method          `json:"paymentMethod"`
 	PaymentAddress  string                  `json:"paymentAddress"`
@@ -35,6 +37,27 @@ type PaymentConfirm struct {
 	PaymentAddress string         `validate:"required" json:"paymentAddress"`
 }
 
+func (p *PaymentRequest) calculateAmount() (float64, error) {
+	var amount float64
+	for i, detail := range p.Details {
+		if detail.Quantity > 0 {
+			var price = p.HourlyRate
+			if detail.Price > 0 {
+				price = detail.Price
+			}
+			cost := detail.Quantity * price
+			if cost != detail.Cost {
+				return 0, fmt.Errorf("payment detail amount is incorrect at line %d", i+1)
+			}
+			if detail.Cost <= 0 {
+				return 0, fmt.Errorf("payment detail cost must be greater than 0 at line %d", i+1)
+			}
+		}
+		amount += detail.Cost
+	}
+	return amount, nil
+}
+
 func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment, isHaveApprover bool) error {
 	if payment.Id == 0 {
 		payment.CreatorId = userId
@@ -46,8 +69,32 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment, isHave
 	if !(userId == p.SenderId || userId == p.ReceiverId) {
 		return fmt.Errorf("the sender or receiver must be you")
 	}
-	// allow the sender edit the receiver
-	if payment.Id > 0 && payment.SenderId == userId {
+	if payment.SenderId == userId {
+		payment.HourlyRate = p.HourlyRate
+		payment.Details = p.Details
+		payment.PaymentMethod = p.PaymentMethod
+		payment.PaymentAddress = p.PaymentAddress
+		payment.PaymentSettings = p.PaymentSettings
+
+		if len(p.Details) > 0 {
+			amount, err := p.calculateAmount()
+			if err != nil {
+				return err
+			}
+			payment.Amount = amount
+			payment.Description = ""
+			payment.HourlyRate = p.HourlyRate
+			payment.Details = p.Details
+		} else {
+			payment.HourlyRate = 0
+			payment.Details = nil
+			payment.Description = p.Description
+			payment.Amount = p.Amount
+		}
+		if payment.Amount == 0 {
+			return fmt.Errorf("amount must not be zero")
+		}
+		// allow the sender edit the receiver
 		if p.ContactMethod == storage.PaymentTypeInternal {
 			payment.ExternalEmail = ""
 			payment.ReceiverId = p.ReceiverId
@@ -56,12 +103,6 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment, isHave
 			payment.ExternalEmail = p.ExternalEmail
 		}
 	}
-	payment.HourlyRate = p.HourlyRate
-	payment.Details = p.Details
-	payment.PaymentMethod = p.PaymentMethod
-	payment.PaymentAddress = p.PaymentAddress
-	payment.PaymentSettings = p.PaymentSettings
-
 	// sender sent the request to the recipient
 	if userId == payment.SenderId && p.Status == storage.PaymentStatusSent {
 		if isHaveApprover {
@@ -82,21 +123,6 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment, isHave
 		}
 		payment.TxId = p.TxId
 	}
-	// calculate amount
-	var amount float64
-	for i, detail := range p.Details {
-		if detail.Hours > 0 {
-			cost := detail.Hours * payment.HourlyRate
-			if cost != detail.Cost {
-				return fmt.Errorf("payment detail is wrong amount at line %d", i+1)
-			}
-			if detail.Cost == 0 {
-				return fmt.Errorf("payment detail is 0 cost at line %d", i+1)
-			}
-		}
-		amount += detail.Cost
-	}
-	payment.Amount = amount
 	return nil
 }
 
