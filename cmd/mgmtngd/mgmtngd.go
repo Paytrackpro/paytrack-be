@@ -19,15 +19,16 @@ func _main() error {
 	if err != nil {
 		return err
 	}
-	db, err := storage.NewStorage(conf.Db)
-	if err != nil {
-		return err
-	}
 
 	// Config log
 	log.SetLogLevel(conf.LogLevel)
 	if err := log.InitLogRotator(conf.LogDir); err != nil {
 		return fmt.Errorf("failed to init logRotator: %v", err.Error())
+	}
+
+	db, err := storage.NewStorage(conf.Db, log.GetDBLogger())
+	if err != nil {
+		return err
 	}
 
 	mailClient, err := email.NewMailClient(conf.Mail)

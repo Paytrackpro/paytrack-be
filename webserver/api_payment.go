@@ -39,6 +39,7 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.verifyAccessPayment(f.Token, payment, r); err != nil {
+		log.Error(err)
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
@@ -50,6 +51,7 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 	}
 	err = f.Payment(userId, &payment, false)
 	if err != nil {
+		log.Error(err)
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
@@ -118,6 +120,7 @@ func (a *apiPayment) sendNotification(oldStatus storage.PaymentStatus, p storage
 			IsRequest: claims.Id == p.ReceiverId,
 		}, p.ExternalEmail)
 		if err != nil {
+			log.Error(err)
 			customErr = utils.SendMailFailed.With(err)
 		}
 	}
@@ -130,6 +133,7 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 	var f portal.PaymentRequest
 	err := a.parseJSONAndValidate(r, &f)
 	if err != nil {
+		log.Error(err)
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
@@ -144,6 +148,7 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 	var payment storage.Payment
 	err = f.Payment(claims.Id, &payment, len(approvers) > 0)
 	if err != nil {
+		log.Error(err)
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
@@ -271,6 +276,7 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 	}
 	price, err := paymentService.GetPrice(f.PaymentMethod)
 	if err != nil {
+		log.Error(err)
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
 	}

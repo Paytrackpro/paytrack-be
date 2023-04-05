@@ -1,16 +1,16 @@
 package storage
 
 import (
+	"strings"
+
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"gorm.io/gorm"
-	"strings"
 )
 
 type Sort struct {
-	sortableFields []string
-	Order          string `schema:"order"`
-	Page           int    `schema:"page"`
-	Size           int    `schema:"size"`
+	Order string `schema:"order"`
+	Page  int    `schema:"page"`
+	Size  int    `schema:"size"`
 }
 
 const defaultOffset = 20
