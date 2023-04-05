@@ -1,8 +1,13 @@
 package storage
 
 import (
+	"time"
+
+	oslog "log"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type Storage interface {
@@ -37,8 +42,14 @@ type Config struct {
 	Dns string `yaml:"dns"`
 }
 
-func NewStorage(c Config) (Storage, error) {
-	db, err := gorm.Open(postgres.Open(c.Dns), &gorm.Config{})
+func NewStorage(c Config, oslogger *oslog.Logger) (Storage, error) {
+	gormLog := logger.New(oslogger, logger.Config{
+		LogLevel:                  logger.Warn,
+		Colorful:                  true,
+		SlowThreshold:             time.Second,
+		IgnoreRecordNotFoundError: true,
+	})
+	db, err := gorm.Open(postgres.Open(c.Dns), &gorm.Config{Logger: gormLog})
 	if err != nil {
 		return nil, err
 	}

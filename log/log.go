@@ -2,9 +2,12 @@ package log
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
+	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"code.cryptopower.dev/mgmt-ng/be/webserver"
 	"github.com/decred/slog"
 	"github.com/jrick/logrotate/rotator"
 )
@@ -13,13 +16,14 @@ var mgmtLog = "mgmgt.log"
 
 var (
 	logRotator *rotator.Rotator
-	backendLog = slog.NewBackend(logWriter{})
-	Logger     = backendLog.Logger("MGMGT")
+	backendLog = slog.NewBackend(logWriter{mgmtLog})
+	Log        = backendLog.Logger("MGMGT")
 )
 
 // logWriter implements an io.Writer that outputs to both standard output and
 // the write-end pipe of an initialized log rotator.
 type logWriter struct {
+	loggerID string
 }
 
 // Write writes the data in p to standard out and the log rotator.
@@ -28,9 +32,20 @@ func (l logWriter) Write(p []byte) (n int, err error) {
 	return logRotator.Write(p)
 }
 
+func GetDBLogger() *log.Logger {
+	logger := log.New(os.Stdout, "\r\n[DB] ", log.LstdFlags)
+	logger.SetOutput(logWriter{})
+	return logger
+}
+
+func initLog() {
+	webserver.UseLogger(Log)
+	storage.UseLogger(Log)
+}
+
 func SetLogLevel(logLevel string) {
 	level, _ := slog.LevelFromString(logLevel)
-	Logger.SetLevel(level)
+	Log.SetLevel(level)
 }
 
 func InitLogRotator(logDir string) error {
@@ -47,5 +62,6 @@ func InitLogRotator(logDir string) error {
 	}
 
 	logRotator = r
+	initLog()
 	return nil
 }

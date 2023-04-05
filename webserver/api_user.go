@@ -397,13 +397,11 @@ func (a *apiUser) getPaymentSetting(w http.ResponseWriter, r *http.Request) {
 	}
 
 	temMap := make(map[string][]storage.ApproverSettings, 0)
-
 	for _, appr := range approvers {
 		temMap[appr.SendUserName] = append(temMap[appr.SendUserName], appr)
 	}
 
 	res := make([]map[string]interface{}, 0)
-
 	for _, v := range temMap {
 		approvers := make([]map[string]interface{}, 0)
 		for _, appro := range v {
