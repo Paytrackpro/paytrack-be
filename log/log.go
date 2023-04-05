@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/webserver"
 	"github.com/decred/slog"
 	"github.com/jrick/logrotate/rotator"
@@ -40,7 +39,6 @@ func GetDBLogger() *log.Logger {
 
 func initLog() {
 	webserver.UseLogger(Log)
-	storage.UseLogger(Log)
 }
 
 func SetLogLevel(logLevel string) {
