@@ -26,7 +26,7 @@ func _main() error {
 		return fmt.Errorf("failed to init logRotator: %v", err.Error())
 	}
 
-	db, err := storage.NewStorage(conf.Db)
+	db, err := storage.NewStorage(conf.Db, log.GetLogger())
 	if err != nil {
 		return err
 	}

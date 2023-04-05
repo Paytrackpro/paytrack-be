@@ -2,9 +2,11 @@ package log
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
+	"code.cryptopower.dev/mgmt-ng/be/webserver"
 	"github.com/decred/slog"
 	"github.com/jrick/logrotate/rotator"
 )
@@ -29,13 +31,19 @@ func (l logWriter) Write(p []byte) (n int, err error) {
 	return logRotator.Write(p)
 }
 
+func GetLogger() *log.Logger {
+	logger := log.New(os.Stdout, "\r\n[DB] ", log.LstdFlags)
+	logger.SetOutput(logWriter{})
+	return logger
+}
+
+func init() {
+	webserver.UseLogger(Log)
+}
+
 func SetLogLevel(logLevel string) {
 	level, _ := slog.LevelFromString(logLevel)
 	Log.SetLevel(level)
-}
-
-func GetLogRotator() *rotator.Rotator {
-	return logRotator
 }
 
 func InitLogRotator(logDir string) error {

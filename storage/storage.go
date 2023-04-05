@@ -6,7 +6,6 @@ import (
 
 	oslog "log"
 
-	"code.cryptopower.dev/mgmt-ng/be/log"
 	"github.com/jrick/logrotate/rotator"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -54,10 +53,8 @@ func (l logWriter) Write(p []byte) (n int, err error) {
 	return l.logRotator.Write(p)
 }
 
-func NewStorage(c Config) (Storage, error) {
-	oslog := oslog.New(os.Stdout, "\r\n[DB] ", oslog.LstdFlags)
-	oslog.SetOutput(logWriter{log.GetLogRotator()})
-	gormLog := logger.New(oslog, logger.Config{
+func NewStorage(c Config, log *oslog.Logger) (Storage, error) {
+	gormLog := logger.New(log, logger.Config{
 		LogLevel:                  logger.Warn,
 		Colorful:                  true,
 		SlowThreshold:             time.Second,
