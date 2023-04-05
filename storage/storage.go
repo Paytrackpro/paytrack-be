@@ -1,8 +1,16 @@
 package storage
 
 import (
+	"os"
+	"time"
+
+	oslog "log"
+
+	"code.cryptopower.dev/mgmt-ng/be/log"
+	"github.com/jrick/logrotate/rotator"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type Storage interface {
@@ -37,8 +45,25 @@ type Config struct {
 	Dns string `yaml:"dns"`
 }
 
+type logWriter struct {
+	logRotator *rotator.Rotator
+}
+
+func (l logWriter) Write(p []byte) (n int, err error) {
+	os.Stdout.Write(p)
+	return l.logRotator.Write(p)
+}
+
 func NewStorage(c Config) (Storage, error) {
-	db, err := gorm.Open(postgres.Open(c.Dns), &gorm.Config{})
+	oslog := oslog.New(os.Stdout, "\r\n[DB] ", oslog.LstdFlags)
+	oslog.SetOutput(logWriter{log.GetLogRotator()})
+	gormLog := logger.New(oslog, logger.Config{
+		LogLevel:                  logger.Warn,
+		Colorful:                  true,
+		SlowThreshold:             time.Second,
+		IgnoreRecordNotFoundError: true,
+	})
+	db, err := gorm.Open(postgres.Open(c.Dns), &gorm.Config{Logger: gormLog})
 	if err != nil {
 		return nil, err
 	}

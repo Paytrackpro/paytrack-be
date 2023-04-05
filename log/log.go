@@ -13,13 +13,14 @@ var mgmtLog = "mgmgt.log"
 
 var (
 	logRotator *rotator.Rotator
-	backendLog = slog.NewBackend(logWriter{})
-	Logger     = backendLog.Logger("MGMGT")
+	backendLog = slog.NewBackend(logWriter{mgmtLog})
+	Log        = backendLog.Logger("MGMGT")
 )
 
 // logWriter implements an io.Writer that outputs to both standard output and
 // the write-end pipe of an initialized log rotator.
 type logWriter struct {
+	loggerID string
 }
 
 // Write writes the data in p to standard out and the log rotator.
@@ -30,7 +31,11 @@ func (l logWriter) Write(p []byte) (n int, err error) {
 
 func SetLogLevel(logLevel string) {
 	level, _ := slog.LevelFromString(logLevel)
-	Logger.SetLevel(level)
+	Log.SetLevel(level)
+}
+
+func GetLogRotator() *rotator.Rotator {
+	return logRotator
 }
 
 func InitLogRotator(logDir string) error {
