@@ -53,8 +53,8 @@ func (l logWriter) Write(p []byte) (n int, err error) {
 	return l.logRotator.Write(p)
 }
 
-func NewStorage(c Config, log *oslog.Logger) (Storage, error) {
-	gormLog := logger.New(log, logger.Config{
+func NewStorage(c Config, oslogger *oslog.Logger) (Storage, error) {
+	gormLog := logger.New(oslogger, logger.Config{
 		LogLevel:                  logger.Warn,
 		Colorful:                  true,
 		SlowThreshold:             time.Second,

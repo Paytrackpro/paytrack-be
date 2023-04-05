@@ -45,6 +45,7 @@ func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := f.User()
 	if err != nil {
+		log.Error(err)
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
@@ -142,7 +143,7 @@ func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
 	user, err := a.db.QueryUser(storage.UserFieldUName, claims.UserName)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if err == gorm.ErrRecordNotFound {
 			utils.Response(w, http.StatusNotFound, utils.InvalidCredential, nil)
 			return
 		}
@@ -152,6 +153,7 @@ func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(f.Password))
 	if err != nil {
+		log.Error(err)
 		utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
 		return
 	}

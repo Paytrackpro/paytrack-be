@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/webserver"
 	"github.com/decred/slog"
 	"github.com/jrick/logrotate/rotator"
@@ -31,14 +32,15 @@ func (l logWriter) Write(p []byte) (n int, err error) {
 	return logRotator.Write(p)
 }
 
-func GetLogger() *log.Logger {
+func GetDBLogger() *log.Logger {
 	logger := log.New(os.Stdout, "\r\n[DB] ", log.LstdFlags)
 	logger.SetOutput(logWriter{})
 	return logger
 }
 
-func init() {
+func initLog() {
 	webserver.UseLogger(Log)
+	storage.UseLogger(Log)
 }
 
 func SetLogLevel(logLevel string) {
@@ -60,5 +62,6 @@ func InitLogRotator(logDir string) error {
 	}
 
 	logRotator = r
+	initLog()
 	return nil
 }
