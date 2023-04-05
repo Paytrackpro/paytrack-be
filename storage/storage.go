@@ -1,12 +1,10 @@
 package storage
 
 import (
-	"os"
 	"time"
 
 	oslog "log"
 
-	"github.com/jrick/logrotate/rotator"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -42,15 +40,6 @@ type psql struct {
 
 type Config struct {
 	Dns string `yaml:"dns"`
-}
-
-type logWriter struct {
-	logRotator *rotator.Rotator
-}
-
-func (l logWriter) Write(p []byte) (n int, err error) {
-	os.Stdout.Write(p)
-	return l.logRotator.Write(p)
 }
 
 func NewStorage(c Config, oslogger *oslog.Logger) (Storage, error) {
