@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -19,7 +20,6 @@ type HttpClient struct {
 
 type ReqConfig struct {
 	Payload interface{}
-	Cookies []*http.Cookie
 	Method  string
 	HttpUrl string
 	Header  map[string]string
@@ -65,29 +65,33 @@ func (c *HttpClient) getRequestBody(method string, body interface{}) ([]byte, er
 }
 
 // query prepares and process HTTP request to backend resources.
-func (c *HttpClient) query(reqConfig *ReqConfig) (rawData []byte, resp *http.Response, err error) {
+func (c *HttpClient) query(reqConfig *ReqConfig) (resp *http.Response, err error) {
 	// package the request body for POST and PUT requests
 	var requestBody []byte
 	if reqConfig.Payload != nil {
 		requestBody, err = c.getRequestBody(reqConfig.Method, reqConfig.Payload)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	// package request URL for GET requests.
-	if reqConfig.Method == http.MethodGet && requestBody != nil {
-		reqConfig.HttpUrl += "?" + string(requestBody)
+	var body io.Reader
+	if requestBody != nil {
+		if reqConfig.Method == http.MethodGet {
+			reqConfig.HttpUrl += "?" + string(requestBody)
+		} else {
+			body = bytes.NewReader(requestBody)
+		}
 	}
 
 	// Create http request
-	req, err := http.NewRequestWithContext(c.context, reqConfig.Method, reqConfig.HttpUrl, bytes.NewReader(requestBody))
+	req, err := http.NewRequestWithContext(c.context, reqConfig.Method, reqConfig.HttpUrl, body)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating http request: %v", err)
+		return nil, fmt.Errorf("error creating http request: %v", err)
 	}
 
 	if req == nil {
-		return nil, nil, errors.New("error: nil request")
+		return nil, errors.New("error: nil request")
 	}
 
 	if reqConfig.Method == http.MethodPost || reqConfig.Method == http.MethodPut {
@@ -100,21 +104,17 @@ func (c *HttpClient) query(reqConfig *ReqConfig) (rawData []byte, resp *http.Res
 		req.Header.Add(k, v)
 	}
 
-	for _, cookie := range reqConfig.Cookies {
-		req.AddCookie(cookie)
-	}
-
 	// Send request
 	resp, err = c.httpClient.Do(req)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, resp, fmt.Errorf("error: status: %v", resp.Status)
+		return resp, fmt.Errorf("error: status: %v", resp.Status)
 	}
 
-	return nil, resp, nil
+	return resp, nil
 }
 
 // HttpRequest queries the API provided in the ReqConfig object and converts
@@ -122,7 +122,7 @@ func (c *HttpClient) query(reqConfig *ReqConfig) (rawData []byte, resp *http.Res
 func HttpRequest(reqConfig *ReqConfig, respObj interface{}) error {
 	client := newClient()
 
-	_, httpResp, err := client.query(reqConfig)
+	httpResp, err := client.query(reqConfig)
 	if err != nil {
 		return err
 	}
