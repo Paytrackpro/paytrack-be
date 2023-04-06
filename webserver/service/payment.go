@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"code.cryptopower.dev/mgmt-ng/be/payment"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"gorm.io/gorm"
@@ -22,10 +21,10 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int) ([]storag
 		Select("payments.*, sender.user_name as sender_name, receiver.user_name as receiver_name").
 		Joins("JOIN users as sender ON payments.sender_id = sender.id").
 		Joins("JOIN users as receiver ON payments.receiver_id = receiver.id").
-		Where("payments.payment_method = ? AND payments.status = ? AND payments.receiver_id = ?", payment.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId).
+		Where("payments.payment_method = ? AND payments.status = ? AND payments.receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId).
 		Scan(&payments)
 
-	buildCount := s.db.Model(&storage.Payment{}).Where("payment_method = ? AND status = ? AND receiver_id = ?", payment.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId)
+	buildCount := s.db.Model(&storage.Payment{}).Where("payment_method = ? AND status = ? AND receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId)
 	if err := buildCount.Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
@@ -60,7 +59,7 @@ func (s *Service) BulkPaidBTC(userId uint64, txId string, paymentIds []int) erro
 			return fmt.Errorf("all payments must be yours")
 		}
 
-		if paym.PaymentMethod != payment.PaymentTypeBTC {
+		if paym.PaymentMethod != utils.PaymentTypeBTC {
 			return fmt.Errorf("all payments needs the payment method to be BTC")
 		}
 		paym.TxId = txId

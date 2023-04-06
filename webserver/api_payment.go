@@ -1,15 +1,16 @@
 package webserver
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"code.cryptopower.dev/mgmt-ng/be/email"
-	paymentService "code.cryptopower.dev/mgmt-ng/be/payment"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
+	"code.cryptopower.dev/mgmt-ng/be/webserver/service"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -274,7 +275,7 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
-	price, err := paymentService.GetPrice(f.PaymentMethod)
+	price, err := service.GetPrice1(f.PaymentMethod)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
@@ -422,6 +423,9 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
+
+	d, _ := json.Marshal(payments)
+	fmt.Println("------222222----->", string(d))
 
 	// use for receiver and approver
 	if f.RequestType == storage.PaymentTypeReminder {

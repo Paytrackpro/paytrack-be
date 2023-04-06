@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"code.cryptopower.dev/mgmt-ng/be/payment"
+	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"gorm.io/gorm"
 )
 
@@ -160,7 +160,7 @@ type Payment struct {
 	ExpectedAmount  float64         `json:"expectedAmount"`
 	TxId            string          `json:"txId"`
 	Status          PaymentStatus   `json:"status"`
-	PaymentMethod   payment.Method  `json:"paymentMethod"`
+	PaymentMethod   utils.Method    `json:"paymentMethod"`
 	PaymentAddress  string          `json:"paymentAddress"`
 	ContactMethod   PaymentContact  `json:"contactMethod"`
 	RejectionReason string          `json:"rejectionReason"`

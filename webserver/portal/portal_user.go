@@ -1,8 +1,8 @@
 package portal
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/payment"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -11,7 +11,7 @@ type RegisterForm struct {
 	UserName       string `validate:"required,alphanum,gte=4,lte=32"`
 	Password       string `validate:"required"`
 	Email          string `validate:"omitempty,email"`
-	DefaultPayment payment.Method
+	DefaultPayment utils.Method
 	PaymentAddress string
 }
 
@@ -42,7 +42,7 @@ func (f RegisterForm) User() (*storage.User, error) {
 		PasswordHash: string(hash),
 		Email:        f.Email,
 	}
-	if f.DefaultPayment != payment.PaymentTypeNotSet {
+	if f.DefaultPayment != utils.PaymentTypeNotSet {
 		user.PaymentSettings = []storage.PaymentSetting{
 			{Type: f.DefaultPayment, Address: f.PaymentAddress},
 		}
@@ -54,7 +54,7 @@ type UpdateUserRequest struct {
 	DisplayName     string                   `json:"displayName"`
 	Password        string                   `json:"password"`
 	Email           string                   `validate:"omitempty,email" json:"email"`
-	PaymentType     payment.Method           `json:"paymentType"`
+	PaymentType     utils.Method             `json:"paymentType"`
 	PaymentAddress  string                   `json:"paymentAddress"`
 	UserId          int                      `json:"userId"`
 	Otp             bool                     `json:"otp"`
