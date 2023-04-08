@@ -249,6 +249,11 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 	return fmt.Errorf("you do not have access")
 }
 
+func (a *apiPayment) test(w http.ResponseWriter, r *http.Request) {
+	service.GetCoinMarketCapRate(utils.PaymentTypeBTC)
+	utils.ResponseOK(w, "ok")
+}
+
 // requestRate used for the requested user to request the cryptocurrency rate with USDT
 func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 	var f portal.PaymentRequestRate
@@ -274,7 +279,7 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
-	price, err := service.GetPrice(f.PaymentMethod)
+	rate, err := service.GetRate(f.PaymentMethod)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
@@ -282,9 +287,9 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 	}
 	p.PaymentMethod = f.PaymentMethod
 	p.PaymentAddress = f.PaymentAddress
-	p.ConvertRate = price
+	p.ConvertRate = rate
 	p.ConvertTime = time.Now()
-	p.ExpectedAmount = utils.BtcRoundFloat(p.Amount / price)
+	p.ExpectedAmount = utils.BtcRoundFloat(p.Amount / rate)
 	if err = a.db.Save(&p); err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
