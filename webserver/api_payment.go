@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"code.cryptopower.dev/mgmt-ng/be/email"
-	paymentService "code.cryptopower.dev/mgmt-ng/be/payment"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
@@ -274,7 +273,7 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
-	price, err := paymentService.GetPrice(f.PaymentMethod)
+	rate, err := a.service.GetRate(f.PaymentMethod)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
@@ -282,9 +281,9 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 	}
 	p.PaymentMethod = f.PaymentMethod
 	p.PaymentAddress = f.PaymentAddress
-	p.ConvertRate = price
+	p.ConvertRate = rate
 	p.ConvertTime = time.Now()
-	p.ExpectedAmount = utils.BtcRoundFloat(p.Amount / price)
+	p.ExpectedAmount = utils.BtcRoundFloat(p.Amount / rate)
 	if err = a.db.Save(&p); err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return

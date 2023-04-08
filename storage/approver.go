@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 
-	"code.cryptopower.dev/mgmt-ng/be/payment"
+	"code.cryptopower.dev/mgmt-ng/be/utils"
 )
 
 type PaymentSetting struct {
-	Type      payment.Method `json:"type"`
-	Address   string         `json:"address"`
-	IsDefault bool           `json:"isDefault"`
+	Type      utils.Method `json:"type"`
+	Address   string       `json:"address"`
+	IsDefault bool         `json:"isDefault"`
 }
 
 type PaymentSettings []PaymentSetting

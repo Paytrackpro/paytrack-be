@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"code.cryptopower.dev/mgmt-ng/be/payment"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"gorm.io/gorm"
 )
 
@@ -21,7 +21,7 @@ type PaymentRequest struct {
 	Amount          float64                 `json:"amount"`
 	Description     string                  `json:"description"`
 	Details         []storage.PaymentDetail `json:"details"`
-	PaymentMethod   payment.Method          `json:"paymentMethod"`
+	PaymentMethod   utils.Method            `json:"paymentMethod"`
 	PaymentAddress  string                  `json:"paymentAddress"`
 	Status          storage.PaymentStatus   `json:"status"`
 	TxId            string                  `json:"txId"`
@@ -30,11 +30,11 @@ type PaymentRequest struct {
 }
 
 type PaymentConfirm struct {
-	Id             uint64         `validate:"required" json:"id"`
-	TxId           string         `json:"txId"`
-	Token          string         `json:"token"`
-	PaymentMethod  payment.Method `validate:"required" json:"paymentMethod"`
-	PaymentAddress string         `validate:"required" json:"paymentAddress"`
+	Id             uint64       `validate:"required" json:"id"`
+	TxId           string       `json:"txId"`
+	Token          string       `json:"token"`
+	PaymentMethod  utils.Method `validate:"required" json:"paymentMethod"`
+	PaymentAddress string       `validate:"required" json:"paymentAddress"`
 }
 
 func (p *PaymentRequest) calculateAmount() (float64, error) {
@@ -133,10 +133,10 @@ func (p *PaymentConfirm) Process(payment *storage.Payment) {
 }
 
 type PaymentRequestRate struct {
-	Id             uint64         `json:"id" validate:"required"`
-	Token          string         `json:"token"`
-	PaymentMethod  payment.Method `json:"paymentMethod"`
-	PaymentAddress string         `json:"paymentAddress"`
+	Id             uint64       `json:"id" validate:"required"`
+	Token          string       `json:"token"`
+	PaymentMethod  utils.Method `json:"paymentMethod"`
+	PaymentAddress string       `json:"paymentAddress"`
 }
 
 type ListPaymentSettingRequest struct {
