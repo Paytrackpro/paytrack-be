@@ -53,7 +53,6 @@ func (s *WebServer) Route() {
 		})
 		r.Route("/payment", func(r chi.Router) {
 			var paymentRouter = apiPayment{WebServer: s}
-			r.Get("/test", paymentRouter.test)
 			r.With(s.loggedInMiddleware).Post("/", paymentRouter.createPayment)
 			r.Get("/{id:[0-9]+}", paymentRouter.getPayment)
 			r.Post("/{id:[0-9]+}", paymentRouter.updatePayment)

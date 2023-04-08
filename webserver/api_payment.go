@@ -9,7 +9,6 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
-	"code.cryptopower.dev/mgmt-ng/be/webserver/service"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -249,11 +248,6 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 	return fmt.Errorf("you do not have access")
 }
 
-func (a *apiPayment) test(w http.ResponseWriter, r *http.Request) {
-	service.GetCoinMarketCapRate(utils.PaymentTypeBTC)
-	utils.ResponseOK(w, "ok")
-}
-
 // requestRate used for the requested user to request the cryptocurrency rate with USDT
 func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 	var f portal.PaymentRequestRate
@@ -279,7 +273,7 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
-	rate, err := service.GetRate(f.PaymentMethod)
+	rate, err := a.service.GetRate(f.PaymentMethod)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)

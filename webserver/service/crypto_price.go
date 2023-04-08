@@ -11,10 +11,13 @@ import (
 const (
 	binancePriceURL = "https://api.binance.com/api/v3/ticker/price"
 	coinMaketCapURL = "https://pro-api.coinmarketcap.com/v2/tools/price-conversion"
+	bittrexURL      = "https://api.bittrex.com/v3/markets/"
 )
 
 const (
-	coinMaketCapKey = "652e1706-18a5-40dc-9a60-2df20cd6a7f9"
+	Bittrex       = "bittrex"
+	Binance       = "binance"
+	Coinmarketcap = "coinmarketcap"
 )
 
 type ticker struct {
@@ -25,6 +28,12 @@ type ticker struct {
 type binanceError struct {
 	Code    int    `json:"code"`
 	Message string `json:"msg"`
+}
+
+type BittrexPrice struct {
+	Price   float64 `json:"lastTradeRate"`
+	BidRate float64 `json:"bidRate"`
+	AskRate float64 `json:"askRate"`
 }
 
 type CoinMarketCapData struct {
@@ -44,9 +53,22 @@ type CoinMarketCapConvert struct {
 	} `json:"quote"`
 }
 
+func (s *Service) GetRate(currency utils.Method) (float64, error) {
+	switch s.exchange {
+	case Binance:
+		return s.getBinancePrice(currency)
+	case Coinmarketcap:
+		return s.getCoinMarketCapPrice(currency)
+	case Bittrex:
+		return s.getBittrexPrice(currency)
+	default:
+		return 0, fmt.Errorf("exchange not set")
+	}
+}
+
 // GetPrice get the price of the cryptocurrency based on binance api
 // at the moment, the use of binance is simple, so we build a simple function for it
-func GetRate(currency utils.Method) (float64, error) {
+func (s *Service) getBinancePrice(currency utils.Method) (float64, error) {
 	var symbol = fmt.Sprintf("%sUSDT", strings.ToUpper(currency.String()))
 	query := map[string]string{
 		"symbol": symbol,
@@ -64,7 +86,7 @@ func GetRate(currency utils.Method) (float64, error) {
 	return t.Price, nil
 }
 
-func GetCoinMarketCapRate(currency utils.Method) (float64, error) {
+func (s *Service) getCoinMarketCapPrice(currency utils.Method) (float64, error) {
 	query := map[string]string{
 		"symbol":  strings.ToUpper(currency.String()),
 		"convert": "USD",
@@ -72,7 +94,7 @@ func GetCoinMarketCapRate(currency utils.Method) (float64, error) {
 	}
 
 	header := map[string]string{
-		"X-CMC_PRO_API_KEY": coinMaketCapKey,
+		"X-CMC_PRO_API_KEY": s.coinMaketCapKey,
 	}
 
 	req := &ReqConfig{
@@ -88,4 +110,18 @@ func GetCoinMarketCapRate(currency utils.Method) (float64, error) {
 	}
 
 	return res.Data[0].Quote.USD.Price, nil
+}
+
+func (s *Service) getBittrexPrice(currency utils.Method) (float64, error) {
+	req := &ReqConfig{
+		Method:  http.MethodGet,
+		HttpUrl: fmt.Sprintf("%s%s-USDT%s", bittrexURL, strings.ToUpper(currency.String()), "/ticker"),
+	}
+
+	var res BittrexPrice
+	if err := HttpRequest(req, &res); err != nil {
+		return 0, err
+	}
+
+	return res.Price, nil
 }
