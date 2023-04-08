@@ -9,6 +9,11 @@ webServer:
   aliveSessionHours: 24
   # aesSecretKey: a secret key used to encrypt sensitive data
   aesSecretKey: asder45t678uio89
+  service:
+    exchange: "bittrex"
+    coimarketcapKey: "change me"
+logLevel: "debug"
+logDir: "D:/Works/Raedah/newmgmt"
 # mail: config for mail client, tested running with google mail service
 mail:
   addr: smtp.gmail.com:587
