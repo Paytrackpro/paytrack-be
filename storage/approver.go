@@ -9,9 +9,8 @@ import (
 )
 
 type PaymentSetting struct {
-	Type      utils.Method `json:"type"`
-	Address   string       `json:"address"`
-	IsDefault bool         `json:"isDefault"`
+	Type    utils.Method `json:"type"`
+	Address string       `json:"address"`
 }
 
 type PaymentSettings []PaymentSetting
