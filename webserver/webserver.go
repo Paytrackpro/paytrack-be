@@ -19,11 +19,12 @@ import (
 )
 
 type Config struct {
-	Port              int    `yaml:"port"`
-	HmacSecretKey     string `yaml:"hmacSecretKey"`
-	AesSecretKey      string `yaml:"aesSecretKey"`
-	AliveSessionHours int    `yaml:"aliveSessionHours"`
-	ClientAddr        string `yaml:"clientAddr"`
+	Port              int            `yaml:"port"`
+	HmacSecretKey     string         `yaml:"hmacSecretKey"`
+	AesSecretKey      string         `yaml:"aesSecretKey"`
+	AliveSessionHours int            `yaml:"aliveSessionHours"`
+	ClientAddr        string         `yaml:"clientAddr"`
+	Service           service.Config `yaml:"service"`
 }
 
 type WebServer struct {
@@ -55,7 +56,7 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 		return nil, err
 	}
 
-	sv := service.NewService(db.GetDB())
+	sv := service.NewService(c.Service, db.GetDB())
 
 	return &WebServer{
 		mux:       chi.NewRouter(),

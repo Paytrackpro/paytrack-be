@@ -1,12 +1,13 @@
 package main
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/email"
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/webserver"
 	"flag"
 	"fmt"
 	"os"
+
+	"code.cryptopower.dev/mgmt-ng/be/email"
+	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"code.cryptopower.dev/mgmt-ng/be/webserver"
 
 	"gopkg.in/yaml.v3"
 )

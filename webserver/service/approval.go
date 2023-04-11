@@ -7,13 +7,22 @@ import (
 	"gorm.io/gorm"
 )
 
-type Service struct {
-	db *gorm.DB
+type Config struct {
+	Exchange        string `yaml:"exchange"`
+	CoimarketcapKey string `yaml:"coimarketcapKey"`
 }
 
-func NewService(db *gorm.DB) *Service {
+type Service struct {
+	db              *gorm.DB
+	exchange        string
+	coinMaketCapKey string
+}
+
+func NewService(conf Config, db *gorm.DB) *Service {
 	return &Service{
-		db: db,
+		db:              db,
+		exchange:        conf.Exchange,
+		coinMaketCapKey: conf.CoimarketcapKey,
 	}
 }
 
