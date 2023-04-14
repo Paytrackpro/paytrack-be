@@ -176,7 +176,30 @@ type PaymentReject struct {
 	RejectionReason string `json:"rejectionReason"`
 }
 
+type BulkPaymentBTC struct {
+	ID             int          `json:"id"`
+	Rate           float64      `json:"rate"`
+	ConvertTime    int64        `json:"convertTime"`
+	PaymentAddress string       `json:"paymentAddress"`
+	PaymentMethod  utils.Method `json:"paymentMethod"`
+	PaymentToken   string       `json:"token"`
+}
+
+type BulkPaidRequests struct {
+	TxId        string           `json:"txId"`
+	PaymentList []BulkPaymentBTC `json:"paymentList"`
+}
+
 type BulkPaidRequest struct {
 	PaymentIds []int  `json:"paymentIds"`
 	TXID       string `json:"txid"`
+}
+
+type GetRateRequest struct {
+	Symbol utils.Method `json:"symbol"`
+}
+
+type GetRateResponse struct {
+	Rate        float64 `json:"rate"`
+	ConvertTime int64   `json:"convertTime"`
 }
