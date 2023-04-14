@@ -62,6 +62,7 @@ func (s *WebServer) Route() {
 			r.Post("/reject", paymentRouter.rejectPayment)
 			r.Post("/bulk-paid-btc", paymentRouter.bulkPaidBTC)
 			r.With(s.loggedInMiddleware).Get("/list", paymentRouter.listPayments)
+			r.Get("/rate", paymentRouter.getRate)
 		})
 	})
 }
