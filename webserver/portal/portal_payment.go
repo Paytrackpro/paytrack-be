@@ -13,6 +13,7 @@ type PaymentRequest struct {
 	// Sender is the person who will pay for the payment
 	SenderId   uint64 `validate:"required_if=ContactMethod 0" json:"senderId"`
 	ReceiverId uint64 `json:"receiverId"`
+
 	// ExternalEmail is the field to send the payment to the person who does not have an account yet
 	ExternalEmail   string                  `validate:"required_if=ContactMethod 1,omitempty,email" json:"externalEmail"`
 	ContactMethod   storage.PaymentContact  `json:"contactMethod"`
@@ -25,7 +26,6 @@ type PaymentRequest struct {
 	PaymentAddress  string                  `json:"paymentAddress"`
 	Status          storage.PaymentStatus   `json:"status"`
 	TxId            string                  `json:"txId"`
-	IsDraft         bool                    `json:"isDraft"`
 	Token           string                  `json:"token"`
 }
 
@@ -60,7 +60,6 @@ func (p *PaymentRequest) calculateAmount() (float64, error) {
 
 func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment, isHaveApprover bool) error {
 	if payment.Id == 0 {
-		payment.CreatorId = userId
 		payment.SenderId = userId
 		payment.ReceiverId = p.ReceiverId
 		payment.ExternalEmail = p.ExternalEmail

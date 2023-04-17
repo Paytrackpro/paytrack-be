@@ -145,9 +145,9 @@ type Payment struct {
 	Id              uint64          `gorm:"primarykey" json:"id"`
 	CreatorId       uint64          `json:"creatorId"`
 	SenderId        uint64          `json:"senderId"`
-	SenderName      string          `json:"senderName" gorm:"->"`
+	SenderName      string          `json:"senderName"`
 	ReceiverId      uint64          `json:"receiverId"`
-	ReceiverName    string          `json:"receiverName" gorm:"->"`
+	ReceiverName    string          `json:"receiverName"`
 	ExternalEmail   string          `json:"externalEmail"`
 	Amount          float64         `json:"amount"`
 	Description     string          `json:"description"`
@@ -167,7 +167,7 @@ type Payment struct {
 	CreatedAt       time.Time       `json:"createdAt"`
 	SentAt          time.Time       `json:"sentAt"`
 	PaidAt          time.Time       `json:"paidAt"`
-	IsApproved      bool            `json:"isApproved" gorm:"->"`
+	IsApproved      bool            `json:"isApproved"`
 }
 
 type PaymentFilter struct {

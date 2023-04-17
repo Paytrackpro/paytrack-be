@@ -129,37 +129,49 @@ func (a *apiPayment) sendNotification(oldStatus storage.PaymentStatus, p storage
 }
 
 func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
-	var f portal.PaymentRequest
-	err := a.parseJSONAndValidate(r, &f)
+	var body portal.PaymentRequest
+	err := a.parseJSONAndValidate(r, &body)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
-	claims, _ := a.credentialsInfo(r)
+	userInfo, _ := a.credentialsInfo(r)
 
-	approvers, err := a.service.GetApproverForPayment(f.SenderId, f.ReceiverId)
-	if err != nil {
-		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
+	//validate body
+	if body.SenderId != userInfo.Id {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("the sender must be you"), nil)
 		return
 	}
 
-	var payment storage.Payment
-	err = f.Payment(claims.Id, &payment, len(approvers) > 0)
+	if body.ReceiverId == userInfo.Id {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("the receiver must be someone else"), nil)
+		return
+	}
+
+	// sender only save payment as draft or sent to receiver
+	if body.Status != storage.PaymentStatusCreated && body.Status != storage.PaymentStatusSent {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("you only save it as draft or sent it to receiver"), nil)
+		return
+	}
+
+	payment, err := a.service.CreatePayment(userInfo.Id, userInfo.UserName, body)
 	if err != nil {
-		log.Error(err)
-		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		utils.Response(w, http.StatusOK, err, nil)
 		return
 	}
-	if err = a.db.Create(&payment); err != nil {
-		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
-		return
-	}
-	accessToken, customErr := a.sendNotification(storage.PaymentStatusCreated, payment, claims)
-	utils.ResponseOK(w, Map{
+	res := Map{
 		"payment": payment,
-		"token":   accessToken,
-	}, customErr)
+	}
+
+	if body.ContactMethod == storage.PaymentTypeEmail {
+		token, customErr := a.sendNotification(storage.PaymentStatusCreated, *payment, userInfo)
+		res["token"] = token
+		utils.ResponseOK(w, res, customErr)
+	} else {
+		utils.ResponseOK(w, res, nil)
+	}
+
 }
 
 func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
