@@ -6,7 +6,6 @@ import (
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
-	"gorm.io/gorm"
 )
 
 type PaymentRequest struct {
@@ -139,34 +138,12 @@ type PaymentRequestRate struct {
 }
 
 type ListPaymentSettingRequest struct {
-	Id   uint64
 	List []ApproversSettingRequest `json:"list"`
 }
 
 type ApproversSettingRequest struct {
 	ApproverIds []uint64 `json:"approverIds"`
 	SendUserId  uint64   `json:"sendUserId"`
-}
-
-func (p *ListPaymentSettingRequest) MakeApproverSetting(id uint64, userMap map[uint64]storage.User) []storage.ApproverSettings {
-
-	sets := make([]storage.ApproverSettings, 0)
-	for _, setting := range p.List {
-		for _, v := range setting.ApproverIds {
-			sets = append(sets, storage.ApproverSettings{
-				ApproverId:   v,
-				SendUserId:   setting.SendUserId,
-				RecipientId:  id,
-				ApproverName: userMap[v].UserName,
-				SendUserName: userMap[setting.SendUserId].UserName,
-			})
-		}
-	}
-	return sets
-}
-
-func (a ListPaymentSettingRequest) BindQueryDelete(db *gorm.DB) *gorm.DB {
-	return db.Where("recipient_id", a.Id)
 }
 
 type PaymentReject struct {

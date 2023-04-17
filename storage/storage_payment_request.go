@@ -143,7 +143,6 @@ func (a *PaymentDetails) Scan(value interface{}) error {
 
 type Payment struct {
 	Id              uint64          `gorm:"primarykey" json:"id"`
-	CreatorId       uint64          `json:"creatorId"`
 	SenderId        uint64          `json:"senderId"`
 	SenderName      string          `json:"senderName"`
 	ReceiverId      uint64          `json:"receiverId"`

@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
+	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
 	"gorm.io/gorm"
 )
 
@@ -108,4 +110,104 @@ func (s *Service) GetApproverForPayment(sendId, recipientId uint64) ([]storage.A
 		return nil, err
 	}
 	return apst, nil
+}
+
+func (s *Service) UpdateApproverSetting(userId uint64, approvers []portal.ApproversSettingRequest) ([]storage.ApproverSettings, error) {
+	//Get all user is sender and approvers
+	userIds := make([]uint64, 0)
+	for _, approver := range approvers {
+		userIds = append(userIds, approver.SendUserId)
+		userIds = append(userIds, approver.ApproverIds...)
+	}
+
+	var users []storage.User
+	//get all user on setting
+	if err := s.db.Where("id IN ?", userIds).Find(&users).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, utils.NewError(fmt.Errorf("sender user or approver user not found"), utils.ErrorBadRequest)
+		}
+		return nil, err
+	}
+
+	userMap := make(map[uint64]storage.User, 0)
+	//conver slices user to map
+	for _, user := range users {
+		userMap[user.Id] = user
+	}
+
+	approversMap := make(map[uint64]storage.ApproverSettings, 0)
+	settingApprovers := make([]storage.ApproverSettings, 0)
+	for _, setting := range approvers {
+		for _, v := range setting.ApproverIds {
+			app := storage.ApproverSettings{
+				ApproverId:   v,
+				SendUserId:   setting.SendUserId,
+				RecipientId:  userId,
+				ApproverName: userMap[v].UserName,
+				SendUserName: userMap[setting.SendUserId].UserName,
+			}
+			approversMap[v] = app
+			settingApprovers = append(settingApprovers, app)
+		}
+	}
+
+	//conver slices user to map
+	for _, user := range users {
+		userMap[user.Id] = user
+	}
+
+	// update all payment pendding
+	payments := make([]*storage.Payment, 0)
+	if err := s.db.Where("receiver_id = ? AND status = ?", userId, storage.PaymentStatusSent).Find(&payments).Error; err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return nil, err
+		}
+	}
+
+	//update approver for all payment
+	for i, payment := range payments {
+		approverMap := make(map[uint64]storage.Approver, 0)
+		for _, approver := range payment.Approvers {
+			approverMap[approver.ApproverId] = approver
+		}
+		newApprovers := make([]storage.Approver, 0)
+		for _, app := range settingApprovers {
+			approved := false
+			ap, ok := approverMap[app.ApproverId]
+			if ok {
+				approved = ap.IsApproved
+			}
+			newApprovers = append(newApprovers, storage.Approver{
+				ApproverId:   app.ApproverId,
+				ApproverName: app.ApproverName,
+				IsApproved:   approved,
+			})
+		}
+		payments[i].Approvers = newApprovers
+	}
+
+	// Save to DB
+	tx := s.db.Begin()
+
+	// delete all old approver setting
+	if err := tx.Where("recipient_id", userId).Delete(storage.ApproverSettings{}).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// save new data
+	if err := tx.Create(&settingApprovers).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// update payment
+	if len(payments) > 0 {
+		if err := tx.Save(&payments).Error; err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+	tx.Commit()
+	return settingApprovers, nil
 }
