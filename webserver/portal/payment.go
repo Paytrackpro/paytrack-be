@@ -73,6 +73,7 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment, isHave
 		payment.PaymentMethod = p.PaymentMethod
 		payment.PaymentAddress = p.PaymentAddress
 		payment.PaymentSettings = p.PaymentSettings
+		payment.Description = p.Description
 
 		if len(p.Details) > 0 {
 			amount, err := p.calculateAmount()
@@ -80,13 +81,9 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment, isHave
 				return err
 			}
 			payment.Amount = amount
-			payment.Description = ""
-			payment.HourlyRate = p.HourlyRate
 			payment.Details = p.Details
 		} else {
-			payment.HourlyRate = 0
 			payment.Details = nil
-			payment.Description = p.Description
 			payment.Amount = p.Amount
 		}
 		if payment.Amount == 0 {
@@ -152,7 +149,30 @@ type PaymentReject struct {
 	RejectionReason string `json:"rejectionReason"`
 }
 
+type BulkPaymentBTC struct {
+	ID             int          `json:"id"`
+	Rate           float64      `json:"rate"`
+	ConvertTime    int64        `json:"convertTime"`
+	PaymentAddress string       `json:"paymentAddress"`
+	PaymentMethod  utils.Method `json:"paymentMethod"`
+	PaymentToken   string       `json:"token"`
+}
+
+type BulkPaidRequests struct {
+	TxId        string           `json:"txId"`
+	PaymentList []BulkPaymentBTC `json:"paymentList"`
+}
+
 type BulkPaidRequest struct {
 	PaymentIds []int  `json:"paymentIds"`
 	TXID       string `json:"txid"`
+}
+
+type GetRateRequest struct {
+	Symbol utils.Method `json:"symbol"`
+}
+
+type GetRateResponse struct {
+	Rate        float64 `json:"rate"`
+	ConvertTime int64   `json:"convertTime"`
 }

@@ -163,7 +163,15 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 	return &payment, nil
 }
 
-func (s *Service) BulkPaidBTC(userId uint64, txId string, paymentIds []int) error {
+func (s *Service) BulkPaidBTC(userId uint64, txId string, bulkPays []portal.BulkPaymentBTC) error {
+	paymentIds := make([]int, 0)
+	bulkMap := make(map[int]portal.BulkPaymentBTC)
+
+	for _, pay := range bulkPays {
+		paymentIds = append(paymentIds, pay.ID)
+		bulkMap[pay.ID] = pay
+	}
+
 	payments := make([]*storage.Payment, 0)
 	if err := s.db.Where("id IN ?", paymentIds).Find(&payments).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -188,6 +196,16 @@ func (s *Service) BulkPaidBTC(userId uint64, txId string, paymentIds []int) erro
 		paym.TxId = txId
 		paym.PaidAt = time.Now()
 		paym.Status = storage.PaymentStatusPaid
+	}
+
+	//Update data
+	for _, pay := range payments {
+		id := int(pay.Id)
+		pay.ConvertRate = bulkMap[id].Rate
+		pay.PaymentMethod = bulkMap[id].PaymentMethod
+		pay.ConvertTime = time.Unix(bulkMap[id].ConvertTime, 0)
+		pay.PaymentAddress = bulkMap[id].PaymentAddress
+		pay.TxId = txId
 	}
 
 	if err := s.db.Save(&payments).Error; err != nil {

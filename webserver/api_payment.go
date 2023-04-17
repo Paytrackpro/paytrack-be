@@ -323,6 +323,33 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 	return fmt.Errorf("you do not have access")
 }
 
+func (a *apiPayment) getRate(w http.ResponseWriter, r *http.Request) {
+	var query portal.GetRateRequest
+	if err := utils.DecodeQuery(&query, r.URL.Query()); err != nil {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("symbol param is empty or not exist"), nil)
+		return
+	}
+
+	if query.Symbol == utils.PaymentTypeNotSet {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("symbol param is empty or not exist"), nil)
+		return
+	}
+
+	rate, err := a.service.GetRate(query.Symbol)
+	if err != nil {
+		log.Error(err)
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
+		return
+	}
+
+	res := portal.GetRateResponse{
+		Rate:        rate,
+		ConvertTime: time.Now().Unix(),
+	}
+
+	utils.ResponseOK(w, res)
+}
+
 // requestRate used for the requested user to request the cryptocurrency rate with USDT
 func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 	var f portal.PaymentRequestRate
@@ -601,20 +628,20 @@ func (a *apiPayment) rejectPayment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiPayment) bulkPaidBTC(w http.ResponseWriter, r *http.Request) {
-	var body portal.BulkPaidRequest
+	var body portal.BulkPaidRequests
 	err := a.parseJSONAndValidate(r, &body)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
 
-	if len(body.PaymentIds) == 0 {
+	if len(body.PaymentList) == 0 {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("list payment id can't be empty or nil"), utils.ErrorBadRequest), nil)
 		return
 	}
 
 	claims, _ := a.parseBearer(r)
-	if err := a.service.BulkPaidBTC(claims.Id, body.TXID, body.PaymentIds); err != nil {
+	if err := a.service.BulkPaidBTC(claims.Id, body.TxId, body.PaymentList); err != nil {
 		utils.Response(w, http.StatusForbidden, utils.InternalError.With(err), nil)
 		return
 	}
