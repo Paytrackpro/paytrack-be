@@ -103,6 +103,66 @@ func (s *Service) CreatePayment(userId uint64, userName string, request portal.P
 	return &payment, nil
 }
 
+func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest) (*storage.Payment, error) {
+	var payment storage.Payment
+	if err := s.db.First("id = ?", id, &payment).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, utils.NewError(fmt.Errorf("payment not found with id %d", id), utils.ErrorNotFound)
+		}
+		return nil, err
+	}
+
+	if userId == 0 || request.ReceiverId == userId {
+		// receiver or external update
+		// allow recipient update status to sent or confirmed
+		if payment.Status == storage.PaymentStatusSent || payment.Status == storage.PaymentStatusConfirmed {
+			payment.Status = request.Status
+		}
+		payment.TxId = request.TxId
+	} else {
+		// sender update
+		payment.Description = request.Description
+		payment.Details = request.Details
+		payment.HourlyRate = request.HourlyRate
+		payment.PaymentSettings = request.PaymentSettings
+		if len(request.Details) > 0 {
+			amount, err := calculateAmount(request)
+			if err != nil {
+				return nil, utils.NewError(err, utils.ErrorBadRequest)
+			}
+			payment.Amount = amount
+		} else {
+			payment.Amount = request.Amount
+		}
+
+		// use for sender update status from save as draft to sent
+		if payment.Status == storage.PaymentStatusSent && payment.Status != request.Status {
+			approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(approverSettings) > 0 {
+				approvers := storage.Approvers{}
+				for _, approver := range approverSettings {
+					approvers = append(approvers, storage.Approver{
+						ApproverId:   approver.Id,
+						ApproverName: approver.ApproverName,
+						IsApproved:   false,
+					})
+				}
+				payment.Approvers = approvers
+			}
+		}
+		payment.Status = request.Status
+	}
+
+	if err := s.db.Save(&payment).Error; err != nil {
+		return nil, err
+	}
+	return &payment, nil
+}
+
 func (s *Service) BulkPaidBTC(userId uint64, txId string, paymentIds []int) error {
 	payments := make([]*storage.Payment, 0)
 	if err := s.db.Where("id IN ?", paymentIds).Find(&payments).Error; err != nil {

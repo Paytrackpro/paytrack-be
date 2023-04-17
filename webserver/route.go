@@ -55,7 +55,7 @@ func (s *WebServer) Route() {
 			var paymentRouter = apiPayment{WebServer: s}
 			r.With(s.loggedInMiddleware).Post("/", paymentRouter.createPayment)
 			r.Get("/{id:[0-9]+}", paymentRouter.getPayment)
-			r.Post("/{id:[0-9]+}", paymentRouter.updatePayment)
+			r.Post("/{id:[0-9]+}", paymentRouter.updatePaymentx)
 			r.Post("/request-rate", paymentRouter.requestRate)
 			r.Post("/process", paymentRouter.processPayment)
 			r.Post("/approve", paymentRouter.approveRequest)

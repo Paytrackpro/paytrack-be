@@ -16,6 +16,57 @@ type apiPayment struct {
 	*WebServer
 }
 
+// User for sender and receiver
+func (a *apiPayment) updatePaymentx(w http.ResponseWriter, r *http.Request) {
+	var body portal.PaymentRequest
+	claims, _ := a.parseBearer(r)
+	var strId = chi.URLParam(r, "id")
+	paymentId := utils.Uint64(strId)
+	err := a.parseJSONAndValidate(r, &body)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+
+	if claims == nil {
+		// receiver is external
+		if utils.IsEmpty(body.Token) {
+			utils.Response(w, http.StatusForbidden, utils.NewError(fmt.Errorf("do not have access"), utils.ErrorBadRequest), nil)
+			return
+		}
+
+		if err := a.verifyTokenPayment(body.Token, paymentId); err != nil {
+			log.Error(err)
+			utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
+			return
+		}
+		payment, err := a.service.UpdatePayment(paymentId, 0, body)
+		if err != nil {
+			utils.Response(w, http.StatusInternalServerError, err, nil)
+			return
+		}
+
+		utils.ResponseOK(w, Map{
+			"payment": payment,
+			"token":   "",
+		}, nil)
+	} else if body.SenderId == claims.Id || body.ReceiverId == claims.Id {
+		// sender and receiver update
+		payment, err := a.service.UpdatePayment(paymentId, claims.Id, body)
+		if err != nil {
+			utils.Response(w, http.StatusInternalServerError, err, nil)
+			return
+		}
+
+		utils.ResponseOK(w, Map{
+			"payment": payment,
+			"token":   "",
+		}, nil)
+	} else {
+		utils.Response(w, http.StatusForbidden, utils.NewError(fmt.Errorf("do not have access"), utils.ErrorBadRequest), nil)
+	}
+}
+
 // updatePayment user can update the payment when the status still be created
 func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 	var f portal.PaymentRequest
@@ -157,6 +208,7 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 
 	payment, err := a.service.CreatePayment(userInfo.Id, userInfo.UserName, body)
 	if err != nil {
+		log.Error(err)
 		utils.Response(w, http.StatusOK, err, nil)
 		return
 	}
@@ -230,6 +282,17 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.ResponseOK(w, payment)
+}
+
+func (a *apiPayment) verifyTokenPayment(token string, paymentId uint64) error {
+	var plainText, err = a.crypto.Decrypt(token)
+	if err != nil {
+		return err
+	}
+	if plainText != utils.PaymentPlainText(paymentId) {
+		return fmt.Errorf("the token is invalid")
+	}
+	return nil
 }
 
 // verifyAccessPayment checking if the user is the requested user
