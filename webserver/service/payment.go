@@ -41,10 +41,6 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int) ([]storag
 	return payments, count, nil
 }
 
-// func (s *Service) GetListPayment(userId uint64, page, pageSize int) ([]storage.Payment, int64, error) {
-
-// }
-
 func (s *Service) CreatePayment(userId uint64, userName string, request portal.PaymentRequest) (*storage.Payment, error) {
 	var reciver storage.User
 	payment := storage.Payment{
@@ -82,21 +78,23 @@ func (s *Service) CreatePayment(userId uint64, userName string, request portal.P
 		payment.Amount = request.Amount
 	}
 
-	approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(approverSettings) > 0 {
-		approvers := storage.Approvers{}
-		for _, approver := range approverSettings {
-			approvers = append(approvers, storage.Approver{
-				ApproverId:   approver.Id,
-				ApproverName: approver.ApproverName,
-				IsApproved:   false,
-			})
+	if payment.Status == storage.PaymentStatusSent {
+		approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
+		if err != nil {
+			return nil, err
 		}
-		payment.Approvers = approvers
+
+		if len(approverSettings) > 0 {
+			approvers := storage.Approvers{}
+			for _, approver := range approverSettings {
+				approvers = append(approvers, storage.Approver{
+					ApproverId:   approver.Id,
+					ApproverName: approver.ApproverName,
+					IsApproved:   false,
+				})
+			}
+			payment.Approvers = approvers
+		}
 	}
 
 	if err := s.db.Save(&payment).Error; err != nil {
