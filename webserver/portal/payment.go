@@ -75,6 +75,7 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment, isHave
 		payment.PaymentMethod = p.PaymentMethod
 		payment.PaymentAddress = p.PaymentAddress
 		payment.PaymentSettings = p.PaymentSettings
+		payment.Description = p.Description
 
 		if len(p.Details) > 0 {
 			amount, err := p.calculateAmount()
@@ -82,13 +83,9 @@ func (p *PaymentRequest) Payment(userId uint64, payment *storage.Payment, isHave
 				return err
 			}
 			payment.Amount = amount
-			payment.Description = ""
-			payment.HourlyRate = p.HourlyRate
 			payment.Details = p.Details
 		} else {
-			payment.HourlyRate = 0
 			payment.Details = nil
-			payment.Description = p.Description
 			payment.Amount = p.Amount
 		}
 		if payment.Amount == 0 {
