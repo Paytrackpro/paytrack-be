@@ -105,7 +105,7 @@ func (s *Service) CreatePayment(userId uint64, userName string, request portal.P
 
 func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest) (*storage.Payment, error) {
 	var payment storage.Payment
-	if err := s.db.First("id = ?", id, &payment).Error; err != nil {
+	if err := s.db.First(&payment, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, utils.NewError(fmt.Errorf("payment not found with id %d", id), utils.ErrorNotFound)
 		}

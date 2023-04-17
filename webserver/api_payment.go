@@ -42,6 +42,7 @@ func (a *apiPayment) updatePaymentx(w http.ResponseWriter, r *http.Request) {
 		}
 		payment, err := a.service.UpdatePayment(paymentId, 0, body)
 		if err != nil {
+			log.Error(err)
 			utils.Response(w, http.StatusInternalServerError, err, nil)
 			return
 		}
@@ -54,6 +55,7 @@ func (a *apiPayment) updatePaymentx(w http.ResponseWriter, r *http.Request) {
 		// sender and receiver update
 		payment, err := a.service.UpdatePayment(paymentId, claims.Id, body)
 		if err != nil {
+			log.Error(err)
 			utils.Response(w, http.StatusInternalServerError, err, nil)
 			return
 		}
