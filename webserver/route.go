@@ -61,7 +61,7 @@ func (s *WebServer) Route() {
 			r.Post("/approve", paymentRouter.approveRequest)
 			r.Post("/reject", paymentRouter.rejectPayment)
 			r.Post("/bulk-paid-btc", paymentRouter.bulkPaidBTC)
-			r.With(s.loggedInMiddleware).Get("/list", paymentRouter.listPayments)
+			r.With(s.loggedInMiddleware).Get("/list", paymentRouter.listPaymentsx)
 			r.Get("/rate", paymentRouter.getRate)
 		})
 	})

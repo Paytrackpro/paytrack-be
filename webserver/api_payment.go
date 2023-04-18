@@ -468,6 +468,40 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, payment)
 }
 
+func (a *apiPayment) listPaymentsx(w http.ResponseWriter, r *http.Request) {
+	var query storage.PaymentFilter
+	if err := a.parseQueryAndValidate(r, &query); err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	claims, _ := a.parseBearer(r)
+
+	if query.RequestType == storage.PaymentTypeBulkPayBTC {
+		payments, count, err := a.service.GetBulkPaymentBTC(claims.Id, query.Page, query.Size)
+		if err != nil {
+			utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+			return
+		}
+
+		utils.ResponseOK(w, Map{
+			"payments": payments,
+			"count":    count,
+		})
+		return
+	}
+
+	payments, count, err := a.service.GetListPayments(claims.Id, claims.UserRole, query)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"payments": payments,
+		"count":    count,
+	})
+
+}
+
 func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	var f storage.PaymentFilter
 	if err := a.parseQueryAndValidate(r, &f); err != nil {

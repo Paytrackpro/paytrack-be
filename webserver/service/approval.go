@@ -85,6 +85,9 @@ func (s *Service) ApprovePaymentRequest(id, userId uint64, userName string) (*st
 func (s *Service) GetSettingOfApprover(id uint64) ([]storage.ApproverSettings, error) {
 	approvers := make([]storage.ApproverSettings, 0)
 	if err := s.db.Where("approver_id = ?", id).Find(&approvers).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return approvers, nil
+		}
 		return nil, err
 	}
 	return approvers, nil

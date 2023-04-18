@@ -163,6 +163,50 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 	return &payment, nil
 }
 
+func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request storage.PaymentFilter) ([]storage.Payment, int64, error) {
+	if request.Page == 1 {
+		request.Page = request.Page - 1
+	}
+	var count int64
+	payments := make([]storage.Payment, 0)
+	offset := request.Page * request.Size
+	builder := s.db
+	buildCount := s.db.Model(&storage.Payment{})
+	if request.RequestType == storage.PaymentTypeRequest {
+		builder = builder.Where("sender_id = ?", userId)
+		buildCount = buildCount.Where("sender_id = ?", userId)
+	} else if request.RequestType == storage.PaymentTypeReminder {
+		builder = builder.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
+		buildCount = buildCount.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
+		approvers, err := s.GetSettingOfApprover(userId)
+		if err != nil {
+			return nil, 0, err
+		}
+		for _, approver := range approvers {
+			builder = builder.Or("receiver_id = ? AND sender_id = ?", approver.RecipientId, approver.SendUserId)
+			buildCount = buildCount.Or("receiver_id = ? AND sender_id = ?", approver.RecipientId, approver.SendUserId)
+		}
+	} else {
+		if role != utils.UserRoleAdmin {
+			builder = builder.Where("receiver_id = ? OR sender_id = ?", userId, userId)
+			buildCount = buildCount.Where("receiver_id = ? OR sender_id = ?", userId, userId)
+		}
+	}
+
+	if err := buildCount.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := builder.Limit(request.Size).Offset(offset).Find(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, 0, nil
+		}
+		return nil, 0, err
+	}
+
+	return payments, count, nil
+}
+
 func (s *Service) BulkPaidBTC(userId uint64, txId string, bulkPays []portal.BulkPaymentBTC) error {
 	paymentIds := make([]int, 0)
 	bulkMap := make(map[int]portal.BulkPaymentBTC)
