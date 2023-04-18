@@ -25,11 +25,6 @@ type ticker struct {
 	Price  float64 `json:"price,string"`
 }
 
-type binanceError struct {
-	Code    int    `json:"code"`
-	Message string `json:"msg"`
-}
-
 type BittrexPrice struct {
 	Price   float64 `json:"lastTradeRate"`
 	BidRate float64 `json:"bidRate"`

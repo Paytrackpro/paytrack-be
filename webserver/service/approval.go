@@ -28,7 +28,7 @@ func NewService(conf Config, db *gorm.DB) *Service {
 	}
 }
 
-func (s *Service) ApprovePaymentRequest(id, userId uint64, userName string) (*storage.Payment, error) {
+func (s *Service) ApprovePaymentRequest(id, userId uint64) (*storage.Payment, error) {
 	var payment storage.Payment
 	if err := s.db.First(&payment, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -36,49 +36,16 @@ func (s *Service) ApprovePaymentRequest(id, userId uint64, userName string) (*st
 		}
 		return nil, err
 	}
-
-	// Get all approver for payment
-	approvers := make([]storage.ApproverSettings, 0)
-	if err := s.db.Where("send_user_id = ? AND recipient_id = ?", payment.SenderId, payment.ReceiverId).Find(&approvers).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("you do not have permission to approve this invoice")
-		}
-		return nil, err
-	}
-
-	// Check current user is approver
-	isApprover := false
-	for _, approver := range approvers {
+	for i, approver := range payment.Approvers {
 		if approver.ApproverId == userId {
-			isApprover = true
+			payment.Approvers[i].IsApproved = true
 		}
-	}
-
-	if !isApprover {
-		return nil, fmt.Errorf("you do not have permission to approve this invoice")
-	}
-
-	if len(payment.Approvers) == 0 {
-		payment.Approvers = append(payment.Approvers, storage.Approver{
-			ApproverId:   userId,
-			ApproverName: userName,
-		})
-	} else {
-		payment.Approvers = append(payment.Approvers, storage.Approver{
-			ApproverId:   userId,
-			ApproverName: userName,
-		})
-	}
-
-	if len(approvers) <= len(payment.Approvers) {
-		payment.Status = storage.PaymentStatusApproved
 	}
 
 	if err := s.db.Save(&payment).Error; err != nil {
 		return nil, err
 	}
 
-	payment.Status = storage.PaymentStatusApproved
 	return &payment, nil
 }
 

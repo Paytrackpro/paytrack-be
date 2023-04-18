@@ -88,7 +88,7 @@ func (s *Service) CreatePayment(userId uint64, userName string, request portal.P
 			approvers := storage.Approvers{}
 			for _, approver := range approverSettings {
 				approvers = append(approvers, storage.Approver{
-					ApproverId:   approver.Id,
+					ApproverId:   approver.ApproverId,
 					ApproverName: approver.ApproverName,
 					IsApproved:   false,
 				})
@@ -146,7 +146,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 				approvers := storage.Approvers{}
 				for _, approver := range approverSettings {
 					approvers = append(approvers, storage.Approver{
-						ApproverId:   approver.Id,
+						ApproverId:   approver.ApproverId,
 						ApproverName: approver.ApproverName,
 						IsApproved:   false,
 					})
