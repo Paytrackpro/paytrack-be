@@ -41,6 +41,172 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int) ([]storag
 	return payments, count, nil
 }
 
+func (s *Service) CreatePayment(userId uint64, userName string, request portal.PaymentRequest) (*storage.Payment, error) {
+	var reciver storage.User
+	payment := storage.Payment{
+		SenderId:        userId,
+		SenderName:      userName,
+		Description:     request.Description,
+		Details:         request.Details,
+		Status:          request.Status,
+		HourlyRate:      request.HourlyRate,
+		PaymentSettings: request.PaymentSettings,
+	}
+
+	// payment is internal
+	if request.ContactMethod == storage.PaymentTypeInternal {
+		if err := s.db.Where("id = ?", request.ReceiverId).First(&reciver).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return nil, utils.NewError(fmt.Errorf("receiver not found"), utils.ErrorBadRequest)
+			}
+			return nil, err
+		}
+		payment.ReceiverId = request.ReceiverId
+		payment.ReceiverName = reciver.UserName
+	} else {
+		// payment is external
+		payment.ExternalEmail = request.ExternalEmail
+	}
+
+	if len(request.Details) > 0 {
+		amount, err := calculateAmount(request)
+		if err != nil {
+			return nil, utils.NewError(err, utils.ErrorBadRequest)
+		}
+		payment.Amount = amount
+	} else {
+		payment.Amount = request.Amount
+	}
+
+	if payment.Status == storage.PaymentStatusSent {
+		approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(approverSettings) > 0 {
+			approvers := storage.Approvers{}
+			for _, approver := range approverSettings {
+				approvers = append(approvers, storage.Approver{
+					ApproverId:   approver.ApproverId,
+					ApproverName: approver.ApproverName,
+					IsApproved:   false,
+				})
+			}
+			payment.Approvers = approvers
+		}
+	}
+
+	if err := s.db.Save(&payment).Error; err != nil {
+		return nil, err
+	}
+	return &payment, nil
+}
+
+func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest) (*storage.Payment, error) {
+	var payment storage.Payment
+	if err := s.db.First(&payment, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, utils.NewError(fmt.Errorf("payment not found with id %d", id), utils.ErrorNotFound)
+		}
+		return nil, err
+	}
+
+	if userId == 0 || request.ReceiverId == userId {
+		// receiver or external update
+		// allow recipient update status to sent or confirmed
+		if payment.Status == storage.PaymentStatusSent || payment.Status == storage.PaymentStatusConfirmed {
+			payment.Status = request.Status
+		}
+		payment.TxId = request.TxId
+	} else {
+		// sender update
+		payment.Description = request.Description
+		payment.Details = request.Details
+		payment.HourlyRate = request.HourlyRate
+		payment.PaymentSettings = request.PaymentSettings
+		if len(request.Details) > 0 {
+			amount, err := calculateAmount(request)
+			if err != nil {
+				return nil, utils.NewError(err, utils.ErrorBadRequest)
+			}
+			payment.Amount = amount
+		} else {
+			payment.Amount = request.Amount
+		}
+
+		// use for sender update status from save as draft to sent
+		if payment.Status == storage.PaymentStatusSent && payment.Status != request.Status {
+			approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(approverSettings) > 0 {
+				approvers := storage.Approvers{}
+				for _, approver := range approverSettings {
+					approvers = append(approvers, storage.Approver{
+						ApproverId:   approver.ApproverId,
+						ApproverName: approver.ApproverName,
+						IsApproved:   false,
+					})
+				}
+				payment.Approvers = approvers
+			}
+		}
+		payment.Status = request.Status
+	}
+
+	if err := s.db.Save(&payment).Error; err != nil {
+		return nil, err
+	}
+	return &payment, nil
+}
+
+func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request storage.PaymentFilter) ([]storage.Payment, int64, error) {
+	if request.Page == 1 {
+		request.Page = request.Page - 1
+	}
+	var count int64
+	payments := make([]storage.Payment, 0)
+	offset := request.Page * request.Size
+	builder := s.db
+	buildCount := s.db.Model(&storage.Payment{})
+	if request.RequestType == storage.PaymentTypeRequest {
+		builder = builder.Where("sender_id = ?", userId)
+		buildCount = buildCount.Where("sender_id = ?", userId)
+	} else if request.RequestType == storage.PaymentTypeReminder {
+		builder = builder.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
+		buildCount = buildCount.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
+		approvers, err := s.GetSettingOfApprover(userId)
+		if err != nil {
+			return nil, 0, err
+		}
+		for _, approver := range approvers {
+			builder = builder.Or("receiver_id = ? AND sender_id = ?", approver.RecipientId, approver.SendUserId)
+			buildCount = buildCount.Or("receiver_id = ? AND sender_id = ?", approver.RecipientId, approver.SendUserId)
+		}
+	} else {
+		if role != utils.UserRoleAdmin {
+			builder = builder.Where("receiver_id = ? OR sender_id = ?", userId, userId)
+			buildCount = buildCount.Where("receiver_id = ? OR sender_id = ?", userId, userId)
+		}
+	}
+
+	if err := buildCount.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := builder.Limit(request.Size).Offset(offset).Find(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, 0, nil
+		}
+		return nil, 0, err
+	}
+
+	return payments, count, nil
+}
+
 func (s *Service) BulkPaidBTC(userId uint64, txId string, bulkPays []portal.BulkPaymentBTC) error {
 	paymentIds := make([]int, 0)
 	bulkMap := make(map[int]portal.BulkPaymentBTC)
@@ -91,4 +257,25 @@ func (s *Service) BulkPaidBTC(userId uint64, txId string, bulkPays []portal.Bulk
 		return &utils.InternalError
 	}
 	return nil
+}
+
+func calculateAmount(request portal.PaymentRequest) (float64, error) {
+	var amount float64
+	for i, detail := range request.Details {
+		if detail.Quantity > 0 {
+			var price = request.HourlyRate
+			if detail.Price > 0 {
+				price = detail.Price
+			}
+			cost := detail.Quantity * price
+			if cost != detail.Cost {
+				return 0, fmt.Errorf("payment detail amount is incorrect at line %d", i+1)
+			}
+			if detail.Cost <= 0 {
+				return 0, fmt.Errorf("payment detail cost must be greater than 0 at line %d", i+1)
+			}
+		}
+		amount += detail.Cost
+	}
+	return amount, nil
 }

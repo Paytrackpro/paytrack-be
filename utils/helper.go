@@ -36,7 +36,6 @@ func ResponseOK(w http.ResponseWriter, data interface{}, errs ...*Error) {
 }
 
 func Response(w http.ResponseWriter, httpStatus int, err error, data interface{}) {
-	w.WriteHeader(httpStatus)
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	res := response{
@@ -46,16 +45,19 @@ func Response(w http.ResponseWriter, httpStatus int, err error, data interface{}
 		Data:    data,
 	}
 
-	//TODO: Save error to files if need in here
 	if err != nil {
 		switch er := err.(type) {
 		case *Error:
 			res.Code = er.Code
 			res.Message = er.Error()
+			w.WriteHeader(er.HttpStatus())
 		default:
 			res.Message = err.Error()
 			res.Code = ErrorInternalCode
+			w.WriteHeader(httpStatus)
 		}
+	} else {
+		w.WriteHeader(httpStatus)
 	}
 	enc.Encode(res)
 }

@@ -37,7 +37,9 @@ type WebServer struct {
 	service   *service.Service
 }
 
-const authClaimsCtxKey = "authClaimsCtxKey"
+type key string
+
+const authClaimsCtxKey key = "authClaimsCtxKey"
 
 type Map map[string]interface{}
 
@@ -98,11 +100,6 @@ func (s *WebServer) parseJSON(r *http.Request, data interface{}) error {
 	var err = decoder.Decode(data)
 	defer r.Body.Close()
 	return err
-}
-
-func (s *WebServer) parseQuery(r *http.Request, data interface{}) error {
-	// for POST request, we use json decoder. So here we just handle the case of GET request
-	return schema.NewDecoder().Decode(data, r.URL.Query())
 }
 
 // parseQueryAndValidate parse the url query to a filter and validate the filter
