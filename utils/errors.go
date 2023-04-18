@@ -1,5 +1,7 @@
 package utils
 
+import "net/http"
+
 type Error struct {
 	error
 	Mess string
@@ -23,6 +25,21 @@ const (
 	ErrorForbidden         = 4030
 	ErrorSendMailFailed    = 5001
 )
+
+func (e *Error) HttpStatus() int {
+	switch e.Code {
+	case ErrorInternalCode:
+		return http.StatusInternalServerError
+	case ErrorBadRequest:
+		return http.StatusBadRequest
+	case ErrorNotFound:
+		return http.StatusNotFound
+	case ErrorForbidden:
+		return http.StatusForbidden
+	default:
+		return http.StatusOK
+	}
+}
 
 var SendMailFailed = &Error{
 	Mess: "send mail failed",

@@ -330,60 +330,37 @@ func (a *apiUser) disableOtp(w http.ResponseWriter, r *http.Request) {
 
 func (a *apiUser) updatePaymentSetting(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
-	var f portal.ListPaymentSettingRequest
-	err := a.parseJSON(r, &f)
+	var body portal.ListPaymentSettingRequest
+	err := a.parseJSON(r, &body)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
-	f.Id = claims.Id
 
-	list := portal.UserWithList{
-		List: make([]uint64, 0),
-	}
-
-	for _, approver := range f.List {
+	// validate list approvers
+	for _, approver := range body.List {
 		if approver.SendUserId == claims.Id {
 			e := fmt.Errorf("the sender can't be you")
 			utils.Response(w, http.StatusBadRequest, e, nil)
 			return
 		}
-		list.List = append(list.List, approver.SendUserId)
-		for _, v := range approver.ApproverIds {
-			list.List = append(list.List, v)
-			if v == claims.Id {
-				e := fmt.Errorf("not allow current user is approver")
+
+		for _, approverId := range approver.ApproverIds {
+			if approverId == claims.Id {
+				e := fmt.Errorf("the approver can't be you")
 				utils.Response(w, http.StatusBadRequest, e, nil)
 				return
 			}
 		}
 	}
 
-	var users []storage.User
-	//get all user on setting
-	if err := a.db.GetList(&list, &users); err != nil {
+	approverSetting, err := a.service.UpdateApproverSetting(claims.Id, body.List)
+	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
 
-	userMap := make(map[uint64]storage.User, 0)
-	//conver slices user to map
-	for _, user := range users {
-		userMap[user.Id] = user
-	}
-
-	// delete all old approver setting
-	if err := a.db.Delete(f, storage.ApproverSettings{}); err != nil {
-		utils.Response(w, http.StatusInternalServerError, err, nil)
-		return
-	}
-
-	if err := a.db.Create(f.MakeApproverSetting(claims.Id, userMap)); err != nil {
-		utils.Response(w, http.StatusInternalServerError, err, nil)
-		return
-	}
-
-	utils.ResponseOK(w, f.MakeApproverSetting(claims.Id, userMap))
+	utils.ResponseOK(w, approverSetting)
 }
 
 func (a *apiUser) getPaymentSetting(w http.ResponseWriter, r *http.Request) {
