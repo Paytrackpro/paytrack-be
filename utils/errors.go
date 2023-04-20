@@ -17,10 +17,11 @@ const (
 	StatusOK               = 2000
 	ErrorInternalCode      = 4000
 	ErrorObjectExist       = 4001
-	ErrorloginFail         = 4002
+	ErrorLoginFail         = 4002
 	ErrorInvalidCredential = 4003
 	ErrorBodyRequited      = 4004
 	ErrorBadRequest        = 4010
+	ErrorUnauthorized      = 4011
 	ErrorNotFound          = 4040
 	ErrorForbidden         = 4030
 	ErrorSendMailFailed    = 5001
@@ -30,12 +31,16 @@ func (e *Error) HttpStatus() int {
 	switch e.Code {
 	case ErrorInternalCode:
 		return http.StatusInternalServerError
-	case ErrorBadRequest:
+	case ErrorBadRequest, ErrorObjectExist, ErrorLoginFail, ErrorInvalidCredential, ErrorBodyRequited:
 		return http.StatusBadRequest
 	case ErrorNotFound:
 		return http.StatusNotFound
 	case ErrorForbidden:
 		return http.StatusForbidden
+	case ErrorSendMailFailed:
+		return http.StatusBadGateway
+	case ErrorUnauthorized:
+		return http.StatusUnauthorized
 	default:
 		return http.StatusOK
 	}
@@ -63,12 +68,12 @@ var InternalError = Error{
 
 var LoginFail = &Error{
 	Mess: "Your username or password is incorrect",
-	Code: ErrorloginFail,
+	Code: ErrorLoginFail,
 }
 
 var InvalidCredential = &Error{
 	Mess: "your credential is invalid",
-	Code: ErrorloginFail,
+	Code: ErrorLoginFail,
 }
 
 func (e *Error) Error() string {
