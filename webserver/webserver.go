@@ -136,7 +136,7 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 				return []byte(s.conf.HmacSecretKey), nil
 			})
 			if err != nil {
-				utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
+				utils.Response(w, http.StatusUnauthorized, utils.NewError(err, utils.ErrorUnauthorized), nil)
 				return
 			}
 			ctx := context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)
