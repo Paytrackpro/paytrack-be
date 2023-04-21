@@ -35,6 +35,7 @@ type WebServer struct {
 	mail      *email.MailClient
 	crypto    *utils.Cryptography
 	service   *service.Service
+	timeState *actionTimeState
 }
 
 type key string
@@ -59,6 +60,7 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 	}
 
 	sv := service.NewService(c.Service, db.GetDB())
+	ts := newTimeState(make([]lastSeenUser, 0), false)
 
 	return &WebServer{
 		mux:       chi.NewRouter(),
@@ -68,12 +70,14 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 		mail:      mailClient,
 		crypto:    crypto,
 		service:   sv,
+		timeState: ts,
 	}, nil
 }
 
 func (s *WebServer) Run() error {
 	s.Route()
 	log.Info("mgmtng is running on port:", s.conf.Port)
+	runTimeTask(s)
 	var server = http.Server{
 		Addr:              fmt.Sprintf(":%d", s.conf.Port),
 		Handler:           s.mux,
@@ -139,6 +143,7 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 				utils.Response(w, http.StatusUnauthorized, utils.NewError(err, utils.ErrorUnauthorized), nil)
 				return
 			}
+			checkAndAddSeenUser(s, int(claim.Id))
 			ctx := context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
