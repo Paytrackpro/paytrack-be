@@ -86,6 +86,7 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 	utils.SetValue(&user.Email, req.Email)
 	utils.SetValue(&user.Otp, req.Otp)
 	user.PaymentSettings = req.PaymentSettings
+	user.HourlyLaborRate = req.HourlyLaborRate
 
 	if err := a.db.CheckDuplicate(user); err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
