@@ -81,6 +81,7 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 		utils.Response(w, http.StatusNotFound, err, nil)
 		return
 	}
+	var preDisplayName = user.DisplayName
 	utils.SetValue(&user.DisplayName, req.DisplayName)
 	utils.SetValue(&user.Email, req.Email)
 	utils.SetValue(&user.Otp, req.Otp)
@@ -97,6 +98,10 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 			return
 		}
 		user.PasswordHash = string(hash)
+	}
+	//if Display Name was change, sync with payment data
+	if len(req.DisplayName) > 0 && strings.Compare(req.DisplayName, preDisplayName) != 0 {
+		a.db.SyncPaymentUser(int(user.Id), req.DisplayName)
 	}
 	err = a.db.UpdateUser(user)
 

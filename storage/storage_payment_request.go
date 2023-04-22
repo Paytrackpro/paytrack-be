@@ -11,6 +11,10 @@ import (
 	"gorm.io/gorm"
 )
 
+type PaymentStorage interface {
+	SyncPaymentUser(uID int, displayName string)
+}
+
 const (
 	PaymentTypeRequest    = "request"
 	PaymentTypeReminder   = "reminder"
@@ -243,4 +247,15 @@ func (f *PaymentFilter) Sortable() map[string]bool {
 		"status":    true,
 		"amount":    true,
 	}
+}
+
+// Sync Payment data when user Display name was changed
+func (p *psql) SyncPaymentUser(uID int, displayName string) {
+	//update if sender is updated user
+	p.db.Model(&Payment{}).
+		Where("sender_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, PaymentStatusPaid, PaymentStatusRejected).
+		UpdateColumn("sender_disp_name", displayName)
+	//update if receiver is updated user
+	p.db.Model(&Payment{}).Where("receiver_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, PaymentStatusPaid, PaymentStatusRejected).
+		UpdateColumn("receiver_disp_name", displayName)
 }
