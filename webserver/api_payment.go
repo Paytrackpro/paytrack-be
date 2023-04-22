@@ -124,7 +124,7 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payment, err := a.service.CreatePayment(userInfo.Id, userInfo.UserName, body)
+	payment, err := a.service.CreatePayment(userInfo.Id, userInfo.UserName, userInfo.DisplayName, body)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusOK, err, nil)
@@ -331,6 +331,7 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		syncPaymentDisplayName(payments)
 		utils.ResponseOK(w, Map{
 			"payments": payments,
 			"count":    count,
@@ -343,11 +344,22 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
+	syncPaymentDisplayName(payments)
 	utils.ResponseOK(w, Map{
 		"payments": payments,
 		"count":    count,
 	})
+}
 
+func syncPaymentDisplayName(payments []storage.Payment) {
+	for i, payment := range payments {
+		if len(payment.SenderDispName) == 0 {
+			payments[i].SenderDispName = payment.SenderName
+		}
+		if len(payment.ReceiverDispName) == 0 {
+			payments[i].ReceiverDispName = payment.ReceiverName
+		}
+	}
 }
 
 func (a *apiPayment) approveRequest(w http.ResponseWriter, r *http.Request) {

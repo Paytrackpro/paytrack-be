@@ -41,11 +41,12 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int) ([]storag
 	return payments, count, nil
 }
 
-func (s *Service) CreatePayment(userId uint64, userName string, request portal.PaymentRequest) (*storage.Payment, error) {
+func (s *Service) CreatePayment(userId uint64, userName string, displayName string, request portal.PaymentRequest) (*storage.Payment, error) {
 	var reciver storage.User
 	payment := storage.Payment{
 		SenderId:        userId,
 		SenderName:      userName,
+		SenderDispName:  displayName,
 		Description:     request.Description,
 		Details:         request.Details,
 		Status:          request.Status,
@@ -63,6 +64,13 @@ func (s *Service) CreatePayment(userId uint64, userName string, request portal.P
 		}
 		payment.ReceiverId = request.ReceiverId
 		payment.ReceiverName = reciver.UserName
+		payment.ReceiverDispName = reciver.DisplayName
+		if len(payment.SenderDispName) == 0 {
+			payment.SenderDispName = payment.SenderName
+		}
+		if len(payment.ReceiverDispName) == 0 {
+			payment.ReceiverDispName = payment.ReceiverName
+		}
 	} else {
 		// payment is external
 		payment.ExternalEmail = request.ExternalEmail
