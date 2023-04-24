@@ -127,7 +127,7 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//update last seen for User
-	checkAndAddSeenUser(a.WebServer, int(user.Id))
+	a.service.TimeState.SaveUser[int(user.Id)] = time.Now()
 	utils.ResponseOK(w, Map{
 		"token":    tokenString,
 		"userInfo": user,
@@ -192,7 +192,7 @@ func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//update last seen for User
-	checkAndAddSeenUser(a.WebServer, int(user.Id))
+	a.service.TimeState.SaveUser[int(user.Id)] = time.Now()
 	utils.ResponseOK(w, Map{
 		"token":    tokenString,
 		"userInfo": user,

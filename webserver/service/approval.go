@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"time"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
@@ -18,6 +19,7 @@ type Service struct {
 	db              *gorm.DB
 	exchange        string
 	coinMaketCapKey string
+	TimeState       ActionTimeState
 }
 
 func NewService(conf Config, db *gorm.DB) *Service {
@@ -25,6 +27,7 @@ func NewService(conf Config, db *gorm.DB) *Service {
 		db:              db,
 		exchange:        conf.Exchange,
 		coinMaketCapKey: conf.CoimarketcapKey,
+		TimeState:       ActionTimeState{make(map[int]time.Time), false},
 	}
 }
 
