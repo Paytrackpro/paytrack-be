@@ -59,6 +59,7 @@ type UpdateUserRequest struct {
 	UserId          int                      `json:"userId"`
 	Otp             bool                     `json:"otp"`
 	PaymentSettings []storage.PaymentSetting `json:"paymentSettings"`
+	HourlyLaborRate float64                  `json:"hourlyLaborRate"`
 }
 
 type UserWithList struct {

@@ -42,7 +42,7 @@ func (e *Error) HttpStatus() int {
 	case ErrorUnauthorized:
 		return http.StatusUnauthorized
 	default:
-		return http.StatusOK
+		return http.StatusInternalServerError
 	}
 }
 
