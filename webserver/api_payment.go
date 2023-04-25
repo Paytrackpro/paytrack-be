@@ -331,7 +331,6 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		syncPaymentDisplayName(payments)
 		utils.ResponseOK(w, Map{
 			"payments": payments,
 			"count":    count,
@@ -344,22 +343,10 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
-	syncPaymentDisplayName(payments)
 	utils.ResponseOK(w, Map{
 		"payments": payments,
 		"count":    count,
 	})
-}
-
-func syncPaymentDisplayName(payments []storage.Payment) {
-	for i, payment := range payments {
-		if len(payment.SenderDispName) == 0 {
-			payments[i].SenderDispName = payment.SenderName
-		}
-		if len(payment.ReceiverDispName) == 0 {
-			payments[i].ReceiverDispName = payment.ReceiverName
-		}
-	}
 }
 
 func (a *apiPayment) approveRequest(w http.ResponseWriter, r *http.Request) {
