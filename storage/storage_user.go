@@ -52,7 +52,6 @@ type User struct {
 	LastSeen        time.Time       `json:"lastSeen"`
 	Secret          string          `json:"-"`
 	Otp             bool            `json:"otp"`
-	HourlyLaborRate float64         `json:"hourlyLaborRate"`
 }
 
 func (User) TableName() string {

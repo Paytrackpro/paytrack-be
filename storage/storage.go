@@ -20,7 +20,6 @@ type Storage interface {
 	Delete(d DeleteFilter, obj interface{}) error
 	GetDB() *gorm.DB
 	UserStorage
-	PaymentStorage
 }
 
 type DeleteFilter interface {

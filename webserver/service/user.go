@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"strings"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
@@ -23,7 +24,7 @@ func (s *Service) GetUserInfo(id uint64) (storage.User, error) {
 
 func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (storage.User, error) {
 	var user storage.User
-	if err := s.db.Where("id = ?", id).Find(&user).Error; err != nil {
+	if err := s.db.Where("id = ?", id).First(&user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return user, utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
 		}
@@ -40,11 +41,17 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (
 		return user, err
 	}
 
-	utils.SetValue(&user.DisplayName, userInfo.DisplayName)
 	utils.SetValue(&user.Email, userInfo.Email)
 	utils.SetValue(&user.Otp, userInfo.Otp)
 	utils.SetValue(&user.HourlyLaborRate, userInfo.HourlyLaborRate)
 	user.PaymentSettings = userInfo.PaymentSettings
+
+	//if Display Name was change, sync with payment data
+	if len(userInfo.DisplayName) > 0 && strings.Compare(userInfo.DisplayName, user.DisplayName) != 0 {
+		s.SyncPaymentUser(int(user.Id), userInfo.DisplayName)
+	}
+
+	utils.SetValue(&user.DisplayName, userInfo.DisplayName)
 
 	if !utils.IsEmpty(userInfo.Password) {
 		hash, err := bcrypt.GenerateFromPassword([]byte(userInfo.Password), bcrypt.DefaultCost)

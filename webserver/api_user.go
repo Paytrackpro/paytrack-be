@@ -102,8 +102,9 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 	}
 	//if Display Name was change, sync with payment data
 	if len(req.DisplayName) > 0 && strings.Compare(req.DisplayName, preDisplayName) != 0 {
-		a.db.SyncPaymentUser(int(user.Id), req.DisplayName)
+		a.service.SyncPaymentUser(int(user.Id), req.DisplayName)
 	}
+
 	err = a.db.UpdateUser(user)
 
 	if err != nil {
@@ -136,6 +137,7 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 	user, err := a.service.UpdateUserInfo(claims.Id, body)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
 	}
 
 	utils.ResponseOK(w, user)
