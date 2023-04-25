@@ -21,7 +21,7 @@ type apiUser struct {
 
 func (a *apiUser) info(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
-	user, err := a.db.QueryUser(storage.UserFieldId, claims.Id)
+	user, err := a.service.GetUserInfo(claims.Id)
 	if err != nil {
 		utils.Response(w, http.StatusNotFound, err, nil)
 	} else {
@@ -126,14 +126,19 @@ func (a *apiUser) adminUpdateUser(w http.ResponseWriter, r *http.Request) {
 func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
 
-	var f portal.UpdateUserRequest
-	err := a.parseJSONAndValidate(r, &f)
+	var body portal.UpdateUserRequest
+	err := a.parseJSONAndValidate(r, &body)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
-	f.UserId = int(claims.Id)
-	a.updateUser(w, f)
+
+	user, err := a.service.UpdateUserInfo(claims.Id, body)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+	}
+
+	utils.ResponseOK(w, user)
 }
 
 func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
