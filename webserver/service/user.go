@@ -17,6 +17,7 @@ func (s *Service) GetUserInfo(id uint64) (storage.User, error) {
 		if err == gorm.ErrRecordNotFound {
 			return user, utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
 		}
+		log.Error("GetUserInfo:get user info fail with error: ", err)
 		return user, err
 	}
 	return user, nil
@@ -28,6 +29,7 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (
 		if err == gorm.ErrRecordNotFound {
 			return user, utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
 		}
+		log.Error("UpdateUserInfo:get user fail with error: ", err)
 		return user, err
 	}
 
@@ -38,6 +40,7 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (
 		if err == nil {
 			return user, fmt.Errorf("the email is already taken")
 		}
+		log.Error("UpdateUserInfo:check email duplicate fail with error: ", err)
 		return user, err
 	}
 
@@ -62,6 +65,7 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (
 	}
 
 	if err := s.db.Save(&user).Error; err != nil {
+		log.Error("UpdateUserInfo:save user fail with error: ", err)
 		return user, err
 	}
 
