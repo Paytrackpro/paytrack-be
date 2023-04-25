@@ -37,7 +37,6 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (
 		if err == nil {
 			return user, fmt.Errorf("the email is already taken")
 		}
-		return user, err
 	}
 
 	utils.SetValue(&user.DisplayName, userInfo.DisplayName)
