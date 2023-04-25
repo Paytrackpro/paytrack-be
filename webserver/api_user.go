@@ -75,7 +75,7 @@ func (a *apiUser) infoWithId(w http.ResponseWriter, r *http.Request) {
 }
 
 // This function use for update user for admin and user
-func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest) {
+func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest, adminUpdate bool) {
 	user, err := a.db.QueryUser(storage.UserFieldId, req.UserId)
 	if err != nil {
 		utils.Response(w, http.StatusNotFound, err, nil)
@@ -83,13 +83,19 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 	}
 	utils.SetValue(&user.DisplayName, req.DisplayName)
 	utils.SetValue(&user.Email, req.Email)
-	utils.SetValue(&user.Otp, req.Otp)
-	user.PaymentSettings = req.PaymentSettings
+	//if admin update, otp flag is reset OTP. If normal user update, set OTP flag
+	if !adminUpdate || (adminUpdate && req.Otp) {
+		utils.SetValue(&user.Otp, req.Otp)
+	}
+
+	utils.SetValue(&user.UserName, req.UserName)
+	utils.SetValue(&user.Locked, req.Locked)
 
 	if err := a.db.CheckDuplicate(user); err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
+
 	if !utils.IsEmpty(req.Password) {
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
@@ -114,7 +120,17 @@ func (a *apiUser) adminUpdateUser(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
-	a.updateUser(w, f)
+	a.updateUser(w, f, true)
+}
+
+func (a *apiUser) adminDeleteUser(w http.ResponseWriter, r *http.Request) {
+	var f portal.UpdateUserRequest
+	err := a.parseJSONAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	a.db.GetDB().Where("id = ?", f.UserId).Delete(&storage.User{})
 }
 
 func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {

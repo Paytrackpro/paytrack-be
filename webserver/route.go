@@ -48,6 +48,7 @@ func (s *WebServer) Route() {
 				var userRouter = apiUser{WebServer: s}
 				r.Get("/info/{id}", userRouter.infoWithId)
 				r.Put("/info", userRouter.adminUpdateUser)
+				r.Put("/delete", userRouter.adminDeleteUser)
 				r.Get("/list", userRouter.getListUsers)
 			})
 		})

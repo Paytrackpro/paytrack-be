@@ -51,6 +51,7 @@ func (f RegisterForm) User() (*storage.User, error) {
 }
 
 type UpdateUserRequest struct {
+	UserName        string                   `json:"userName"`
 	DisplayName     string                   `json:"displayName"`
 	Password        string                   `json:"password"`
 	Email           string                   `validate:"omitempty,email" json:"email"`
@@ -60,6 +61,7 @@ type UpdateUserRequest struct {
 	Otp             bool                     `json:"otp"`
 	PaymentSettings []storage.PaymentSetting `json:"paymentSettings"`
 	HourlyLaborRate float64                  `json:"hourlyLaborRate"`
+	Locked          bool                     `json:"locked"`
 }
 
 type UserWithList struct {

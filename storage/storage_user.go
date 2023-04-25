@@ -52,6 +52,7 @@ type User struct {
 	Secret          string          `json:"-"`
 	Otp             bool            `json:"otp"`
 	HourlyLaborRate float64         `json:"hourlyLaborRate"`
+	Locked          bool            `json:"locked"`
 }
 
 func (User) TableName() string {
