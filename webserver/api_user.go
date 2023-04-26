@@ -130,6 +130,7 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 	user, err := a.service.UpdateUserInfo(claims.Id, body)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
 	}
 
 	utils.ResponseOK(w, user)
