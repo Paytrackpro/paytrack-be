@@ -23,7 +23,7 @@ func (s *Service) GetUserInfo(id uint64) (storage.User, error) {
 
 func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (storage.User, error) {
 	var user storage.User
-	if err := s.db.Where("id = ?", id).Find(&user).Error; err != nil {
+	if err := s.db.Where("id = ?", id).First(&user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return user, utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
 		}
@@ -33,11 +33,13 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (
 	// check email duplicate
 	if !utils.IsEmpty(userInfo.Email) {
 		var oldUser storage.User
-		var err = s.db.Where("email", user.Email).Not("id", user.Id).First(&oldUser).Error
+		var err = s.db.Debug().Where("email", userInfo.Email).Not("id", user.Id).First(&oldUser).Error
 		if err == nil {
 			return user, fmt.Errorf("the email is already taken")
+		} else if err != gorm.ErrRecordNotFound {
+			return user, err
 		}
-		return user, err
+
 	}
 
 	utils.SetValue(&user.DisplayName, userInfo.DisplayName)
