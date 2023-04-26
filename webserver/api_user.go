@@ -100,7 +100,7 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 		}
 		user.PasswordHash = string(hash)
 	}
-	//if Display Name was change, sync with payment data
+	// if user.DisplayName was changed, sync with payment data
 	if len(req.DisplayName) > 0 && strings.Compare(req.DisplayName, preDisplayName) != 0 {
 		a.service.SyncPaymentUser(int(user.Id), req.DisplayName)
 	}

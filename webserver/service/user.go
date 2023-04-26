@@ -49,7 +49,7 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (
 	utils.SetValue(&user.HourlyLaborRate, userInfo.HourlyLaborRate)
 	user.PaymentSettings = userInfo.PaymentSettings
 
-	//if Display Name was change, sync with payment data
+	// if user.DisplayName was changed, sync with payment data
 	if len(userInfo.DisplayName) > 0 && strings.Compare(userInfo.DisplayName, user.DisplayName) != 0 {
 		s.SyncPaymentUser(int(user.Id), userInfo.DisplayName)
 	}

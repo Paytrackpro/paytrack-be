@@ -142,32 +142,32 @@ func (a *PaymentDetails) Scan(value interface{}) error {
 }
 
 type Payment struct {
-	Id               uint64          `gorm:"primarykey" json:"id"`
-	SenderId         uint64          `json:"senderId"`
-	SenderName       string          `json:"senderName"`
-	SenderDispName   string          `json:"senderDispName"`
-	ReceiverId       uint64          `json:"receiverId"`
-	ReceiverName     string          `json:"receiverName"`
-	ReceiverDispName string          `json:"receiverDispName"`
-	ExternalEmail    string          `json:"externalEmail"`
-	Amount           float64         `json:"amount"`
-	Description      string          `json:"description"`
-	HourlyRate       float64         `json:"hourlyRate"`
-	PaymentSettings  PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
-	Approvers        Approvers       `json:"approvers" gorm:"type:jsonb"`
-	Details          PaymentDetails  `json:"details" gorm:"type:jsonb"`
-	ConvertRate      float64         `json:"convertRate"`
-	ConvertTime      time.Time       `json:"convertTime"`
-	ExpectedAmount   float64         `json:"expectedAmount"`
-	TxId             string          `json:"txId"`
-	Status           PaymentStatus   `json:"status"`
-	PaymentMethod    utils.Method    `json:"paymentMethod"`
-	PaymentAddress   string          `json:"paymentAddress"`
-	ContactMethod    PaymentContact  `json:"contactMethod"`
-	RejectionReason  string          `json:"rejectionReason"`
-	CreatedAt        time.Time       `json:"createdAt"`
-	SentAt           time.Time       `json:"sentAt"`
-	PaidAt           time.Time       `json:"paidAt"`
+	Id                  uint64          `gorm:"primarykey" json:"id"`
+	SenderId            uint64          `json:"senderId"`
+	SenderName          string          `json:"senderName"`
+	SenderDisplayName   string          `json:"senderDisplayName"`
+	ReceiverId          uint64          `json:"receiverId"`
+	ReceiverName        string          `json:"receiverName"`
+	ReceiverDisplayName string          `json:"receiverDisplayName"`
+	ExternalEmail       string          `json:"externalEmail"`
+	Amount              float64         `json:"amount"`
+	Description         string          `json:"description"`
+	HourlyRate          float64         `json:"hourlyRate"`
+	PaymentSettings     PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
+	Approvers           Approvers       `json:"approvers" gorm:"type:jsonb"`
+	Details             PaymentDetails  `json:"details" gorm:"type:jsonb"`
+	ConvertRate         float64         `json:"convertRate"`
+	ConvertTime         time.Time       `json:"convertTime"`
+	ExpectedAmount      float64         `json:"expectedAmount"`
+	TxId                string          `json:"txId"`
+	Status              PaymentStatus   `json:"status"`
+	PaymentMethod       utils.Method    `json:"paymentMethod"`
+	PaymentAddress      string          `json:"paymentAddress"`
+	ContactMethod       PaymentContact  `json:"contactMethod"`
+	RejectionReason     string          `json:"rejectionReason"`
+	CreatedAt           time.Time       `json:"createdAt"`
+	SentAt              time.Time       `json:"sentAt"`
+	PaidAt              time.Time       `json:"paidAt"`
 }
 
 type PaymentFilter struct {
