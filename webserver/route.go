@@ -17,7 +17,7 @@ func (s *WebServer) Route() {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
-	// This api for notice server is up and running
+	// The home route notifies that the API is up and running
 	s.mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("MGMT-NG API is up and running"))
 	})
