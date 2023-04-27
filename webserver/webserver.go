@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"code.cryptopower.dev/mgmt-ng/be/email"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
@@ -141,7 +140,7 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 				utils.Response(w, http.StatusUnauthorized, utils.NewError(err, utils.ErrorUnauthorized), nil)
 				return
 			}
-			s.service.TimeState.SaveUser[int(claim.Id)] = time.Now()
+			s.service.SetLastSeen(int(claim.Id))
 			ctx := context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return

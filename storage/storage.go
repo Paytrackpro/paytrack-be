@@ -78,7 +78,7 @@ func (p *psql) GetById(id interface{}, obj interface{}) error {
 }
 
 func (p *psql) GetList(f Filter, obj interface{}) error {
-	err := f.BindQuery(p.db).Debug().Find(obj).Error
+	err := f.BindQuery(p.db).Find(obj).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil
 	}

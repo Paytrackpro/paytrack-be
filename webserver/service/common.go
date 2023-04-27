@@ -6,30 +6,45 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 )
 
-const UserFieldLastSeen = "last_seen"
+const userFieldLastSeen = "last_seen"
 
-type ActionTimeState struct {
-	SaveUser    map[int]time.Time
-	TaskRunning bool
+type actionTimeState struct {
+	saveUser    map[int]time.Time
+	taskRunning bool
 }
 
-func (s *Service) QueryUpdateUser(field string, value interface{}, userID int) error {
+func NewActionTime() *actionTimeState {
+	return &actionTimeState{
+		saveUser:    make(map[int]time.Time),
+		taskRunning: false,
+	}
+}
+
+func (s *Service) IsTimeStateRunning() bool {
+	return s.timeState.taskRunning
+}
+
+func (s *Service) SetLastSeen(id int) {
+	s.timeState.saveUser[id] = time.Now()
+}
+
+func (s *Service) queryUpdateUser(field string, value interface{}, userID int) error {
 	var err = s.db.Model(&storage.User{}).Where("id = ?", userID).Update(field, value).Error
 	return err
 }
 
 func (s *Service) RunTimeTask() {
-	//if the task is not running, launch the task
-	if !s.TimeState.TaskRunning {
-		s.TimeState.TaskRunning = true
+	// if the task is not running, launch the task
+	if !s.timeState.taskRunning {
+		s.timeState.taskRunning = true
 		go func() {
-			//Check last seen status once every 5 minutes
-			for range time.Tick(time.Minute * 5) {
-				if len(s.TimeState.SaveUser) > 0 {
-					for key, value := range s.TimeState.SaveUser {
-						s.QueryUpdateUser(UserFieldLastSeen, value, key)
+			// Check last seen status once every 2 minutes
+			for range time.Tick(time.Minute * 2) {
+				if len(s.timeState.saveUser) > 0 {
+					for key, value := range s.timeState.saveUser {
+						s.queryUpdateUser(userFieldLastSeen, value, key)
 					}
-					s.TimeState.SaveUser = make(map[int]time.Time)
+					s.timeState.saveUser = make(map[int]time.Time)
 				}
 			}
 		}()
