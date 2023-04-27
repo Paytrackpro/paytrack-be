@@ -126,6 +126,8 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
+	//update last seen for User
+	a.service.SetLastSeen(int(user.Id))
 	utils.ResponseOK(w, Map{
 		"token":    tokenString,
 		"userInfo": user,
@@ -188,6 +190,9 @@ func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
+
+	//update last seen for User
+	a.service.SetLastSeen(int(user.Id))
 	utils.ResponseOK(w, Map{
 		"token":    tokenString,
 		"userInfo": user,
