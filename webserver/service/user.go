@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"strings"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
@@ -16,6 +17,7 @@ func (s *Service) GetUserInfo(id uint64) (storage.User, error) {
 		if err == gorm.ErrRecordNotFound {
 			return user, utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
 		}
+		log.Error("GetUserInfo:get user info fail with error: ", err)
 		return user, err
 	}
 	return user, nil
@@ -27,6 +29,7 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (
 		if err == gorm.ErrRecordNotFound {
 			return user, utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
 		}
+		log.Error("UpdateUserInfo:get user fail with error: ", err)
 		return user, err
 	}
 
@@ -39,14 +42,21 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (
 		} else if err != gorm.ErrRecordNotFound {
 			return user, err
 		}
-
+		log.Error("UpdateUserInfo:check email duplicate fail with error: ", err)
+		return user, err
 	}
 
-	utils.SetValue(&user.DisplayName, userInfo.DisplayName)
 	utils.SetValue(&user.Email, userInfo.Email)
 	utils.SetValue(&user.Otp, userInfo.Otp)
 	utils.SetValue(&user.HourlyLaborRate, userInfo.HourlyLaborRate)
 	user.PaymentSettings = userInfo.PaymentSettings
+
+	// if user.DisplayName was changed, sync with payment data
+	if len(userInfo.DisplayName) > 0 && strings.Compare(userInfo.DisplayName, user.DisplayName) != 0 {
+		s.SyncPaymentUser(int(user.Id), userInfo.DisplayName)
+	}
+
+	utils.SetValue(&user.DisplayName, userInfo.DisplayName)
 
 	if !utils.IsEmpty(userInfo.Password) {
 		hash, err := bcrypt.GenerateFromPassword([]byte(userInfo.Password), bcrypt.DefaultCost)
@@ -57,6 +67,7 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (
 	}
 
 	if err := s.db.Save(&user).Error; err != nil {
+		log.Error("UpdateUserInfo:save user fail with error: ", err)
 		return user, err
 	}
 
