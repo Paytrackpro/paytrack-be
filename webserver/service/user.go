@@ -34,16 +34,15 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest) (
 	}
 
 	// check email duplicate
-	if !utils.IsEmpty(userInfo.Email) {
+	if !utils.IsEmpty(userInfo.Email) && user.Email != userInfo.Email {
 		var oldUser storage.User
 		var err = s.db.Debug().Where("email", userInfo.Email).Not("id", user.Id).First(&oldUser).Error
 		if err == nil {
 			return user, fmt.Errorf("the email is already taken")
 		} else if err != gorm.ErrRecordNotFound {
+			log.Error("UpdateUserInfo:check email duplicate fail with error: ", err)
 			return user, err
 		}
-		log.Error("UpdateUserInfo:check email duplicate fail with error: ", err)
-		return user, err
 	}
 
 	utils.SetValue(&user.Email, userInfo.Email)
