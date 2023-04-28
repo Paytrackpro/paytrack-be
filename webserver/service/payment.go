@@ -41,16 +41,17 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int) ([]storag
 	return payments, count, nil
 }
 
-func (s *Service) CreatePayment(userId uint64, userName string, request portal.PaymentRequest) (*storage.Payment, error) {
+func (s *Service) CreatePayment(userId uint64, userName string, displayName string, request portal.PaymentRequest) (*storage.Payment, error) {
 	var reciver storage.User
 	payment := storage.Payment{
-		SenderId:        userId,
-		SenderName:      userName,
-		Description:     request.Description,
-		Details:         request.Details,
-		Status:          request.Status,
-		HourlyRate:      request.HourlyRate,
-		PaymentSettings: request.PaymentSettings,
+		SenderId:          userId,
+		SenderName:        userName,
+		SenderDisplayName: displayName,
+		Description:       request.Description,
+		Details:           request.Details,
+		Status:            request.Status,
+		HourlyRate:        request.HourlyRate,
+		PaymentSettings:   request.PaymentSettings,
 	}
 
 	// payment is internal
@@ -63,6 +64,13 @@ func (s *Service) CreatePayment(userId uint64, userName string, request portal.P
 		}
 		payment.ReceiverId = request.ReceiverId
 		payment.ReceiverName = reciver.UserName
+		payment.ReceiverDisplayName = reciver.DisplayName
+		if len(payment.SenderDisplayName) == 0 {
+			payment.SenderDisplayName = payment.SenderName
+		}
+		if len(payment.ReceiverDisplayName) == 0 {
+			payment.ReceiverDisplayName = payment.ReceiverName
+		}
 	} else {
 		// payment is external
 		payment.ExternalEmail = request.ExternalEmail
@@ -278,4 +286,14 @@ func calculateAmount(request portal.PaymentRequest) (float64, error) {
 		amount += detail.Cost
 	}
 	return amount, nil
+}
+
+// Sync Payment data when user Display name was changed
+func (s *Service) SyncPaymentUser(uID int, displayName string) {
+	//update displayname for every payment request current user is sender or receiver
+	s.db.Model(&storage.Payment{}).
+		Where("sender_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, storage.PaymentStatusPaid, storage.PaymentStatusRejected).
+		UpdateColumn("sender_disp_name", displayName)
+	s.db.Model(&storage.Payment{}).Where("receiver_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, storage.PaymentStatusPaid, storage.PaymentStatusRejected).
+		UpdateColumn("receiver_disp_name", displayName)
 }

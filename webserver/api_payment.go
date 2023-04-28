@@ -124,7 +124,7 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payment, err := a.service.CreatePayment(userInfo.Id, userInfo.UserName, body)
+	payment, err := a.service.CreatePayment(userInfo.Id, userInfo.UserName, userInfo.DisplayName, body)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusOK, err, nil)
@@ -347,7 +347,6 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		"payments": payments,
 		"count":    count,
 	})
-
 }
 
 func (a *apiPayment) approveRequest(w http.ResponseWriter, r *http.Request) {
