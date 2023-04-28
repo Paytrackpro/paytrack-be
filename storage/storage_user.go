@@ -49,7 +49,7 @@ type User struct {
 	Role            utils.UserRole  `json:"role"`
 	CreatedAt       time.Time       `json:"createdAt"`
 	UpdatedAt       time.Time       `json:"updatedAt"`
-	LastSeen        time.Time       `json:"lastSeen"`
+	LastSeen        time.Time       `json:"lastSeen" gorm:"default:current_timestamp"`
 	Secret          string          `json:"-"`
 	Otp             bool            `json:"otp"`
 }

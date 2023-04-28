@@ -74,6 +74,7 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 func (s *WebServer) Run() error {
 	s.Route()
 	log.Info("mgmtng is running on port:", s.conf.Port)
+	s.service.RunTimeTask()
 	var server = http.Server{
 		Addr:              fmt.Sprintf(":%d", s.conf.Port),
 		Handler:           s.mux,
@@ -139,6 +140,7 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 				utils.Response(w, http.StatusUnauthorized, utils.NewError(err, utils.ErrorUnauthorized), nil)
 				return
 			}
+			s.service.SetLastSeen(int(claim.Id))
 			ctx := context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
