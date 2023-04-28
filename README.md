@@ -2,13 +2,37 @@
 
 # MGMT-NG backend
 
-mgmt-ng backend(mgmtngd) is the code of backend for mgmt-ng project. It is written in [go](https://golang.org/) and using  go 1.19.
+mgmt-ng backend(mgmtngd) is the code of backend for mgmt-ng project. It is written in [go](https://golang.org/) and using go 1.19.
 
-mgmtngd is using [postgresql](https://www.postgresql.org/) to be database. So for running mgmtngd, please get postgresql up and running.
+## Setup
 
-Running mgmtngd (Linux or MacOS): 
+### Database ([Posgresql](https://www.postgresql.org/))
+
+When you have Posgresql, you need create new db with name **mgmtng**
+
+### Config env
+
+Create new yaml config in `./private/config.yaml`. a sample config file can be located at `sample/mgmtngd.yaml`
+
+in your config.yaml edit the db section to match your environment settings
+`db:
+  dns: "host=<host> user=<user> password=<password> dbname=mgmtng port=<port> sslmode=disable TimeZone=Asia/Shanghai"`
+
+## Running mgmtngd (Linux | MacOS | Window):
+
+### Terminal
+
+Run `go run ./cmd/mgmtngd --config=./private/config.yaml`
+
+### Makefile
+
+You can create `Makefile` and add command to makefile like this
+
 ```
-go run ./cmd/mgmtngd/ -config=path_to_config_file.yaml
+.PHONY:
+up:
+	go run ./cmd/mgmtngd --config=./private/config.yaml
+
 ```
-The sample config file can be found at `./sample/mgmtngd.yaml`. For development, you should create a folder `./private` and copy the file into this place.
-In this project, the `private` folder is ignored by git and will not affect if you change the value for the configuration.
+
+after that run `make up`

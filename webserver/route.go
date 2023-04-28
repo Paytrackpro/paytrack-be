@@ -1,6 +1,8 @@
 package webserver
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -15,6 +17,10 @@ func (s *WebServer) Route() {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
+	// The home route notifies that the API is up and running
+	s.mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("MGMT-NG API is up and running"))
+	})
 	s.mux.Route("/api", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
 			var authRouter = apiAuth{WebServer: s}
