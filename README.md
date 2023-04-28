@@ -12,7 +12,11 @@ When you have Posgresql, you need create new db with name **mgmtng**
 
 ### Config env
 
-Create new yaml config on ./private/config.yaml
+Create new yaml config in `./private/config.yaml`. a sample config file can be located at `sample/mgmtngd.yaml`
+
+in your config.yaml edit the db section to match your environment settings
+`db:
+  dns: "host=<host> user=<user> password=<password> dbname=mgmtng port=<port> sslmode=disable TimeZone=Asia/Shanghai"`
 
 ## Running mgmtngd (Linux | MacOS | Window):
 
