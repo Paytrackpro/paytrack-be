@@ -31,7 +31,7 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int) ([]storag
 	}
 
 	build = build.Limit(pageSize).Offset(offset)
-	if err := build.Debug().Find(&payments).Error; err != nil {
+	if err := build.Find(&payments).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return payments, 0, nil
 		}

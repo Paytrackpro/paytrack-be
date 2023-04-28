@@ -18,6 +18,7 @@ type Service struct {
 	db              *gorm.DB
 	exchange        string
 	coinMaketCapKey string
+	timeState       *actionTimeState
 }
 
 func NewService(conf Config, db *gorm.DB) *Service {
@@ -25,6 +26,7 @@ func NewService(conf Config, db *gorm.DB) *Service {
 		db:              db,
 		exchange:        conf.Exchange,
 		coinMaketCapKey: conf.CoimarketcapKey,
+		timeState:       NewActionTime(),
 	}
 }
 
