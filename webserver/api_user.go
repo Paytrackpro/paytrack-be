@@ -75,7 +75,7 @@ func (a *apiUser) infoWithId(w http.ResponseWriter, r *http.Request) {
 }
 
 // This function use for update user for admin
-func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest, adminUpdate bool) {
+func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest) {
 	user, err := a.db.QueryUser(storage.UserFieldId, req.UserId)
 	if err != nil {
 		utils.Response(w, http.StatusNotFound, err, nil)
@@ -85,9 +85,10 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 	var preUserName = user.UserName
 	utils.SetValue(&user.DisplayName, req.DisplayName)
 	utils.SetValue(&user.Email, req.Email)
-	//if admin update, otp flag is reset OTP. If normal user update, set OTP flag
-	if !adminUpdate || (adminUpdate && req.Otp) {
-		utils.SetValue(&user.Otp, req.Otp)
+	//if admin update, otp flag is reset OTP.
+	if req.Otp {
+		user.Otp = false
+		user.Secret = ""
 	}
 	utils.SetValue(&user.UserName, req.UserName)
 	utils.SetValue(&user.Locked, req.Locked)
@@ -137,7 +138,7 @@ func (a *apiUser) adminUpdateUser(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
-	a.updateUser(w, f, true)
+	a.updateUser(w, f)
 }
 
 func (a *apiUser) adminDeleteUser(w http.ResponseWriter, r *http.Request) {
