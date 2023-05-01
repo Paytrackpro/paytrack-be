@@ -44,14 +44,14 @@ type User struct {
 	DisplayName     string          `json:"displayName"`
 	PasswordHash    string          `json:"-"`
 	Email           string          `json:"email"`
+	HourlyLaborRate float64         `json:"hourlyLaborRate"`
 	PaymentSettings PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
 	Role            utils.UserRole  `json:"role"`
 	CreatedAt       time.Time       `json:"createdAt"`
 	UpdatedAt       time.Time       `json:"updatedAt"`
-	LastSeen        time.Time       `json:"lastSeen"`
+	LastSeen        time.Time       `json:"lastSeen" gorm:"default:current_timestamp"`
 	Secret          string          `json:"-"`
 	Otp             bool            `json:"otp"`
-	HourlyLaborRate float64         `json:"hourlyLaborRate"`
 	Locked          bool            `json:"locked"`
 }
 

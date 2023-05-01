@@ -81,15 +81,17 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 		utils.Response(w, http.StatusNotFound, err, nil)
 		return
 	}
+	var preDisplayName = user.DisplayName
 	utils.SetValue(&user.DisplayName, req.DisplayName)
 	utils.SetValue(&user.Email, req.Email)
 	//if admin update, otp flag is reset OTP. If normal user update, set OTP flag
 	if !adminUpdate || (adminUpdate && req.Otp) {
 		utils.SetValue(&user.Otp, req.Otp)
 	}
-
 	utils.SetValue(&user.UserName, req.UserName)
 	utils.SetValue(&user.Locked, req.Locked)
+	user.PaymentSettings = req.PaymentSettings
+	user.HourlyLaborRate = req.HourlyLaborRate
 
 	if err := a.db.CheckDuplicate(user); err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
@@ -104,6 +106,11 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 		}
 		user.PasswordHash = string(hash)
 	}
+	// if user.DisplayName was changed, sync with payment data
+	if len(req.DisplayName) > 0 && strings.Compare(req.DisplayName, preDisplayName) != 0 {
+		a.service.SyncPaymentUser(int(user.Id), req.DisplayName)
+	}
+
 	err = a.db.UpdateUser(user)
 
 	if err != nil {
@@ -146,6 +153,7 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 	user, err := a.service.UpdateUserInfo(claims.Id, body)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
 	}
 
 	utils.ResponseOK(w, user)
