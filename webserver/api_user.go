@@ -74,7 +74,7 @@ func (a *apiUser) infoWithId(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// This function use for update user for admin
+// This function use for update user for admin and user
 func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest) {
 	user, err := a.db.QueryUser(storage.UserFieldId, req.UserId)
 	if err != nil {
@@ -82,16 +82,9 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 		return
 	}
 	var preDisplayName = user.DisplayName
-	var preUserName = user.UserName
 	utils.SetValue(&user.DisplayName, req.DisplayName)
 	utils.SetValue(&user.Email, req.Email)
-	//if admin update, otp flag is reset OTP.
-	if req.Otp {
-		user.Otp = false
-		user.Secret = ""
-	}
-	utils.SetValue(&user.UserName, req.UserName)
-	utils.SetValue(&user.Locked, req.Locked)
+	utils.SetValue(&user.Otp, req.Otp)
 	user.PaymentSettings = req.PaymentSettings
 	user.HourlyLaborRate = req.HourlyLaborRate
 
@@ -99,7 +92,6 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
-
 	if !utils.IsEmpty(req.Password) {
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
@@ -108,19 +100,10 @@ func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest
 		}
 		user.PasswordHash = string(hash)
 	}
-	uName := ""
-	uDisplayName := ""
 	// if user.DisplayName was changed, sync with payment data
 	if len(req.DisplayName) > 0 && strings.Compare(req.DisplayName, preDisplayName) != 0 {
-		uDisplayName = req.DisplayName
+		a.service.SyncPaymentUser(int(user.Id), req.DisplayName)
 	}
-
-	// if user.UserName was changed, sync with payment data
-	if len(req.UserName) > 0 && strings.Compare(req.UserName, preUserName) != 0 {
-		uName = req.UserName
-	}
-
-	a.service.SyncPaymentUser(int(user.Id), uDisplayName, uName)
 
 	err = a.db.UpdateUser(user)
 
