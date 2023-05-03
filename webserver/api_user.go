@@ -141,16 +141,6 @@ func (a *apiUser) adminUpdateUser(w http.ResponseWriter, r *http.Request) {
 	a.updateUser(w, f)
 }
 
-func (a *apiUser) adminDeleteUser(w http.ResponseWriter, r *http.Request) {
-	var f portal.UpdateUserRequest
-	err := a.parseJSONAndValidate(r, &f)
-	if err != nil {
-		utils.Response(w, http.StatusBadRequest, err, nil)
-		return
-	}
-	a.db.GetDB().Where("id = ?", f.UserId).Delete(&storage.User{})
-}
-
 func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
 
