@@ -26,9 +26,9 @@ type ticker struct {
 }
 
 type BittrexPrice struct {
-	Price   float64 `json:"lastTradeRate"`
-	BidRate float64 `json:"bidRate"`
-	AskRate float64 `json:"askRate"`
+	Price   float64 `json:"lastTradeRate,string"`
+	BidRate float64 `json:"bidRate,string"`
+	AskRate float64 `json:"askRate,string"`
 }
 
 type CoinMarketCapData struct {
