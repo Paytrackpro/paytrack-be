@@ -52,6 +52,7 @@ type User struct {
 	LastSeen        time.Time       `json:"lastSeen" gorm:"default:current_timestamp"`
 	Secret          string          `json:"-"`
 	Otp             bool            `json:"otp"`
+	Locked          bool            `json:"locked"`
 }
 
 func (User) TableName() string {

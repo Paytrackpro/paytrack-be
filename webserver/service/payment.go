@@ -289,11 +289,20 @@ func calculateAmount(request portal.PaymentRequest) (float64, error) {
 }
 
 // Sync Payment data when user Display name was changed
-func (s *Service) SyncPaymentUser(uID int, displayName string) {
+func (s *Service) SyncPaymentUser(uID int, displayName, userName string) {
 	//update displayname for every payment request current user is sender or receiver
-	s.db.Model(&storage.Payment{}).
-		Where("sender_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, storage.PaymentStatusPaid, storage.PaymentStatusRejected).
-		UpdateColumn("sender_disp_name", displayName)
-	s.db.Model(&storage.Payment{}).Where("receiver_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, storage.PaymentStatusPaid, storage.PaymentStatusRejected).
-		UpdateColumn("receiver_disp_name", displayName)
+	updateSenderBuilder := s.db.Model(&storage.Payment{}).
+		Where("sender_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, storage.PaymentStatusPaid, storage.PaymentStatusRejected)
+
+	updatereceiverBuilder := s.db.Model(&storage.Payment{}).Where("receiver_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, storage.PaymentStatusPaid, storage.PaymentStatusRejected)
+
+	if !utils.IsEmpty(displayName) {
+		updateSenderBuilder.UpdateColumn("sender_display_name", displayName)
+		updatereceiverBuilder.UpdateColumn("receiver_display_name", displayName)
+	}
+
+	if !utils.IsEmpty(userName) {
+		updateSenderBuilder.UpdateColumn("sender_name", userName)
+		updatereceiverBuilder.UpdateColumn("receiver_name", userName)
+	}
 }

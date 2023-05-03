@@ -74,54 +74,21 @@ func (a *apiUser) infoWithId(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// This function use for update user for admin and user
-func (a *apiUser) updateUser(w http.ResponseWriter, req portal.UpdateUserRequest) {
-	user, err := a.db.QueryUser(storage.UserFieldId, req.UserId)
+func (a *apiUser) adminUpdateUser(w http.ResponseWriter, r *http.Request) {
+	var body portal.UpdateUserRequest
+	err := a.parseJSONAndValidate(r, &body)
 	if err != nil {
-		utils.Response(w, http.StatusNotFound, err, nil)
-		return
-	}
-	var preDisplayName = user.DisplayName
-	utils.SetValue(&user.DisplayName, req.DisplayName)
-	utils.SetValue(&user.Email, req.Email)
-	utils.SetValue(&user.Otp, req.Otp)
-	user.PaymentSettings = req.PaymentSettings
-	user.HourlyLaborRate = req.HourlyLaborRate
-
-	if err := a.db.CheckDuplicate(user); err != nil {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
-	if !utils.IsEmpty(req.Password) {
-		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-		if err != nil {
-			utils.Response(w, http.StatusInternalServerError, err, nil)
-			return
-		}
-		user.PasswordHash = string(hash)
-	}
-	// if user.DisplayName was changed, sync with payment data
-	if len(req.DisplayName) > 0 && strings.Compare(req.DisplayName, preDisplayName) != 0 {
-		a.service.SyncPaymentUser(int(user.Id), req.DisplayName)
-	}
 
-	err = a.db.UpdateUser(user)
-
+	user, err := a.service.UpdateUserInfo(uint64(body.UserId), body, true)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-	utils.ResponseOK(w, user)
-}
 
-func (a *apiUser) adminUpdateUser(w http.ResponseWriter, r *http.Request) {
-	var f portal.UpdateUserRequest
-	err := a.parseJSONAndValidate(r, &f)
-	if err != nil {
-		utils.Response(w, http.StatusBadRequest, err, nil)
-		return
-	}
-	a.updateUser(w, f)
+	utils.ResponseOK(w, user)
 }
 
 func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +101,7 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := a.service.UpdateUserInfo(claims.Id, body)
+	user, err := a.service.UpdateUserInfo(claims.Id, body, false)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return

@@ -90,6 +90,13 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//If the user is locked, can't login
+	if user.Locked {
+		err := utils.NewError(fmt.Errorf("User has been locked"), utils.ErrorObjectExist)
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(f.Password))
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, utils.LoginFail, nil)
