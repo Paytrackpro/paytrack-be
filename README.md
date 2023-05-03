@@ -36,3 +36,11 @@ up:
 ```
 
 after that run `make up`
+
+## Create user like admin:
+
+access to db and run this query:
+
+`UPDATE users SET "role" = 1 WHERE "user_name" = '<username>'`
+
+example: `UPDATE users SET "role" = 1 WHERE "user_name" = 'justindo'`
