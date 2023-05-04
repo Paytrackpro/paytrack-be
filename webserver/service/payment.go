@@ -186,13 +186,18 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	} else if request.RequestType == storage.PaymentTypeReminder {
 		builder = builder.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
 		buildCount = buildCount.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
+	} else if request.RequestType == storage.PaymentTypeApproval {
 		approvers, err := s.GetSettingOfApprover(userId)
 		if err != nil {
 			return nil, 0, err
 		}
+
+		if len(approvers) == 0 {
+			return payments, 0, nil
+		}
 		for _, approver := range approvers {
-			builder = builder.Or("receiver_id = ? AND sender_id = ?", approver.RecipientId, approver.SendUserId)
-			buildCount = buildCount.Or("receiver_id = ? AND sender_id = ?", approver.RecipientId, approver.SendUserId)
+			builder = builder.Or("receiver_id = ? AND sender_id = ? AND status = ?", approver.RecipientId, approver.SendUserId, storage.PaymentStatusSent)
+			buildCount = buildCount.Or("receiver_id = ? AND sender_id = ? AND status = ?", approver.RecipientId, approver.SendUserId, storage.PaymentStatusSent)
 		}
 	} else {
 		if role != utils.UserRoleAdmin {
