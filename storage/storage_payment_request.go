@@ -15,6 +15,7 @@ const (
 	PaymentTypeRequest    = "request"
 	PaymentTypeReminder   = "reminder"
 	PaymentTypeBulkPayBTC = "bulk_btc"
+	PaymentTypeApproval   = "approval"
 )
 
 type PaymentStatus int
