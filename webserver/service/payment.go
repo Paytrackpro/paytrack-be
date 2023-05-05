@@ -11,7 +11,7 @@ import (
 )
 
 func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int) ([]storage.Payment, int64, error) {
-	if page == 1 {
+	if page != 0 {
 		page = page - 1
 	}
 	var count int64
@@ -172,7 +172,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 }
 
 func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request storage.PaymentFilter) ([]storage.Payment, int64, error) {
-	if request.Page == 1 {
+	if request.Page != 0 {
 		request.Page = request.Page - 1
 	}
 	var count int64
