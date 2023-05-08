@@ -69,7 +69,7 @@ func (s *WebServer) Route() {
 			r.Post("/bulk-paid-btc", paymentRouter.bulkPaidBTC)
 			r.With(s.loggedInMiddleware).Get("/list", paymentRouter.listPayments)
 			r.Get("/rate", paymentRouter.getRate)
-			r.Put("/delete", paymentRouter.deleteDraft)
+			r.Delete("/delete/{id:[0-9]+}", paymentRouter.deleteDraft)
 		})
 	})
 }

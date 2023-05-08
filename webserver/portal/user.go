@@ -12,7 +12,6 @@ type RegisterForm struct {
 	DisplayName    string
 	Password       string `validate:"required"`
 	Email          string `validate:"omitempty,email"`
-	CompanyName    string
 	DefaultPayment utils.Method
 	PaymentAddress string
 }
@@ -44,7 +43,6 @@ func (f RegisterForm) User() (*storage.User, error) {
 		PasswordHash: string(hash),
 		Email:        f.Email,
 		DisplayName:  f.DisplayName,
-		CompanyName:  f.CompanyName,
 	}
 	if f.DefaultPayment != utils.PaymentTypeNotSet {
 		user.PaymentSettings = []storage.PaymentSetting{

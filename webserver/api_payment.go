@@ -16,7 +16,7 @@ type apiPayment struct {
 	*WebServer
 }
 
-// User for sender and receiver
+// Use for sender and receiver
 func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 	var body portal.PaymentRequest
 	claims, _ := a.parseBearer(r)
@@ -317,13 +317,9 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiPayment) deleteDraft(w http.ResponseWriter, r *http.Request) {
-	var f portal.PaymentRequestRate
-	err := a.parseJSONAndValidate(r, &f)
-	if err != nil {
-		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
-		return
-	}
-	a.db.GetDB().Where("id = ?", f.Id).Delete(&storage.Payment{})
+	id := chi.URLParam(r, "id")
+	a.db.GetDB().Where("id = ?", id).Delete(&storage.Payment{})
+	utils.ResponseOK(w, nil)
 }
 
 func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
