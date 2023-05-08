@@ -316,6 +316,16 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, payment)
 }
 
+func (a *apiPayment) deleteDraft(w http.ResponseWriter, r *http.Request) {
+	var f portal.PaymentRequestRate
+	err := a.parseJSONAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	a.db.GetDB().Where("id = ?", f.Id).Delete(&storage.Payment{})
+}
+
 func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	var query storage.PaymentFilter
 	if err := a.parseQueryAndValidate(r, &query); err != nil {
