@@ -44,6 +44,7 @@ type User struct {
 	DisplayName     string          `json:"displayName"`
 	PasswordHash    string          `json:"-"`
 	Email           string          `json:"email"`
+	CompanyName     string          `json:"companyName"`
 	HourlyLaborRate float64         `json:"hourlyLaborRate"`
 	PaymentSettings PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
 	Role            utils.UserRole  `json:"role"`

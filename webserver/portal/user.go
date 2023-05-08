@@ -9,8 +9,10 @@ import (
 
 type RegisterForm struct {
 	UserName       string `validate:"required,alphanum,gte=4,lte=32"`
+	DisplayName    string
 	Password       string `validate:"required"`
 	Email          string `validate:"omitempty,email"`
+	CompanyName    string
 	DefaultPayment utils.Method
 	PaymentAddress string
 }
@@ -41,6 +43,8 @@ func (f RegisterForm) User() (*storage.User, error) {
 		UserName:     f.UserName,
 		PasswordHash: string(hash),
 		Email:        f.Email,
+		DisplayName:  f.DisplayName,
+		CompanyName:  f.CompanyName,
 	}
 	if f.DefaultPayment != utils.PaymentTypeNotSet {
 		user.PaymentSettings = []storage.PaymentSetting{
