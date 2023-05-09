@@ -167,6 +167,7 @@ type Payment struct {
 	ContactMethod       PaymentContact  `json:"contactMethod"`
 	RejectionReason     string          `json:"rejectionReason"`
 	CreatedAt           time.Time       `json:"createdAt"`
+	UpdatedAt           time.Time       `json:"updatedAt"`
 	SentAt              time.Time       `json:"sentAt"`
 	PaidAt              time.Time       `json:"paidAt"`
 }
