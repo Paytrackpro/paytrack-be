@@ -87,6 +87,8 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 	}
 
 	if payment.Status == storage.PaymentStatusSent {
+		//if status is sent, set sentAt is now
+		payment.SentAt = time.Now()
 		approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
 		if err != nil {
 			return nil, err
@@ -125,6 +127,10 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		// allow recipient update status to sent or confirmed
 		if payment.Status == storage.PaymentStatusSent || payment.Status == storage.PaymentStatusConfirmed {
 			payment.Status = request.Status
+			if request.Status == storage.PaymentStatusSent && payment.Status != request.Status {
+				//update sentAt when status to sent
+				payment.SentAt = time.Now()
+			}
 		}
 		payment.TxId = request.TxId
 	} else {
@@ -144,7 +150,9 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		}
 
 		// use for sender update status from save as draft to sent
-		if payment.Status == storage.PaymentStatusSent && payment.Status != request.Status {
+		if request.Status == storage.PaymentStatusSent && payment.Status != request.Status {
+			//update sentAt when status from draft to sent
+			payment.SentAt = time.Now()
 			approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
 			if err != nil {
 				return nil, err
