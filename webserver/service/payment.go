@@ -56,20 +56,22 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 
 	// payment is internal
 	if request.ContactMethod == storage.PaymentTypeInternal {
-		if err := s.db.Where("id = ?", request.ReceiverId).First(&reciver).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				return nil, utils.NewError(fmt.Errorf("receiver not found"), utils.ErrorBadRequest)
+		if request.ReceiverId > 0 {
+			if err := s.db.Where("id = ?", request.ReceiverId).First(&reciver).Error; err != nil {
+				if err == gorm.ErrRecordNotFound {
+					return nil, utils.NewError(fmt.Errorf("receiver not found"), utils.ErrorBadRequest)
+				}
+				return nil, err
 			}
-			return nil, err
-		}
-		payment.ReceiverId = request.ReceiverId
-		payment.ReceiverName = reciver.UserName
-		payment.ReceiverDisplayName = reciver.DisplayName
-		if len(payment.SenderDisplayName) == 0 {
-			payment.SenderDisplayName = payment.SenderName
-		}
-		if len(payment.ReceiverDisplayName) == 0 {
-			payment.ReceiverDisplayName = payment.ReceiverName
+			payment.ReceiverId = request.ReceiverId
+			payment.ReceiverName = reciver.UserName
+			payment.ReceiverDisplayName = reciver.DisplayName
+			if len(payment.SenderDisplayName) == 0 {
+				payment.SenderDisplayName = payment.SenderName
+			}
+			if len(payment.ReceiverDisplayName) == 0 {
+				payment.ReceiverDisplayName = payment.ReceiverName
+			}
 		}
 	} else {
 		// payment is external
