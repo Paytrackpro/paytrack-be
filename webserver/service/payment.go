@@ -56,20 +56,22 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 
 	// payment is internal
 	if request.ContactMethod == storage.PaymentTypeInternal {
-		if err := s.db.Where("id = ?", request.ReceiverId).First(&reciver).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				return nil, utils.NewError(fmt.Errorf("receiver not found"), utils.ErrorBadRequest)
+		if request.ReceiverId > 0 {
+			if err := s.db.Where("id = ?", request.ReceiverId).First(&reciver).Error; err != nil {
+				if err == gorm.ErrRecordNotFound {
+					return nil, utils.NewError(fmt.Errorf("receiver not found"), utils.ErrorBadRequest)
+				}
+				return nil, err
 			}
-			return nil, err
-		}
-		payment.ReceiverId = request.ReceiverId
-		payment.ReceiverName = reciver.UserName
-		payment.ReceiverDisplayName = reciver.DisplayName
-		if len(payment.SenderDisplayName) == 0 {
-			payment.SenderDisplayName = payment.SenderName
-		}
-		if len(payment.ReceiverDisplayName) == 0 {
-			payment.ReceiverDisplayName = payment.ReceiverName
+			payment.ReceiverId = request.ReceiverId
+			payment.ReceiverName = reciver.UserName
+			payment.ReceiverDisplayName = reciver.DisplayName
+			if len(payment.SenderDisplayName) == 0 {
+				payment.SenderDisplayName = payment.SenderName
+			}
+			if len(payment.ReceiverDisplayName) == 0 {
+				payment.ReceiverDisplayName = payment.ReceiverName
+			}
 		}
 	} else {
 		// payment is external
@@ -87,6 +89,8 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 	}
 
 	if payment.Status == storage.PaymentStatusSent {
+		//if status is sent, set sentAt is now
+		payment.SentAt = time.Now()
 		approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
 		if err != nil {
 			return nil, err
@@ -125,6 +129,10 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		// allow recipient update status to sent or confirmed
 		if payment.Status == storage.PaymentStatusSent || payment.Status == storage.PaymentStatusConfirmed {
 			payment.Status = request.Status
+			if request.Status == storage.PaymentStatusSent && payment.Status != request.Status {
+				//update sentAt when status to sent
+				payment.SentAt = time.Now()
+			}
 		}
 		payment.TxId = request.TxId
 	} else {
@@ -142,24 +150,47 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		} else {
 			payment.Amount = request.Amount
 		}
-
 		// use for sender update status from save as draft to sent
-		if payment.Status == storage.PaymentStatusSent && payment.Status != request.Status {
-			approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
-			if err != nil {
-				return nil, err
+		if payment.Status == storage.PaymentStatusCreated {
+			isReceiverIdNotEmpty := !utils.IsEmpty(request.ReceiverId)
+			if request.ReceiverId != payment.ReceiverId && isReceiverIdNotEmpty {
+				var receiver storage.User
+				if err := s.db.Where("id = ?", request.ReceiverId).First(&receiver).Error; err != nil {
+					if err == gorm.ErrRecordNotFound {
+						return nil, utils.NewError(fmt.Errorf("receiver not found"), utils.ErrorBadRequest)
+					}
+					return nil, err
+				}
+				payment.ReceiverId = request.ReceiverId
+				payment.ReceiverName = receiver.UserName
+				payment.ReceiverDisplayName = receiver.DisplayName
+				if len(payment.SenderDisplayName) == 0 {
+					payment.SenderDisplayName = payment.SenderName
+				}
+				if len(payment.ReceiverDisplayName) == 0 {
+					payment.ReceiverDisplayName = payment.ReceiverName
+				}
 			}
 
-			if len(approverSettings) > 0 {
-				approvers := storage.Approvers{}
-				for _, approver := range approverSettings {
-					approvers = append(approvers, storage.Approver{
-						ApproverId:   approver.ApproverId,
-						ApproverName: approver.ApproverName,
-						IsApproved:   false,
-					})
+			if payment.Status != request.Status || (request.ReceiverId != payment.ReceiverId && isReceiverIdNotEmpty) {
+				// update sentAt when status from draft to sent
+				payment.SentAt = time.Now()
+				approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
+				if err != nil {
+					return nil, err
 				}
-				payment.Approvers = approvers
+
+				if len(approverSettings) > 0 {
+					approvers := storage.Approvers{}
+					for _, approver := range approverSettings {
+						approvers = append(approvers, storage.Approver{
+							ApproverId:   approver.ApproverId,
+							ApproverName: approver.ApproverName,
+							IsApproved:   false,
+						})
+					}
+					payment.Approvers = approvers
+				}
 			}
 		}
 		payment.Status = request.Status
