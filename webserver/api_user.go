@@ -260,6 +260,9 @@ func (a *apiUser) generateQr(w http.ResponseWriter, r *http.Request) {
 
 	utils.ResponseOK(w, Map{
 		"mfa_qr_image": imgBase64Str,
+		"secret_key":   key.Secret(),
+		"account":      key.AccountName(),
+		"time_based":   true,
 	})
 }
 
