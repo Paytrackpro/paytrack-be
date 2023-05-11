@@ -167,10 +167,12 @@ func (s *Service) UpdateApproverSetting(userId uint64, approvers []portal.Approv
 		return nil, err
 	}
 
-	// save new data
-	if err := tx.Create(&settingApprovers).Error; err != nil {
-		tx.Rollback()
-		return nil, err
+	if len(settingApprovers) > 0 {
+		// save new data
+		if err := tx.Create(&settingApprovers).Error; err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	// update payment
