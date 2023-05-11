@@ -325,20 +325,29 @@ func calculateAmount(request portal.PaymentRequest) (float64, error) {
 }
 
 // Sync Payment data when user Display name was changed
-func (s *Service) SyncPaymentUser(uID int, displayName, userName string) {
+func (s *Service) SyncPaymentUser(db *gorm.DB, uID int, displayName, userName string) error {
 	//update displayname for every payment request current user is sender or receiver
-	updateSenderBuilder := s.db.Model(&storage.Payment{}).
+	updateSenderBuilder := db.Model(&storage.Payment{}).
 		Where("sender_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, storage.PaymentStatusPaid, storage.PaymentStatusRejected)
 
-	updatereceiverBuilder := s.db.Model(&storage.Payment{}).Where("receiver_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, storage.PaymentStatusPaid, storage.PaymentStatusRejected)
+	updatereceiverBuilder := db.Model(&storage.Payment{}).Where("receiver_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, storage.PaymentStatusPaid, storage.PaymentStatusRejected)
 
 	if !utils.IsEmpty(displayName) {
-		updateSenderBuilder.UpdateColumn("sender_display_name", displayName)
-		updatereceiverBuilder.UpdateColumn("receiver_display_name", displayName)
+		if err := updateSenderBuilder.UpdateColumn("sender_display_name", displayName).Error; err != nil {
+			return err
+		}
+		if err := updatereceiverBuilder.UpdateColumn("receiver_display_name", displayName).Error; err != nil {
+			return err
+		}
 	}
 
 	if !utils.IsEmpty(userName) {
-		updateSenderBuilder.UpdateColumn("sender_name", userName)
-		updatereceiverBuilder.UpdateColumn("receiver_name", userName)
+		if err := updateSenderBuilder.UpdateColumn("sender_name", userName).Error; err != nil {
+			return err
+		}
+		if err := updatereceiverBuilder.UpdateColumn("receiver_name", userName).Error; err != nil {
+			return err
+		}
 	}
+	return nil
 }

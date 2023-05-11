@@ -91,12 +91,21 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 		user.PasswordHash = string(hash)
 	}
 
-	s.SyncPaymentUser(int(user.Id), uDisplayName, uName)
+	tx := s.db.Begin()
 
-	if err := s.db.Save(&user).Error; err != nil {
+	if err := tx.Save(&user).Error; err != nil {
+		tx.Rollback()
 		log.Error("UpdateUserInfo:save user fail with error: ", err)
 		return user, err
 	}
+
+	if err := s.SyncPaymentUser(tx, int(user.Id), uDisplayName, uName); err != nil {
+		log.Error("UpdateUserInfo: Sync payment user fail with error: ", err)
+		tx.Rollback()
+		return user, err
+	}
+
+	tx.Commit()
 	return user, nil
 }
 
@@ -133,8 +142,6 @@ func (s *Service) UpdateUserInfos(id uint64, userInfo portal.UpdateUserRequest) 
 		uDisplayName = userInfo.DisplayName
 	}
 
-	s.SyncPaymentUser(int(user.Id), uDisplayName, "")
-
 	utils.SetValue(&user.DisplayName, userInfo.DisplayName)
 
 	if !utils.IsEmpty(userInfo.Password) {
@@ -145,10 +152,20 @@ func (s *Service) UpdateUserInfos(id uint64, userInfo portal.UpdateUserRequest) 
 		user.PasswordHash = string(hash)
 	}
 
-	if err := s.db.Save(&user).Error; err != nil {
-		log.Error("UpdateUserInfo:save user fail with error: ", err)
+	tx := s.db.Begin()
+
+	if err := tx.Save(&user).Error; err != nil {
+		log.Error("UpdateUserInfo: save user fail with error: ", err)
+		tx.Rollback()
 		return user, err
 	}
 
+	if err := s.SyncPaymentUser(tx, int(user.Id), uDisplayName, ""); err != nil {
+		log.Error("UpdateUserInfo: Sync payment user fail with error: ", err)
+		tx.Rollback()
+		return user, err
+	}
+
+	tx.Commit()
 	return user, nil
 }
