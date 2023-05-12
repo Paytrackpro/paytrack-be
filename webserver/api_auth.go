@@ -92,7 +92,7 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 
 	//If the user is locked, can't login
 	if user.Locked {
-		err := utils.NewError(fmt.Errorf("User has been locked"), utils.ErrorObjectExist)
+		err := utils.NewError(fmt.Errorf("user has been locked"), utils.ErrorObjectExist)
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
