@@ -230,6 +230,34 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 			builder = builder.Or("receiver_id = ? AND sender_id = ? AND status = ?", approver.RecipientId, approver.SendUserId, storage.PaymentStatusSent)
 			buildCount = buildCount.Or("receiver_id = ? AND sender_id = ? AND status = ?", approver.RecipientId, approver.SendUserId, storage.PaymentStatusSent)
 		}
+
+		//If type of approval, don't get approved
+		if err := builder.Find(&payments).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return payments, 0, nil
+			}
+			return nil, 0, err
+		}
+
+		var startIndex = request.Page * request.Size
+		var index = 0
+		approvalPayments := make([]storage.Payment, 0)
+		for _, approvalPayment := range payments {
+			var isApproved = false
+			for _, approver := range approvalPayment.Approvers {
+				if approver.ApproverId == userId && approver.IsApproved {
+					isApproved = true
+					break
+				}
+			}
+			if !isApproved {
+				index++
+				if index > startIndex && index <= startIndex+request.Size {
+					approvalPayments = append(approvalPayments, approvalPayment)
+				}
+			}
+		}
+		return approvalPayments, int64(index), nil
 	} else {
 		if role != utils.UserRoleAdmin {
 			builder = builder.Where("receiver_id = ? OR sender_id = ?", userId, userId)
