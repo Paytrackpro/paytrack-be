@@ -55,6 +55,7 @@ type ListPaymentSettingRequest struct {
 type ApproversSettingRequest struct {
 	ApproverIds []uint64 `json:"approverIds"`
 	SendUserId  uint64   `json:"sendUserId"`
+	ShowCost    bool     `json:"showCost"`
 }
 
 type PaymentReject struct {

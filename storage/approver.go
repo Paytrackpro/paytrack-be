@@ -21,6 +21,7 @@ type Approver struct {
 	ApproverId   uint64 `json:"approverId"`
 	ApproverName string `json:"approverName"`
 	IsApproved   bool   `json:"isApproved"`
+	ShowCost     bool   `json:"showCost"`
 }
 
 // Value Marshal
@@ -44,4 +45,5 @@ type ApproverSettings struct {
 	RecipientId  uint64 `json:"recipientId"`
 	ApproverName string `json:"approverName"`
 	SendUserName string `json:"sendUserName"`
+	ShowCost     bool   `json:"showCost"`
 }

@@ -103,6 +103,7 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 					ApproverId:   approver.ApproverId,
 					ApproverName: approver.ApproverName,
 					IsApproved:   false,
+					ShowCost:     approver.ShowCost,
 				})
 			}
 			payment.Approvers = approvers
@@ -187,6 +188,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 							ApproverId:   approver.ApproverId,
 							ApproverName: approver.ApproverName,
 							IsApproved:   false,
+							ShowCost:     approver.ShowCost,
 						})
 					}
 					payment.Approvers = approvers

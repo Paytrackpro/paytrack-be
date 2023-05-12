@@ -117,6 +117,7 @@ func (s *Service) UpdateApproverSetting(userId uint64, approvers []portal.Approv
 				RecipientId:  userId,
 				ApproverName: userMap[v].UserName,
 				SendUserName: userMap[setting.SendUserId].UserName,
+				ShowCost:     setting.ShowCost,
 			}
 			approversMap[v] = app
 			settingApprovers = append(settingApprovers, app)
@@ -144,6 +145,10 @@ func (s *Service) UpdateApproverSetting(userId uint64, approvers []portal.Approv
 		}
 		newApprovers := make([]storage.Approver, 0)
 		for _, app := range settingApprovers {
+			//if payment sender is not approval setting sender, abort
+			if payment.SenderId != app.SendUserId {
+				continue
+			}
 			approved := false
 			ap, ok := approverMap[app.ApproverId]
 			if ok {
@@ -153,6 +158,7 @@ func (s *Service) UpdateApproverSetting(userId uint64, approvers []portal.Approv
 				ApproverId:   app.ApproverId,
 				ApproverName: app.ApproverName,
 				IsApproved:   approved,
+				ShowCost:     app.ShowCost,
 			})
 		}
 		payments[i].Approvers = newApprovers
