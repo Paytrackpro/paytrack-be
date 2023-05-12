@@ -28,12 +28,12 @@ func (s *Service) IsTimeStateRunning() bool {
 }
 
 func (s *Service) SetLastSeen(id int) {
+	mutex.Lock()
+	defer mutex.Unlock()
 	s.timeState.saveUser[id] = time.Now()
 }
 
 func (s *Service) queryUpdateUser(field string, value interface{}, userID int) error {
-	mutex.Lock()
-	defer mutex.Unlock()
 	var err = s.db.Model(&storage.User{}).Where("id = ?", userID).Update(field, value).Error
 	return err
 }
