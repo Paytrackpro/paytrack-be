@@ -364,17 +364,20 @@ func (a *apiUser) getPaymentSetting(w http.ResponseWriter, r *http.Request) {
 	res := make([]map[string]interface{}, 0)
 	for _, v := range temMap {
 		approvers := make([]map[string]interface{}, 0)
+		var showCost = false
 		for _, appro := range v {
 			approvers = append(approvers, Map{
 				"approverName": appro.ApproverName,
 				"approverId":   appro.ApproverId,
 			})
+			showCost = appro.ShowCost
 		}
 
 		res = append(res, Map{
 			"sendUserId":   v[0].SendUserId,
 			"sendUserName": v[0].SendUserName,
 			"recipientId":  v[0].RecipientId,
+			"showCost":     showCost,
 			"approvers":    approvers,
 		})
 	}
