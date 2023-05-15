@@ -103,6 +103,7 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 					ApproverId:   approver.ApproverId,
 					ApproverName: approver.ApproverName,
 					IsApproved:   false,
+					ShowCost:     approver.ShowCost,
 				})
 			}
 			payment.Approvers = approvers
@@ -187,6 +188,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 							ApproverId:   approver.ApproverId,
 							ApproverName: approver.ApproverName,
 							IsApproved:   false,
+							ShowCost:     approver.ShowCost,
 						})
 					}
 					payment.Approvers = approvers
@@ -218,18 +220,22 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		builder = builder.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
 		buildCount = buildCount.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
 	} else if request.RequestType == storage.PaymentTypeApproval {
-		approvers, err := s.GetSettingOfApprover(userId)
-		if err != nil {
+		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]' LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, request.Size, offset)
+		countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]'`, storage.PaymentStatusSent, userId)
+		if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return payments, 0, nil
+			}
 			return nil, 0, err
 		}
 
-		if len(approvers) == 0 {
-			return payments, 0, nil
+		if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return payments, 0, nil
+			}
+			return nil, 0, err
 		}
-		for _, approver := range approvers {
-			builder = builder.Or("receiver_id = ? AND sender_id = ? AND status = ?", approver.RecipientId, approver.SendUserId, storage.PaymentStatusSent)
-			buildCount = buildCount.Or("receiver_id = ? AND sender_id = ? AND status = ?", approver.RecipientId, approver.SendUserId, storage.PaymentStatusSent)
-		}
+		return payments, count, nil
 	} else {
 		if role != utils.UserRoleAdmin {
 			builder = builder.Where("receiver_id = ? OR sender_id = ?", userId, userId)
