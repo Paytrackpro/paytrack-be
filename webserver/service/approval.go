@@ -145,7 +145,7 @@ func (s *Service) UpdateApproverSetting(userId uint64, approvers []portal.Approv
 		}
 		newApprovers := make([]storage.Approver, 0)
 		for _, app := range settingApprovers {
-			//if payment sender is not approval setting sender, abort
+			//if payment sender is not approval setting sender, move to the next iteration
 			if payment.SenderId != app.SendUserId {
 				continue
 			}
