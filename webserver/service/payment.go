@@ -19,9 +19,7 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int) ([]storag
 	offset := page * pageSize
 
 	build := s.db.Table("payments").
-		Select("payments.*, sender.user_name as sender_name, receiver.user_name as receiver_name").
-		Joins("JOIN users as sender ON payments.sender_id = sender.id").
-		Joins("JOIN users as receiver ON payments.receiver_id = receiver.id").
+		Select("payments.*").
 		Where("payments.payment_method = ? AND payments.status = ? AND payments.receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId).
 		Scan(&payments)
 
