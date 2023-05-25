@@ -184,9 +184,7 @@ type PaymentFilter struct {
 }
 
 func (f *PaymentFilter) selectFields(db *gorm.DB) *gorm.DB {
-	return db.Select("payments.*, receiver.user_name as receiver_name, sender.user_name as sender_name").
-		Joins("left join users receiver on payments.receiver_id = receiver.id").
-		Joins("left join users sender on payments.sender_id = sender.id")
+	return db.Select("payments.*")
 }
 
 func (f *PaymentFilter) BindCount(db *gorm.DB) *gorm.DB {

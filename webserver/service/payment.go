@@ -18,12 +18,10 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int) ([]storag
 	payments := make([]storage.Payment, 0)
 	offset := page * pageSize
 
-	build := s.db.Table("payments").
-		Select("payments.*, sender.user_name as sender_name, receiver.user_name as receiver_name").
-		Joins("JOIN users as sender ON payments.sender_id = sender.id").
-		Joins("JOIN users as receiver ON payments.receiver_id = receiver.id").
-		Where("payments.payment_method = ? AND payments.status = ? AND payments.receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId).
-		Scan(&payments)
+	build :=
+		s.db.Model(&storage.Payment{}).
+			Where("payments.payment_method = ? AND payments.status = ? AND payments.receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId).
+			Scan(&payments)
 
 	buildCount := s.db.Model(&storage.Payment{}).Where("payment_method = ? AND status = ? AND receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId)
 	if err := buildCount.Count(&count).Error; err != nil {
