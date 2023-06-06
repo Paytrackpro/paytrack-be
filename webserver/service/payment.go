@@ -212,11 +212,21 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	builder := s.db
 	buildCount := s.db.Model(&storage.Payment{})
 	if request.RequestType == storage.PaymentTypeRequest {
-		builder = builder.Where("sender_id = ?", userId)
-		buildCount = buildCount.Where("sender_id = ?", userId)
+		if request.HidePaid {
+			builder = builder.Where("sender_id = ? AND status <> ?", userId, storage.PaymentStatusPaid)
+			buildCount = buildCount.Where("sender_id = ? AND status <> ?", userId, storage.PaymentStatusPaid)
+		} else {
+			builder = builder.Where("sender_id = ?", userId)
+			buildCount = buildCount.Where("sender_id = ?", userId)
+		}
 	} else if request.RequestType == storage.PaymentTypeReminder {
-		builder = builder.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
-		buildCount = buildCount.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
+		if request.HidePaid {
+			builder = builder.Where("receiver_id = ? AND status <> ? AND status <> ?", userId, storage.PaymentStatusPaid, storage.PaymentStatusCreated)
+			buildCount = buildCount.Where("receiver_id = ? AND status <> ? AND status <> ?", userId, storage.PaymentStatusPaid, storage.PaymentStatusCreated)
+		} else {
+			builder = builder.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
+			buildCount = buildCount.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
+		}
 	} else if request.RequestType == storage.PaymentTypeApproval {
 		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]' LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, request.Size, offset)
 		countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]'`, storage.PaymentStatusSent, userId)
