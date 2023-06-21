@@ -162,6 +162,23 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, payment)
 }
 
+func (a *apiPayment) getMonthlySummary(w http.ResponseWriter, r *http.Request) {
+	var query portal.SummaryFilter
+	if err := a.parseQueryAndValidate(r, &query); err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	claims, _ := a.parseBearer(r)
+	paymentSummary, err := a.service.GetRequestSummary(claims.Id, query)
+	if err != nil {
+		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"summary": paymentSummary,
+	})
+}
+
 func (a *apiPayment) verifyTokenPayment(token string, paymentId uint64) error {
 	var plainText, err = a.crypto.Decrypt(token)
 	if err != nil {
