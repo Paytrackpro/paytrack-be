@@ -212,7 +212,7 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 		return err
 	}
 
-	if claims.Id == payment.SenderId || (claims.Id == payment.ReceiverId && payment.Status != storage.PaymentStatusCreated) || approver != nil {
+	if claims.Id == payment.SenderId || (claims.Id == payment.ReceiverId && (payment.Status != storage.PaymentStatusCreated || (payment.Status == storage.PaymentStatusCreated && payment.ShowDraftRecipient))) || approver != nil {
 		return nil
 	}
 	return fmt.Errorf("you do not have access")

@@ -13,18 +13,19 @@ type PaymentRequest struct {
 	ReceiverId uint64 `json:"receiverId"`
 
 	// ExternalEmail is the field to send the payment to the person who does not have an account yet
-	ExternalEmail   string                  `validate:"required_if=ContactMethod 1,omitempty,email" json:"externalEmail"`
-	ContactMethod   storage.PaymentContact  `json:"contactMethod"`
-	HourlyRate      float64                 `json:"hourlyRate"`
-	PaymentSettings storage.PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
-	Amount          float64                 `json:"amount"`
-	Description     string                  `json:"description"`
-	Details         []storage.PaymentDetail `json:"details"`
-	PaymentMethod   utils.Method            `json:"paymentMethod"`
-	PaymentAddress  string                  `json:"paymentAddress"`
-	Status          storage.PaymentStatus   `json:"status"`
-	TxId            string                  `json:"txId"`
-	Token           string                  `json:"token"`
+	ExternalEmail      string                  `validate:"required_if=ContactMethod 1,omitempty,email" json:"externalEmail"`
+	ContactMethod      storage.PaymentContact  `json:"contactMethod"`
+	HourlyRate         float64                 `json:"hourlyRate"`
+	PaymentSettings    storage.PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
+	Amount             float64                 `json:"amount"`
+	Description        string                  `json:"description"`
+	Details            []storage.PaymentDetail `json:"details"`
+	PaymentMethod      utils.Method            `json:"paymentMethod"`
+	PaymentAddress     string                  `json:"paymentAddress"`
+	Status             storage.PaymentStatus   `json:"status"`
+	TxId               string                  `json:"txId"`
+	Token              string                  `json:"token"`
+	ShowDraftRecipient bool                    `json:"showDraftRecipient"`
 }
 
 type PaymentConfirm struct {

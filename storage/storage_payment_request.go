@@ -170,6 +170,7 @@ type Payment struct {
 	UpdatedAt           time.Time       `json:"updatedAt"`
 	SentAt              time.Time       `json:"sentAt"`
 	PaidAt              time.Time       `json:"paidAt"`
+	ShowDraftRecipient  bool            `json:"showDraftRecipient"`
 }
 
 type PaymentFilter struct {
