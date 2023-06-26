@@ -258,6 +258,10 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 			}
 		}
 		payment.Status = request.Status
+		// if status is Draft, save show draft for recipient flag
+		if request.Status == storage.PaymentStatusCreated {
+			payment.ShowDraftRecipient = request.ShowDraftRecipient
+		}
 	}
 
 	if err := s.db.Save(&payment).Error; err != nil {
@@ -285,11 +289,11 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		}
 	} else if request.RequestType == storage.PaymentTypeReminder {
 		if request.HidePaid {
-			builder = builder.Where("receiver_id = ? AND status <> ? AND status <> ?", userId, storage.PaymentStatusPaid, storage.PaymentStatusCreated)
-			buildCount = buildCount.Where("receiver_id = ? AND status <> ? AND status <> ?", userId, storage.PaymentStatusPaid, storage.PaymentStatusCreated)
+			builder = builder.Where("receiver_id = ? AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+			buildCount = buildCount.Where("receiver_id = ? AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
 		} else {
-			builder = builder.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
-			buildCount = buildCount.Where("receiver_id = ? AND status <> ?", userId, storage.PaymentStatusCreated)
+			builder = builder.Where("receiver_id = ? AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+			buildCount = buildCount.Where("receiver_id = ? AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
 		}
 	} else if request.RequestType == storage.PaymentTypeApproval {
 		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]' LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, request.Size, offset)
