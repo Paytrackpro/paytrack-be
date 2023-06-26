@@ -91,3 +91,15 @@ type GetRateResponse struct {
 	Rate        float64 `json:"rate"`
 	ConvertTime int64   `json:"convertTime"`
 }
+type PaymentSummary struct {
+	RequestReceived uint64  `json:"requestReceived`
+	RequestSent     uint64  `json:"requestSent`
+	RequestPaid     uint64  `json:"requestPaid`
+	TotalPaid       float64 `json:"totalPaid`
+	TotalReceived   float64 `json:"totalReceived`
+}
+
+type SummaryFilter struct {
+	Month uint64 `json:"month`
+	Ids   string `json:"ids`
+}

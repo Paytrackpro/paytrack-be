@@ -1,7 +1,10 @@
 package service
 
 import (
+	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
@@ -37,6 +40,67 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int) ([]storag
 	}
 
 	return payments, count, nil
+}
+
+func (s *Service) GetRequestSummary(userId uint64, summaryFilter portal.SummaryFilter) (portal.PaymentSummary, error) {
+	var requestSentCount int64
+	var requestReceivedCount int64
+	var requestPaidCount int64
+	var totalPaid sql.NullFloat64
+	var totalReceived sql.NullFloat64
+	var paymentSummary portal.PaymentSummary
+	var idArray = strings.Split(summaryFilter.Ids, ",")
+	var idsInt = make([]int, len(idArray))
+	for i, v := range idArray {
+		idsInt[i], _ = strconv.Atoi(v)
+	}
+	if len(summaryFilter.Ids) == 0 {
+		buildRequestSentCount := s.db.Model(&storage.Payment{}).Where("sender_id = ? AND status <> ? AND EXTRACT(MONTH FROM sent_at) = ?", userId, storage.PaymentStatusCreated, summaryFilter.Month)
+		if err := buildRequestSentCount.Count(&requestSentCount).Error; err != nil {
+			return paymentSummary, err
+		}
+	} else {
+		buildRequestSentCount := s.db.Model(&storage.Payment{}).Where("sender_id = ? AND status <> ? AND EXTRACT(MONTH FROM sent_at) = ? AND receiver_id IN ?", userId, storage.PaymentStatusCreated, summaryFilter.Month, idsInt)
+		if err := buildRequestSentCount.Count(&requestSentCount).Error; err != nil {
+			return paymentSummary, err
+		}
+	}
+	buildRequestReceivedCount := s.db.Model(&storage.Payment{}).Where("receiver_id = ? AND status <> ? AND EXTRACT(MONTH FROM sent_at) = ?", userId, storage.PaymentStatusCreated, summaryFilter.Month)
+	if err := buildRequestReceivedCount.Count(&requestReceivedCount).Error; err != nil {
+		return paymentSummary, err
+	}
+
+	buildRequestPaidCount := s.db.Model(&storage.Payment{}).Where("receiver_id = ? AND status = ? AND EXTRACT(MONTH FROM sent_at) = ?", userId, storage.PaymentStatusPaid, summaryFilter.Month)
+	if err := buildRequestPaidCount.Count(&requestPaidCount).Error; err != nil {
+		return paymentSummary, err
+	}
+
+	totalPaidQuery := fmt.Sprintf(`SELECT sum(amount) FROM payments WHERE status = %d AND receiver_id = %d AND EXTRACT(MONTH FROM paid_at) = %d`, storage.PaymentStatusPaid, userId, summaryFilter.Month)
+
+	if err := s.db.Raw(totalPaidQuery).Scan(&totalPaid).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return paymentSummary, err
+		}
+		return paymentSummary, err
+	}
+	var totalRececiverQuery = fmt.Sprintf(`SELECT sum(amount) FROM payments WHERE status = %d AND sender_id = %d AND EXTRACT(MONTH FROM paid_at) = %d`, storage.PaymentStatusPaid, userId, summaryFilter.Month)
+	if len(summaryFilter.Ids) > 0 {
+		totalRececiverQuery = fmt.Sprintf(`SELECT sum(amount) FROM payments WHERE status = %d AND sender_id = %d AND EXTRACT(MONTH FROM paid_at) = %d AND receiver_id IN (%s)`, storage.PaymentStatusPaid, userId, summaryFilter.Month, summaryFilter.Ids)
+	}
+	if err := s.db.Raw(totalRececiverQuery).Scan(&totalReceived).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return paymentSummary, err
+		}
+		return paymentSummary, err
+	}
+
+	paymentSummary.RequestSent = uint64(requestSentCount)
+	paymentSummary.RequestReceived = uint64(requestReceivedCount)
+	paymentSummary.RequestPaid = uint64(requestPaidCount)
+	paymentSummary.TotalPaid = totalPaid.Float64
+	paymentSummary.TotalReceived = totalReceived.Float64
+
+	return paymentSummary, nil
 }
 
 func (s *Service) CreatePayment(userId uint64, userName string, displayName string, request portal.PaymentRequest) (*storage.Payment, error) {

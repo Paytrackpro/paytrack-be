@@ -47,6 +47,7 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 
 	utils.SetValue(&user.Email, userInfo.Email)
 	utils.SetValue(&user.HourlyLaborRate, userInfo.HourlyLaborRate)
+	utils.SetValue(&user.ShowMonthlyReport, userInfo.ShowMonthlyReport)
 	user.PaymentSettings = userInfo.PaymentSettings
 
 	uName := ""
