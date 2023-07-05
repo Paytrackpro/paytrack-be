@@ -71,6 +71,7 @@ func (s *WebServer) Route() {
 			r.Get("/rate", paymentRouter.getRate)
 			r.Delete("/delete/{id:[0-9]+}", paymentRouter.deleteDraft)
 			r.Get("/monthly-summary", paymentRouter.getMonthlySummary)
+			r.Get("/approval-count", paymentRouter.getApprovalCount)
 		})
 	})
 }
