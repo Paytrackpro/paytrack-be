@@ -339,6 +339,18 @@ func (a *apiPayment) deleteDraft(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, nil)
 }
 
+func (a *apiPayment) getApprovalCount(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.parseBearer(r)
+	count, err := a.service.GetApprovalsCount(claims.Id)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"count": count,
+	})
+}
+
 func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	var query storage.PaymentFilter
 	if err := a.parseQueryAndValidate(r, &query); err != nil {

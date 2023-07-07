@@ -333,6 +333,18 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	return payments, count, nil
 }
 
+func (s *Service) GetApprovalsCount(userId uint64) (int64, error) {
+	var count int64
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]'`, storage.PaymentStatusSent, userId)
+	if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return count, nil
+}
+
 func (s *Service) BulkPaidBTC(userId uint64, txId string, bulkPays []portal.BulkPaymentBTC) error {
 	paymentIds := make([]int, 0)
 	bulkMap := make(map[int]portal.BulkPaymentBTC)
