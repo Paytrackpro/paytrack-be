@@ -116,6 +116,10 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
+	//default sortable is lastSeen desc (newest before)
+	if utils.IsEmpty(f.Sort.Order) {
+		f.Sort.Order = "lastSeen desc"
+	}
 	var users []storage.User
 	if err := a.db.GetList(&f, &users); err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)

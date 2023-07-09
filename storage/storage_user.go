@@ -120,7 +120,10 @@ func (f *UserFilter) BindFirst(db *gorm.DB) *gorm.DB {
 
 func (f *UserFilter) Sortable() map[string]bool {
 	return map[string]bool{
-		"createdAt": true,
-		"lastSeen":  true,
+		"userName":    true,
+		"displayName": true,
+		"email":       true,
+		"createdAt":   true,
+		"lastSeen":    true,
 	}
 }
