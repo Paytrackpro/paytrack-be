@@ -103,17 +103,19 @@ func (s *Service) GetRequestSummary(userId uint64, summaryFilter portal.SummaryF
 	return paymentSummary, nil
 }
 
-func (s *Service) CreatePayment(userId uint64, userName string, displayName string, request portal.PaymentRequest) (*storage.Payment, error) {
+func (s *Service) CreatePayment(userId uint64, userName string, displayName string, showDateOnInvoiceLine bool, showDraftForRecipient bool, request portal.PaymentRequest) (*storage.Payment, error) {
 	var reciver storage.User
 	payment := storage.Payment{
-		SenderId:          userId,
-		SenderName:        userName,
-		SenderDisplayName: displayName,
-		Description:       request.Description,
-		Details:           request.Details,
-		Status:            request.Status,
-		HourlyRate:        request.HourlyRate,
-		PaymentSettings:   request.PaymentSettings,
+		SenderId:              userId,
+		SenderName:            userName,
+		SenderDisplayName:     displayName,
+		Description:           request.Description,
+		Details:               request.Details,
+		Status:                request.Status,
+		HourlyRate:            request.HourlyRate,
+		PaymentSettings:       request.PaymentSettings,
+		ShowDraftRecipient:    showDraftForRecipient,
+		ShowDateOnInvoiceLine: showDateOnInvoiceLine,
 	}
 
 	// payment is internal

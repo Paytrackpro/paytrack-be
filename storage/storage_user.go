@@ -39,21 +39,23 @@ func (a *PaymentSettings) Scan(value interface{}) error {
 }
 
 type User struct {
-	Id                uint64          `json:"id" gorm:"primarykey"`
-	UserName          string          `json:"userName" gorm:"index:users_user_name_idx,unique"`
-	DisplayName       string          `json:"displayName"`
-	PasswordHash      string          `json:"-"`
-	Email             string          `json:"email"`
-	HourlyLaborRate   float64         `json:"hourlyLaborRate"`
-	PaymentSettings   PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
-	Role              utils.UserRole  `json:"role"`
-	CreatedAt         time.Time       `json:"createdAt"`
-	UpdatedAt         time.Time       `json:"updatedAt"`
-	LastSeen          time.Time       `json:"lastSeen" gorm:"default:current_timestamp"`
-	Secret            string          `json:"-"`
-	Otp               bool            `json:"otp"`
-	Locked            bool            `json:"locked"`
-	ShowMonthlyReport bool            `json:"showMonthlyReport"`
+	Id                    uint64          `json:"id" gorm:"primarykey"`
+	UserName              string          `json:"userName" gorm:"index:users_user_name_idx,unique"`
+	DisplayName           string          `json:"displayName"`
+	PasswordHash          string          `json:"-"`
+	Email                 string          `json:"email"`
+	HourlyLaborRate       float64         `json:"hourlyLaborRate"`
+	PaymentSettings       PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
+	Role                  utils.UserRole  `json:"role"`
+	CreatedAt             time.Time       `json:"createdAt"`
+	UpdatedAt             time.Time       `json:"updatedAt"`
+	LastSeen              time.Time       `json:"lastSeen" gorm:"default:current_timestamp"`
+	Secret                string          `json:"-"`
+	Otp                   bool            `json:"otp"`
+	Locked                bool            `json:"locked"`
+	ShowMonthlyReport     bool            `json:"showMonthlyReport"`
+	ShowDraftForRecipient bool            `json:"showDraftForRecipient"`
+	ShowDateOnInvoiceLine bool            `json:"showDateOnInvoiceLine"`
 }
 
 func (User) TableName() string {

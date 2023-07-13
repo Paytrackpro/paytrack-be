@@ -21,12 +21,14 @@ type apiAuth struct {
 }
 
 type authClaims struct {
-	Id          uint64
-	UserRole    utils.UserRole
-	Expire      int64
-	UserName    string
-	DisplayName string
-	Otp         bool
+	Id                    uint64
+	UserRole              utils.UserRole
+	Expire                int64
+	UserName              string
+	DisplayName           string
+	Otp                   bool
+	ShowDraftForRecipient bool
+	ShowDateOnInvoiceLine bool
 }
 
 func (c authClaims) Valid() error {
@@ -123,11 +125,13 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var authClaim = authClaims{
-		Id:          user.Id,
-		UserRole:    user.Role,
-		Expire:      time.Now().Add(time.Hour * time.Duration(a.conf.AliveSessionHours)).Unix(),
-		UserName:    user.UserName,
-		DisplayName: user.DisplayName,
+		Id:                    user.Id,
+		UserRole:              user.Role,
+		Expire:                time.Now().Add(time.Hour * time.Duration(a.conf.AliveSessionHours)).Unix(),
+		UserName:              user.UserName,
+		DisplayName:           user.DisplayName,
+		ShowDraftForRecipient: user.ShowDraftForRecipient,
+		ShowDateOnInvoiceLine: user.ShowDateOnInvoiceLine,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, authClaim)
 	tokenString, err := token.SignedString([]byte(a.conf.HmacSecretKey))
@@ -188,11 +192,13 @@ func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var authClaim = authClaims{
-		Id:          user.Id,
-		UserRole:    user.Role,
-		Expire:      time.Now().Add(time.Hour * time.Duration(a.conf.AliveSessionHours)).Unix(),
-		UserName:    user.UserName,
-		DisplayName: user.DisplayName,
+		Id:                    user.Id,
+		UserRole:              user.Role,
+		Expire:                time.Now().Add(time.Hour * time.Duration(a.conf.AliveSessionHours)).Unix(),
+		UserName:              user.UserName,
+		DisplayName:           user.DisplayName,
+		ShowDraftForRecipient: user.ShowDraftForRecipient,
+		ShowDateOnInvoiceLine: user.ShowDateOnInvoiceLine,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, authClaim)
 	tokenString, err := token.SignedString([]byte(a.conf.HmacSecretKey))
