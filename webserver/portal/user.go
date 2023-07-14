@@ -53,18 +53,20 @@ func (f RegisterForm) User() (*storage.User, error) {
 }
 
 type UpdateUserRequest struct {
-	UserName          string                   `json:"userName"`
-	DisplayName       string                   `json:"displayName"`
-	Password          string                   `json:"password"`
-	Email             string                   `validate:"omitempty,email" json:"email"`
-	PaymentType       utils.Method             `json:"paymentType"`
-	PaymentAddress    string                   `json:"paymentAddress"`
-	UserId            int                      `json:"userId"`
-	Otp               bool                     `json:"otp"`
-	PaymentSettings   []storage.PaymentSetting `json:"paymentSettings"`
-	HourlyLaborRate   float64                  `json:"hourlyLaborRate"`
-	Locked            bool                     `json:"locked"`
-	ShowMonthlyReport bool                     `json:"showMonthlyReport"`
+	UserName              string                   `json:"userName"`
+	DisplayName           string                   `json:"displayName"`
+	Password              string                   `json:"password"`
+	Email                 string                   `validate:"omitempty,email" json:"email"`
+	PaymentType           utils.Method             `json:"paymentType"`
+	PaymentAddress        string                   `json:"paymentAddress"`
+	UserId                int                      `json:"userId"`
+	Otp                   bool                     `json:"otp"`
+	PaymentSettings       []storage.PaymentSetting `json:"paymentSettings"`
+	HourlyLaborRate       float64                  `json:"hourlyLaborRate"`
+	Locked                bool                     `json:"locked"`
+	ShowMonthlyReport     bool                     `json:"showMonthlyReport"`
+	ShowDraftForRecipient bool                     `json:"showDraftForRecipient"`
+	ShowDateOnInvoiceLine bool                     `json:"showDateOnInvoiceLine"`
 }
 
 type UserWithList struct {
