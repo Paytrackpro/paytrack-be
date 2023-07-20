@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int) ([]storage.Payment, int64, error) {
+func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int, order string) ([]storage.Payment, int64, error) {
 	if page != 0 {
 		page = page - 1
 	}
@@ -22,7 +22,7 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int) ([]storag
 	offset := page * pageSize
 
 	build :=
-		s.db.Model(&storage.Payment{}).
+		s.db.Model(&storage.Payment{}).Order(order).
 			Where("payments.payment_method = ? AND payments.status = ? AND payments.receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId).
 			Scan(&payments)
 
@@ -300,7 +300,7 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	} else if request.RequestType == storage.PaymentTypeApproval {
 		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]' LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, request.Size, offset)
 		countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]'`, storage.PaymentStatusSent, userId)
-		if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+		if err := s.db.Raw(query).Scan(&payments).Order(request.Sort.Order).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return payments, 0, nil
 			}
@@ -325,7 +325,7 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		return nil, 0, err
 	}
 
-	if err := builder.Limit(request.Size).Offset(offset).Find(&payments).Error; err != nil {
+	if err := builder.Order(request.Sort.Order).Limit(request.Size).Offset(offset).Find(&payments).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return payments, 0, nil
 		}

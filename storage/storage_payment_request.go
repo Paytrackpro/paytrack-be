@@ -124,6 +124,7 @@ type PaymentDetail struct {
 	Price       float64 `json:"price"`
 	Cost        float64 `json:"cost"`
 	Description string  `json:"description"`
+	Date        string  `json:"date"`
 }
 
 type PaymentDetails []PaymentDetail
