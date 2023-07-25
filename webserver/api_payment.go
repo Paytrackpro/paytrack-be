@@ -3,6 +3,7 @@ package webserver
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"code.cryptopower.dev/mgmt-ng/be/email"
@@ -359,9 +360,15 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims, _ := a.parseBearer(r)
-
+	//default sortable is createdAt desc (newest before)
+	if utils.IsEmpty(query.Sort.Order) {
+		query.Sort.Order = "created_at desc"
+	}
+	if strings.Contains(query.Sort.Order, "createdAt") {
+		query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "createdAt", "created_at")
+	}
 	if query.RequestType == storage.PaymentTypeBulkPayBTC {
-		payments, count, err := a.service.GetBulkPaymentBTC(claims.Id, query.Page, query.Size)
+		payments, count, err := a.service.GetBulkPaymentBTC(claims.Id, query.Page, query.Size, query.Sort.Order)
 		if err != nil {
 			utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 			return
