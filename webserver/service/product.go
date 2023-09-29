@@ -53,63 +53,22 @@ func (s *Service) UpdateProduct(id uint64, productInfo portal.UpdateProductReque
 	return product, nil
 }
 
-// func (s *Service) UpdateUserInfos(id uint64, userInfo portal.UpdateUserRequest) (storage.User, error) {
-// 	var user storage.User
-// 	if err := s.db.Where("id = ?", id).First(&user).Error; err != nil {
-// 		if err == gorm.ErrRecordNotFound {
-// 			return user, utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
-// 		}
-// 		log.Error("UpdateUserInfo:get user fail with error: ", err)
-// 		return user, err
-// 	}
+func (s *Service) CreateProduct(userId uint64, request portal.CreateProductForm) (*storage.Product, error) {
+	product := storage.Product{
+		ProductCode: request.ProductCode,
+		ProductName: request.ProductName,
+		Description: request.Description,
+		OwnerId:     userId,
+		Currency:    request.Currency,
+		Price:       request.Price,
+		Stock:       request.Stock,
+		Avatar:      request.Avatar,
+		Images:      request.Images,
+		Status:      1,
+	}
 
-// 	// check email duplicate
-// 	if !utils.IsEmpty(userInfo.Email) && user.Email != userInfo.Email {
-// 		var oldUser storage.User
-// 		var err = s.db.Debug().Where("email", userInfo.Email).Not("id", user.Id).First(&oldUser).Error
-// 		if err == nil {
-// 			return user, fmt.Errorf("the email is already taken")
-// 		} else if err != gorm.ErrRecordNotFound {
-// 			log.Error("UpdateUserInfo:check email duplicate fail with error: ", err)
-// 			return user, err
-// 		}
-// 	}
-
-// 	utils.SetValue(&user.Email, userInfo.Email)
-// 	utils.SetValue(&user.Otp, userInfo.Otp)
-// 	utils.SetValue(&user.HourlyLaborRate, userInfo.HourlyLaborRate)
-// 	user.PaymentSettings = userInfo.PaymentSettings
-
-// 	uDisplayName := ""
-// 	// if user.DisplayName was changed, sync with payment data
-// 	if len(userInfo.DisplayName) > 0 && strings.Compare(userInfo.DisplayName, user.DisplayName) != 0 {
-// 		uDisplayName = userInfo.DisplayName
-// 	}
-
-// 	utils.SetValue(&user.DisplayName, userInfo.DisplayName)
-
-// 	if !utils.IsEmpty(userInfo.Password) {
-// 		hash, err := bcrypt.GenerateFromPassword([]byte(userInfo.Password), bcrypt.DefaultCost)
-// 		if err != nil {
-// 			return user, err
-// 		}
-// 		user.PasswordHash = string(hash)
-// 	}
-
-// 	tx := s.db.Begin()
-
-// 	if err := tx.Save(&user).Error; err != nil {
-// 		log.Error("UpdateUserInfo: save user fail with error: ", err)
-// 		tx.Rollback()
-// 		return user, err
-// 	}
-
-// 	if err := s.SyncPaymentUser(tx, int(user.Id), uDisplayName, ""); err != nil {
-// 		log.Error("UpdateUserInfo: Sync payment user fail with error: ", err)
-// 		tx.Rollback()
-// 		return user, err
-// 	}
-
-// 	tx.Commit()
-// 	return user, nil
-// }
+	if err := s.db.Save(&product).Error; err != nil {
+		return nil, err
+	}
+	return &product, nil
+}

@@ -1,17 +1,18 @@
 package portal
 
 import (
-	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"gorm.io/gorm"
 )
 
-type CreateForm struct {
-	UserName       string `validate:"required,alphanum,gte=4,lte=32"`
-	DisplayName    string
-	Password       string `validate:"required"`
-	Email          string `validate:"omitempty,email"`
-	DefaultPayment utils.Method
-	PaymentAddress string
+type CreateProductForm struct {
+	ProductCode string
+	ProductName string `validate:"required"`
+	Description string
+	Currency    string `validate:"required"`
+	Avatar      string
+	Images      string
+	Price       float32 `validate:"required"`
+	Stock       int     `validate:"required"`
 }
 
 type UpdateProductRequest struct {
@@ -20,6 +21,7 @@ type UpdateProductRequest struct {
 	ProductCode string  `json:"productCode"`
 	ProductName string  `json:"productName"`
 	Description string  `json:"description"`
+	OwnerId     uint    `json:"ownerId"`
 	Currency    string  `json:"currency"`
 	Avatar      string  `json:"avatar"`
 	Images      string  `json:"images"`

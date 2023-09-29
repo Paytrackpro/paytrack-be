@@ -48,12 +48,16 @@ func (s *WebServer) Route() {
 			})
 		})
 
-		r.Route("/product", func(r chi.Router) {
+		r.Route("/shop", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)
-			var productRouter = apiProduct{WebServer: s}
-			r.Get("/info", productRouter.info)
-			r.Put("/info", productRouter.UpdateProduct)
-			r.Get("/list", productRouter.getListProducts)
+			r.Route("/product", func(r chi.Router) {
+				var productRouter = apiProduct{WebServer: s}
+				r.Post("/upload", productRouter.uploadFile)
+				r.Post("/create", productRouter.createProduct)
+				r.Get("/info", productRouter.info)
+				r.Put("/info", productRouter.updateProduct)
+				r.Get("/list", productRouter.getListProducts)
+			})
 		})
 
 		r.Route("/admin", func(r chi.Router) {

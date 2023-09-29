@@ -19,12 +19,13 @@ type ProductStorage interface {
 type Product struct {
 	// Sender is the person who will pay for the payment
 	Id          uint64    `json:"id" gorm:"primarykey"`
-	ProductCode string    `json:"productCode" gorm:"index:products_product_code_idx,unique"`
+	ProductCode string    `json:"productCode"`
 	ProductName string    `json:"productName"`
 	Description string    `json:"description"`
 	Currency    string    `json:"currency"`
 	Avatar      string    `json:"avatar"`
 	Images      string    `json:"images"`
+	OwnerId     uint64    `json:"ownerId"`
 	Price       float32   `json:"price"`
 	Stock       int       `json:"stock"`
 	Status      uint      `json:"status"`
