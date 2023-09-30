@@ -11,23 +11,23 @@ type CreateProductForm struct {
 	Currency    string `validate:"required"`
 	Avatar      string
 	Images      string
-	Price       float32 `validate:"required"`
+	Price       float64 `validate:"required"`
 	Stock       int     `validate:"required"`
 }
 
+// Sender is the person who will pay for the payment
 type UpdateProductRequest struct {
-	// Sender is the person who will pay for the payment
 	Id          uint64  `json:"id"`
 	ProductCode string  `json:"productCode"`
 	ProductName string  `json:"productName"`
 	Description string  `json:"description"`
-	OwnerId     uint    `json:"ownerId"`
+	OwnerId     uint32  `json:"ownerId"`
 	Currency    string  `json:"currency"`
 	Avatar      string  `json:"avatar"`
 	Images      string  `json:"images"`
-	Price       float32 `json:"price"`
+	Price       float64 `json:"price"`
 	Stock       int     `json:"stock"`
-	Status      uint    `json:"status"`
+	Status      uint32  `json:"status"`
 }
 
 type ProductWithList struct {

@@ -26,9 +26,9 @@ type Product struct {
 	Avatar      string    `json:"avatar"`
 	Images      string    `json:"images"`
 	OwnerId     uint64    `json:"ownerId"`
-	Price       float32   `json:"price"`
+	Price       float64   `json:"price"`
 	Stock       int       `json:"stock"`
-	Status      uint      `json:"status"`
+	Status      uint32    `json:"status"`
 	CreatedAt   time.Time `json:"createdAt" gorm:"default:current_timestamp"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }

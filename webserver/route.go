@@ -52,12 +52,20 @@ func (s *WebServer) Route() {
 			r.Use(s.loggedInMiddleware)
 			r.Route("/product", func(r chi.Router) {
 				var productRouter = apiProduct{WebServer: s}
-				r.Post("/upload", productRouter.uploadFile)
 				r.Post("/create", productRouter.createProduct)
-				r.Get("/info", productRouter.info)
-				r.Put("/info", productRouter.updateProduct)
+				r.Get("/info/{id}", productRouter.info)
+				r.Put("/update", productRouter.updateProduct)
 				r.Get("/list", productRouter.getListProducts)
+				r.Delete("/delete/{id:[0-9]+}", productRouter.deleteProduct)
 			})
+		})
+
+		r.Route("/file", func(r chi.Router) {
+			r.Use(s.loggedInMiddleware)
+			var fileRouter = apiFileUpload{WebServer: s}
+			r.Post("/upload", fileRouter.uploadFile)
+			r.Get("/base64", fileRouter.getProductImagesBase64)
+			r.Get("/img-base64", fileRouter.getImageBase64)
 		})
 
 		r.Route("/admin", func(r chi.Router) {
