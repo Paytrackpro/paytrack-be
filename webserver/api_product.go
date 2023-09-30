@@ -1,6 +1,7 @@
 package webserver
 
 import (
+	"fmt"
 	"net/http"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
@@ -85,6 +86,15 @@ func (a *apiProduct) createProduct(w http.ResponseWriter, r *http.Request) {
 
 func (a *apiProduct) deleteProduct(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	a.db.GetDB().Where("id = ?", id).Delete(&storage.Product{})
-	utils.ResponseOK(w, nil)
+	product, err := a.service.GetProductInfo(utils.Uint64(id))
+	if err != nil {
+		utils.Response(w, http.StatusNotFound, err, nil)
+	}
+	product.Status = uint32(utils.Deleted)
+
+	pr, err := a.service.UpdateSingleProduct(product)
+	if err != nil {
+		fmt.Println("Delete failed")
+	}
+	utils.ResponseOK(w, pr, nil)
 }

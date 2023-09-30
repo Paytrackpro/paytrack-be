@@ -53,6 +53,19 @@ func (s *Service) UpdateProduct(id uint64, productInfo portal.UpdateProductReque
 	return product, nil
 }
 
+func (s *Service) UpdateSingleProduct(product storage.Product) (storage.Product, error) {
+	tx := s.db.Begin()
+
+	if err := tx.Save(&product).Error; err != nil {
+		tx.Rollback()
+		log.Error("UpdateProduct:save product fail with error: ", err)
+		return product, err
+	}
+
+	tx.Commit()
+	return product, nil
+}
+
 func (s *Service) CreateProduct(userId uint64, request portal.CreateProductForm) (*storage.Product, error) {
 	product := storage.Product{
 		ProductCode: request.ProductCode,
@@ -64,7 +77,7 @@ func (s *Service) CreateProduct(userId uint64, request portal.CreateProductForm)
 		Stock:       request.Stock,
 		Avatar:      request.Avatar,
 		Images:      request.Images,
-		Status:      1,
+		Status:      uint32(utils.Active),
 	}
 
 	if err := s.db.Save(&product).Error; err != nil {

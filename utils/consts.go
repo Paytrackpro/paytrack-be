@@ -14,3 +14,11 @@ const (
 	UserRoleNone UserRole = iota
 	UserRoleAdmin
 )
+
+type ProductStatus uint32
+
+const (
+	Hidden ProductStatus = iota
+	Active
+	Deleted
+)
