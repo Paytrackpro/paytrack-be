@@ -22,6 +22,7 @@ type UpdateProductRequest struct {
 	ProductName string  `json:"productName"`
 	Description string  `json:"description"`
 	OwnerId     uint32  `json:"ownerId"`
+	OwnerName   string  `json:"ownerName"`
 	Currency    string  `json:"currency"`
 	Avatar      string  `json:"avatar"`
 	Images      string  `json:"images"`

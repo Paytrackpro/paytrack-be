@@ -26,6 +26,7 @@ type Product struct {
 	Avatar      string    `json:"avatar"`
 	Images      string    `json:"images"`
 	OwnerId     uint64    `json:"ownerId"`
+	OwnerName   string    `json:"ownerName"`
 	Price       float64   `json:"price"`
 	Stock       int       `json:"stock"`
 	Status      uint32    `json:"status"`
@@ -61,6 +62,7 @@ type ProductFilter struct {
 	Sort
 	KeySearch   string
 	ProductCode string
+	OwnerId     uint64
 }
 
 func (f *ProductFilter) BindQuery(db *gorm.DB) *gorm.DB {
@@ -73,12 +75,18 @@ func (f *ProductFilter) BindCount(db *gorm.DB) *gorm.DB {
 		keySearch := fmt.Sprintf("%%%s%%", strings.TrimSpace(f.KeySearch))
 		db = db.Where("product_name LIKE ?", keySearch)
 	}
+	if f.OwnerId > 0 {
+		db = db.Where("owner_id", f.OwnerId)
+	}
 	return db
 }
 
 func (f *ProductFilter) BindFirst(db *gorm.DB) *gorm.DB {
 	if len(f.ProductCode) > 0 {
 		db = db.Where("product_code LIKE ? ", f.ProductCode)
+	}
+	if f.OwnerId > 0 {
+		db = db.Where("owner_id", f.OwnerId)
 	}
 	return db
 }

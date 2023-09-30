@@ -41,6 +41,7 @@ func (a *apiProduct) updateProduct(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, product)
 }
 
+// Get product for seller
 func (a *apiProduct) getListProducts(w http.ResponseWriter, r *http.Request) {
 	var f storage.ProductFilter
 	if err := a.parseQueryAndValidate(r, &f); err != nil {
@@ -72,7 +73,11 @@ func (a *apiProduct) createProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	userInfo, _ := a.credentialsInfo(r)
 
-	product, err := a.service.CreateProduct(userInfo.Id, body)
+	var ownerName = userInfo.DisplayName
+	if utils.IsEmpty(ownerName) {
+		ownerName = userInfo.UserName
+	}
+	product, err := a.service.CreateProduct(userInfo.Id, ownerName, body)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusOK, err, nil)

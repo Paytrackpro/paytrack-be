@@ -66,12 +66,13 @@ func (s *Service) UpdateSingleProduct(product storage.Product) (storage.Product,
 	return product, nil
 }
 
-func (s *Service) CreateProduct(userId uint64, request portal.CreateProductForm) (*storage.Product, error) {
+func (s *Service) CreateProduct(userId uint64, ownerName string, request portal.CreateProductForm) (*storage.Product, error) {
 	product := storage.Product{
 		ProductCode: request.ProductCode,
 		ProductName: request.ProductName,
 		Description: request.Description,
 		OwnerId:     userId,
+		OwnerName:   ownerName,
 		Currency:    request.Currency,
 		Price:       request.Price,
 		Stock:       request.Stock,
