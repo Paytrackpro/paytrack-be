@@ -60,6 +60,16 @@ func (s *WebServer) Route() {
 			})
 		})
 
+		r.Route("/cart", func(r chi.Router) {
+			r.Use(s.loggedInMiddleware)
+			var apiRouter = apiCart{WebServer: s}
+			r.Post("/add-to-cart", apiRouter.addToCart)
+			r.Get("/list", apiRouter.getCartList)
+			r.Get("/count", apiRouter.countCart)
+			r.Put("/update", apiRouter.updateCart)
+			r.Delete("/delete", apiRouter.deleteCart)
+		})
+
 		r.Route("/file", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)
 			var fileRouter = apiFileUpload{WebServer: s}

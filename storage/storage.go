@@ -64,7 +64,7 @@ func NewStorage(c Config, oslogger *oslog.Logger) (Storage, error) {
 }
 
 func autoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(&User{}, &Payment{}, &ApproverSettings{}, &Product{})
+	return db.AutoMigrate(&User{}, &Payment{}, &ApproverSettings{}, &Product{}, &Cart{})
 }
 
 func (p *psql) Create(obj interface{}) error {
