@@ -191,8 +191,8 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 
 	if userId == 0 || request.ReceiverId == userId {
 		// receiver or external update
-		// allow recipient update status to sent or confirmed
-		if payment.Status == storage.PaymentStatusSent || payment.Status == storage.PaymentStatusConfirmed {
+		// allow recipient update status to sent or confirmed, or Rejected
+		if payment.Status == storage.PaymentStatusSent || payment.Status == storage.PaymentStatusConfirmed || payment.Status == storage.PaymentStatusRejected {
 			payment.Status = request.Status
 			if request.Status == storage.PaymentStatusSent && payment.Status != request.Status {
 				//update sentAt when status to sent
