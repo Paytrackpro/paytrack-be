@@ -341,15 +341,23 @@ func (a *apiPayment) deleteDraft(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, nil)
 }
 
-func (a *apiPayment) getApprovalCount(w http.ResponseWriter, r *http.Request) {
+func (a *apiPayment) getInitializationCount(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.parseBearer(r)
-	count, err := a.service.GetApprovalsCount(claims.Id)
-	if err != nil {
-		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+	approvalCount, err1 := a.service.GetApprovalsCount(claims.Id)
+	if err1 != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err1, utils.ErrorInternalCode), nil)
 		return
 	}
+
+	unpaidCount, err2 := a.service.GetUnpaidCount(claims.Id)
+	if err2 != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err2, utils.ErrorInternalCode), nil)
+		return
+	}
+
 	utils.ResponseOK(w, Map{
-		"count": count,
+		"approvalCount": approvalCount,
+		"unpaidCount":   unpaidCount,
 	})
 }
 
@@ -390,6 +398,17 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		"payments": payments,
 		"count":    count,
 	})
+}
+
+func (a *apiPayment) countBulkPayBTC(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.parseBearer(r)
+	count, err := a.service.CountBulkPaymentBTC(claims.Id)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		return
+	}
+
+	utils.ResponseOK(w, count)
 }
 
 func (a *apiPayment) approveRequest(w http.ResponseWriter, r *http.Request) {
