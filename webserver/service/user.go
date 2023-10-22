@@ -63,7 +63,7 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 	}
 
 	if isAdmin {
-		// if user.UserName was changed, checkduplicate username, sync with payment data
+		// if user.UserName was changed, check duplicate username, sync with payment data
 		if len(userInfo.UserName) > 0 && strings.Compare(userInfo.UserName, user.UserName) != 0 {
 			var oldUser storage.User
 			var err = s.db.Where("user_name", userInfo.UserName).Not("id", user.Id).First(&oldUser).Error
@@ -106,6 +106,12 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 	}
 
 	if err := s.SyncPaymentUser(tx, int(user.Id), uDisplayName, uName); err != nil {
+		log.Error("UpdateUserInfo: Sync payment user fail with error: ", err)
+		tx.Rollback()
+		return user, err
+	}
+
+	if err := s.SyncShopUserInfo(tx, int(user.Id), uDisplayName, uName); err != nil {
 		log.Error("UpdateUserInfo: Sync payment user fail with error: ", err)
 		tx.Rollback()
 		return user, err
