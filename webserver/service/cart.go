@@ -67,7 +67,7 @@ func (s *Service) UpdateSingleCart(cart storage.Cart) (storage.Cart, error) {
 	return cart, nil
 }
 
-func (s *Service) AddToCart(userId uint64, request portal.CartForm) (*storage.Cart, error) {
+func (s *Service) AddToCart(userId uint64, request portal.CartForm) (*storage.Cart, bool, error) {
 
 	var existCart storage.Cart
 	var isUpdate = false
@@ -77,7 +77,7 @@ func (s *Service) AddToCart(userId uint64, request portal.CartForm) (*storage.Ca
 
 	var product storage.Product
 	if err := s.db.Where("id = ?", request.ProductId).First(&product).Error; err != nil {
-		return &existCart, err
+		return &existCart, isUpdate, err
 	}
 
 	var quantity = request.Quantity
@@ -93,10 +93,10 @@ func (s *Service) AddToCart(userId uint64, request portal.CartForm) (*storage.Ca
 		if err := tx.Where("user_id = ? AND product_id = ?", userId, request.ProductId).Save(&existCart).Error; err != nil {
 			tx.Rollback()
 			log.Error("AddToCart:save exist cart fail with error: ", err)
-			return &existCart, err
+			return &existCart, isUpdate, err
 		}
 		tx.Commit()
-		return &existCart, nil
+		return &existCart, isUpdate, nil
 	}
 
 	cart = storage.Cart{
@@ -109,8 +109,8 @@ func (s *Service) AddToCart(userId uint64, request portal.CartForm) (*storage.Ca
 	}
 
 	if err := s.db.Create(&cart).Error; err != nil {
-		return nil, err
+		return nil, isUpdate, err
 	}
 	tx.Commit()
-	return &cart, nil
+	return &cart, isUpdate, nil
 }

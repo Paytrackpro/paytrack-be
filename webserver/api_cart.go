@@ -98,14 +98,15 @@ func (a *apiCart) addToCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userInfo, _ := a.credentialsInfo(r)
-	cart, err := a.service.AddToCart(userInfo.Id, body)
+	cart, isExist, err := a.service.AddToCart(userInfo.Id, body)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusOK, err, nil)
 		return
 	}
 	res := Map{
-		"cart": cart,
+		"cart":    cart,
+		"isExist": isExist,
 	}
 	utils.ResponseOK(w, res, nil)
 }
