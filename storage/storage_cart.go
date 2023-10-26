@@ -8,10 +8,10 @@ import (
 )
 
 type CartStorage interface {
-	CreateProduct(product *Product) error
-	UpdateProduct(product *Product) error
-	QueryProduct(field string, val interface{}) (*Product, error)
-	QueryProductWithList(field string, val interface{}) ([]Product, error)
+	AddToCart(cart *Cart) error
+	UpdateCart(cart *Cart) error
+	QueryCart(field string, val interface{}) (*Cart, error)
+	QueryCartWithList(field string, val interface{}) ([]Cart, error)
 }
 
 type Cart struct {

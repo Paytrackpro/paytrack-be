@@ -114,3 +114,7 @@ func (s *Service) AddToCart(userId uint64, request portal.CartForm) (*storage.Ca
 	tx.Commit()
 	return &cart, isUpdate, nil
 }
+
+func (s *Service) DeleteCart(userId uint64, productId uint64) {
+	s.db.Where("user_id = ? AND product_id = ?", userId, productId).Delete(&storage.Cart{})
+}

@@ -21,6 +21,8 @@ type Storage interface {
 	GetDB() *gorm.DB
 	UserStorage
 	ProductStorage
+	CartStorage
+	OrderStorage
 }
 
 type DeleteFilter interface {
@@ -64,7 +66,7 @@ func NewStorage(c Config, oslogger *oslog.Logger) (Storage, error) {
 }
 
 func autoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(&User{}, &Payment{}, &ApproverSettings{}, &Product{}, &Cart{})
+	return db.AutoMigrate(&User{}, &Payment{}, &ApproverSettings{}, &Product{}, &Cart{}, &Order{})
 }
 
 func (p *psql) Create(obj interface{}) error {

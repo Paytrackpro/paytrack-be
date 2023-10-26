@@ -70,6 +70,12 @@ func (s *WebServer) Route() {
 			r.Delete("/delete", apiRouter.deleteCart)
 		})
 
+		r.Route("/order", func(r chi.Router) {
+			r.Use(s.loggedInMiddleware)
+			var apiRouter = apiOrder{WebServer: s}
+			r.Post("/createOrders", apiRouter.createOrders)
+		})
+
 		r.Route("/file", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)
 			var fileRouter = apiFileUpload{WebServer: s}

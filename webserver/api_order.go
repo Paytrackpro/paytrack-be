@@ -1,7 +1,6 @@
 package webserver
 
 import (
-	"fmt"
 	"net/http"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
@@ -9,30 +8,30 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
 )
 
-type apiCart struct {
+type apiOrder struct {
 	*WebServer
 }
 
-func (a *apiCart) updateCart(w http.ResponseWriter, r *http.Request) {
-	var body portal.CartForm
-	err := a.parseJSONAndValidate(r, &body)
-	if err != nil {
-		fmt.Println("error")
-		utils.Response(w, http.StatusBadRequest, err, nil)
-		return
-	}
-	userInfo, _ := a.credentialsInfo(r)
-	cart, err := a.service.UpdateCart(userInfo.Id, body)
-	if err != nil {
-		utils.Response(w, http.StatusInternalServerError, err, nil)
-		return
-	}
+func (a *apiOrder) updateOrder(w http.ResponseWriter, r *http.Request) {
+	// var body portal.OrderForm
+	// err := a.parseJSONAndValidate(r, &body)
+	// if err != nil {
+	// 	fmt.Println("error")
+	// 	utils.Response(w, http.StatusBadRequest, err, nil)
+	// 	return
+	// }
+	// userInfo, _ := a.credentialsInfo(r)
+	// order, err := a.service.UpdateOrder(userInfo.Id, body)
+	// if err != nil {
+	// 	utils.Response(w, http.StatusInternalServerError, err, nil)
+	// 	return
+	// }
 
-	utils.ResponseOK(w, cart)
+	// utils.ResponseOK(w, order)
 }
 
 // Get cart list
-func (a *apiCart) getCartList(w http.ResponseWriter, r *http.Request) {
+func (a *apiOrder) getOrderList(w http.ResponseWriter, r *http.Request) {
 	userInfo, _ := a.credentialsInfo(r)
 
 	carts, err := a.service.GetCartsForUser(userInfo.Id)
@@ -76,7 +75,7 @@ func (a *apiCart) getCartList(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *apiCart) countCart(w http.ResponseWriter, r *http.Request) {
+func (a *apiOrder) countOrder(w http.ResponseWriter, r *http.Request) {
 	userInfo, _ := a.credentialsInfo(r)
 
 	count, err := a.service.CountCartForUser(userInfo.Id)
@@ -89,8 +88,8 @@ func (a *apiCart) countCart(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (a *apiCart) addToCart(w http.ResponseWriter, r *http.Request) {
-	var body portal.CartForm
+func (a *apiOrder) createOrders(w http.ResponseWriter, r *http.Request) {
+	var body portal.OrderForm
 	err := a.parseJSONAndValidate(r, &body)
 	if err != nil {
 		log.Error(err)
@@ -98,25 +97,24 @@ func (a *apiCart) addToCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userInfo, _ := a.credentialsInfo(r)
-	cart, isExist, err := a.service.AddToCart(userInfo.Id, body)
+	orders, err := a.service.CreateOrders(userInfo.Id, body)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusOK, err, nil)
 		return
 	}
 	res := Map{
-		"cart":    cart,
-		"isExist": isExist,
+		"orders": orders,
 	}
 	utils.ResponseOK(w, res, nil)
 }
 
-func (a *apiCart) deleteCart(w http.ResponseWriter, r *http.Request) {
+func (a *apiOrder) deleteOrder(w http.ResponseWriter, r *http.Request) {
 	productId := r.FormValue("productId")
 	userInfo, _ := a.credentialsInfo(r)
 	if utils.IsEmpty(productId) {
 		return
 	}
-	a.service.DeleteCart(userInfo.Id, utils.Uint64(productId))
+	a.db.GetDB().Where("user_id = ? AND product_id = ?", userInfo.Id, productId).Delete(&storage.Cart{})
 	utils.ResponseOK(w, nil)
 }
