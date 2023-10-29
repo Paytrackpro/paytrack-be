@@ -74,6 +74,8 @@ func (s *WebServer) Route() {
 			r.Use(s.loggedInMiddleware)
 			var apiRouter = apiOrder{WebServer: s}
 			r.Post("/createOrders", apiRouter.createOrders)
+			r.Get("/order-management", apiRouter.getOrderManagement)
+			r.Get("/detail/{id}", apiRouter.getOrderDetail)
 		})
 
 		r.Route("/file", func(r chi.Router) {

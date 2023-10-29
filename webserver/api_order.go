@@ -6,28 +6,31 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
+	"github.com/go-chi/chi/v5"
 )
 
 type apiOrder struct {
 	*WebServer
 }
 
-func (a *apiOrder) updateOrder(w http.ResponseWriter, r *http.Request) {
-	// var body portal.OrderForm
-	// err := a.parseJSONAndValidate(r, &body)
-	// if err != nil {
-	// 	fmt.Println("error")
-	// 	utils.Response(w, http.StatusBadRequest, err, nil)
-	// 	return
-	// }
-	// userInfo, _ := a.credentialsInfo(r)
-	// order, err := a.service.UpdateOrder(userInfo.Id, body)
-	// if err != nil {
-	// 	utils.Response(w, http.StatusInternalServerError, err, nil)
-	// 	return
-	// }
+func (a *apiOrder) getOrderManagement(w http.ResponseWriter, r *http.Request) {
+	userInfo, _ := a.credentialsInfo(r)
+	orderDisplayData, err := a.service.GetOrderManagement(userInfo.Id)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	utils.ResponseOK(w, orderDisplayData)
+}
 
-	// utils.ResponseOK(w, order)
+func (a *apiOrder) getOrderDetail(w http.ResponseWriter, r *http.Request) {
+	var id = chi.URLParam(r, "id")
+	orderData, err := a.service.GetOrderDetail(utils.Uint64(id))
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	utils.ResponseOK(w, orderData)
 }
 
 // Get cart list
@@ -97,7 +100,7 @@ func (a *apiOrder) createOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userInfo, _ := a.credentialsInfo(r)
-	orders, err := a.service.CreateOrders(userInfo.Id, body)
+	orders, err := a.service.CreateOrders(userInfo.Id, userInfo.UserName, body)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusOK, err, nil)

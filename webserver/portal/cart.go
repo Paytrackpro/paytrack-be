@@ -15,6 +15,7 @@ type CartDisplayData struct {
 	OwnerId      uint64  `json:"ownerId"`
 	OwnerName    string  `json:"ownerName"`
 	AvatarBase64 string  `json:"avatarBase64"`
+	AvatarName   string  `json:"avatarName"`
 	ProductId    uint64  `json:"productId"`
 	ProductName  string  `json:"productName"`
 	Price        float64 `json:"price"`

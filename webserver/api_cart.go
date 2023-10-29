@@ -66,6 +66,7 @@ func (a *apiCart) getCartList(w http.ResponseWriter, r *http.Request) {
 		tmpCartData.ProductName = product.ProductName
 		tmpCartData.ProductId = product.Id
 		tmpCartData.AvatarBase64 = utils.ConvertImageToBase64(product.Avatar)
+		tmpCartData.AvatarName = product.Avatar
 		tmpCartData.Stock = product.Stock
 		cartData = append(cartData, tmpCartData)
 		data[cart.OwnerId] = cartData

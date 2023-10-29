@@ -18,6 +18,7 @@ type OrderStorage interface {
 }
 
 type ProductPayments []ProductPayment
+type ProductPaymentsDisplay []ProductPaymentDisplay
 
 // Value Marshal
 func (a ProductPayments) Value() (driver.Value, error) {
@@ -36,7 +37,9 @@ func (a *ProductPayments) Scan(value interface{}) error {
 type Order struct {
 	OrderId         uint64          `json:"orderId" gorm:"primaryKey"`
 	UserId          uint64          `json:"userId"`
+	UserName        string          `json:"userName"`
 	OwnerId         uint64          `json:"ownerId"`
+	OwnerName       string          `json:"ownerName"`
 	ProductPayments ProductPayments `json:"productPayments" gorm:"type:jsonb"`
 	PhoneNumber     string          `json:"phoneNumber"`
 	Address         string          `json:"address"`
@@ -46,11 +49,23 @@ type Order struct {
 }
 
 type ProductPayment struct {
-	ProductId uint64  `json:"productId"`
-	Price     float64 `json:"price"`
-	Quantity  int     `json:"quantity"`
-	Currency  string  `json:"currency"`
-	Amount    float64 `json:"amount"`
+	ProductId   uint64  `json:"productId"`
+	ProductName string  `json:"productName"`
+	Avatar      string  `json:"avatar"`
+	Price       float64 `json:"price"`
+	Quantity    int     `json:"quantity"`
+	Currency    string  `json:"currency"`
+	Amount      float64 `json:"amount"`
+}
+
+type ProductPaymentDisplay struct {
+	ProductId    uint64  `json:"productId"`
+	ProductName  string  `json:"productName"`
+	AvatarBase64 string  `json:"avatarBase64"`
+	Price        float64 `json:"price"`
+	Quantity     int     `json:"quantity"`
+	Currency     string  `json:"currency"`
+	Amount       float64 `json:"amount"`
 }
 
 func (Order) TableName() string {

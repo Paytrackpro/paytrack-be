@@ -1,6 +1,8 @@
 package portal
 
 import (
+	"time"
+
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"gorm.io/gorm"
 )
@@ -11,10 +13,22 @@ type OrderForm struct {
 
 type OrderData struct {
 	OwnerId         uint64                  `json:"ownerId"`
+	OwnerName       string                  `json:"ownerName"`
 	PhoneNumber     string                  `json:"phoneNumber"`
 	Address         string                  `json:"address"`
 	Memo            string                  `json:"memo"`
 	ProductPayments storage.ProductPayments `json:"productPayments"`
+}
+
+type OrderDisplayData struct {
+	OrderId                uint64                         `json:"orderId"`
+	UserName               string                         `json:"userName"`
+	OwnerName              string                         `json:"ownerName"`
+	PhoneNumber            string                         `json:"phoneNumber"`
+	Address                string                         `json:"address"`
+	Memo                   string                         `json:"memo"`
+	CreatedAt              time.Time                      `json:"createdAt"`
+	ProductPaymentsDisplay storage.ProductPaymentsDisplay `json:"productPaymentsDisplay"`
 }
 
 type OrderWithList struct {
