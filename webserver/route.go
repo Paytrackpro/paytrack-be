@@ -76,6 +76,7 @@ func (s *WebServer) Route() {
 			r.Post("/createOrders", apiRouter.createOrders)
 			r.Get("/order-management", apiRouter.getOrderManagement)
 			r.Get("/detail/{id}", apiRouter.getOrderDetail)
+			r.Get("/my-orders", apiRouter.getMyOrders)
 		})
 
 		r.Route("/file", func(r chi.Router) {

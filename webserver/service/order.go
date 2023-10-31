@@ -62,6 +62,20 @@ func (s *Service) GetOrderManagement(userId uint64) ([]portal.OrderDisplayData, 
 	return orderDisplay, nil
 }
 
+func (s *Service) GetMyOrders(userId uint64) ([]portal.OrderDisplayData, error) {
+	var orders []storage.Order
+	if err := s.db.Where("user_id = ?", userId).Order("updated_at").Find(&orders).Error; err != nil {
+		log.Error("getMyOrders:get orders info fail with error: ", err)
+		return nil, err
+	}
+	var orderDisplay []portal.OrderDisplayData
+	for _, order := range orders {
+		var tmpOrderDisplay = convertToOrderDisplay(order)
+		orderDisplay = append(orderDisplay, tmpOrderDisplay)
+	}
+	return orderDisplay, nil
+}
+
 func convertToOrderDisplay(order storage.Order) portal.OrderDisplayData {
 	var tmpOrderDisplay portal.OrderDisplayData
 	tmpOrderDisplay.OrderId = order.OrderId
