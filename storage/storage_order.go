@@ -36,6 +36,7 @@ func (a *ProductPayments) Scan(value interface{}) error {
 
 type Order struct {
 	OrderId         uint64          `json:"orderId" gorm:"primaryKey"`
+	OrderCode       string          `json:"orderCode"`
 	UserId          uint64          `json:"userId"`
 	UserName        string          `json:"userName"`
 	OwnerId         uint64          `json:"ownerId"`
@@ -44,6 +45,7 @@ type Order struct {
 	PhoneNumber     string          `json:"phoneNumber"`
 	Address         string          `json:"address"`
 	Memo            string          `json:"memo"`
+	PaymentId       uint64          `json:"paymentId"`
 	CreatedAt       time.Time       `json:"createdAt"`
 	UpdatedAt       time.Time       `json:"updatedAt"`
 }

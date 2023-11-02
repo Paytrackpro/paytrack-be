@@ -190,6 +190,48 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 	return &payment, nil
 }
 
+func (s *Service) CreateOrderBillPayment(userId uint64, userName string, displayName string, request portal.PaymentRequest, orderId uint64, orderCode string) (*storage.Payment, error) {
+	var owner storage.User
+	payment := storage.Payment{
+		ReceiverId:            userId,
+		ReceiverName:          userName,
+		ReceiverDisplayName:   displayName,
+		Status:                request.Status,
+		ShowDateOnInvoiceLine: true,
+	}
+
+	payment.Description = "Payment for orders: <a href='{{{" + strconv.FormatUint(orderId, 10) + "}}}'>" + orderCode + "</a>"
+
+	if request.SenderId > 0 {
+		if err := s.db.Where("id = ?", request.SenderId).First(&owner).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return nil, utils.NewError(fmt.Errorf("sender not found"), utils.ErrorBadRequest)
+			}
+			return nil, err
+		}
+		payment.SenderId = request.SenderId
+		payment.SenderName = owner.UserName
+		payment.SenderDisplayName = owner.DisplayName
+		if len(payment.SenderDisplayName) == 0 {
+			payment.SenderDisplayName = payment.SenderName
+		}
+		if len(payment.ReceiverDisplayName) == 0 {
+			payment.ReceiverDisplayName = payment.ReceiverName
+		}
+		if owner.PaymentSettings != nil && len(owner.PaymentSettings) > 0 {
+			payment.PaymentSettings = owner.PaymentSettings
+		}
+	}
+	payment.Amount = request.Amount
+	payment.SentAt = time.Now()
+	payment.ProductPay = true
+
+	if err := s.db.Save(&payment).Error; err != nil {
+		return nil, err
+	}
+	return &payment, nil
+}
+
 func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest) (*storage.Payment, error) {
 	var payment storage.Payment
 	if err := s.db.First(&payment, "id = ?", id).Error; err != nil {

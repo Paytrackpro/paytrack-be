@@ -88,7 +88,7 @@ func (s *Service) CreateProduct(userId uint64, ownerName string, request portal.
 }
 
 // Sync Shop related data when user Display name was changed
-func (s *Service) SyncShopUserInfo(db *gorm.DB, uID int, displayName, userName string) error {
+func (s *Service) SyncShopUserInfo(db *gorm.DB, uID int, displayName, userName string, oldDisplayName string) error {
 	// Update Product owner on Product table
 	updateProductOwnerBuilder := db.Model(&storage.Product{}).
 		Where("owner_id = ?", uID)
@@ -97,7 +97,7 @@ func (s *Service) SyncShopUserInfo(db *gorm.DB, uID int, displayName, userName s
 		if err := updateProductOwnerBuilder.UpdateColumn("owner_name", displayName).Error; err != nil {
 			return err
 		}
-	} else {
+	} else if !utils.IsEmpty(userName) && utils.IsEmpty(oldDisplayName) {
 		if err := updateProductOwnerBuilder.UpdateColumn("owner_name", userName).Error; err != nil {
 			return err
 		}

@@ -111,7 +111,7 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 		return user, err
 	}
 
-	if err := s.SyncShopUserInfo(tx, int(user.Id), uDisplayName, uName); err != nil {
+	if err := s.SyncShopUserInfo(tx, int(user.Id), uDisplayName, uName, userInfo.DisplayName); err != nil {
 		log.Error("UpdateUserInfo: Sync payment user fail with error: ", err)
 		tx.Rollback()
 		return user, err

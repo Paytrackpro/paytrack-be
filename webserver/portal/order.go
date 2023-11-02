@@ -13,6 +13,7 @@ type OrderForm struct {
 
 type OrderData struct {
 	OwnerId         uint64                  `json:"ownerId"`
+	OrderCode       string                  `json:"orderCode"`
 	OwnerName       string                  `json:"ownerName"`
 	PhoneNumber     string                  `json:"phoneNumber"`
 	Address         string                  `json:"address"`
@@ -22,6 +23,8 @@ type OrderData struct {
 
 type OrderDisplayData struct {
 	OrderId                uint64                         `json:"orderId"`
+	OrderCode              string                         `json:"orderCode"`
+	PaymentStatus          int                            `json:"paymentStatus"`
 	UserName               string                         `json:"userName"`
 	OwnerName              string                         `json:"ownerName"`
 	PhoneNumber            string                         `json:"phoneNumber"`

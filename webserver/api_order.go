@@ -110,7 +110,7 @@ func (a *apiOrder) createOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userInfo, _ := a.credentialsInfo(r)
-	orders, err := a.service.CreateOrders(userInfo.Id, userInfo.UserName, body)
+	orders, err := a.service.CreateOrders(userInfo.Id, userInfo.UserName, userInfo.DisplayName, body)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusOK, err, nil)

@@ -8,13 +8,14 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
 )
 
-func (s *Service) CreateOrders(userId uint64, userName string, request portal.OrderForm) (*[]storage.Order, error) {
+func (s *Service) CreateOrders(userId uint64, userName string, displayName string, request portal.OrderForm) (*[]storage.Order, error) {
 	tx := s.db.Begin()
 	var orders []storage.Order
 	for _, orderData := range request.OrderData {
 		var order = storage.Order{
 			UserId:          userId,
 			UserName:        userName,
+			OrderCode:       orderData.OrderCode,
 			OwnerId:         orderData.OwnerId,
 			OwnerName:       orderData.OwnerName,
 			PhoneNumber:     orderData.PhoneNumber,
@@ -25,7 +26,26 @@ func (s *Service) CreateOrders(userId uint64, userName string, request portal.Or
 			UpdatedAt:       time.Now(),
 		}
 
+		//Create payment request from order
+		var body portal.PaymentRequest
+		body.Status = storage.PaymentStatusSent
+		body.SenderId = orderData.OwnerId
+		for _, productPayment := range orderData.ProductPayments {
+			body.Amount += productPayment.Amount
+		}
+
 		if err := s.db.Create(&order).Error; err != nil {
+			return nil, err
+		}
+
+		payment, err := s.CreateOrderBillPayment(userId, userName, displayName, body, order.OrderId, order.OrderCode)
+		if err != nil {
+			log.Error(err)
+			return nil, err
+		}
+
+		order.PaymentId = payment.Id
+		if err := s.db.Save(&order).Error; err != nil {
 			return nil, err
 		}
 		//Delete Product from cart
@@ -45,7 +65,7 @@ func (s *Service) GetOrderDetail(orderId uint64) (portal.OrderDisplayData, error
 		log.Error("getOrderDetail:get order info fail with error: ", err)
 		return orderDipslay, err
 	}
-	return convertToOrderDisplay(order), nil
+	return s.convertToOrderDisplay(order), nil
 }
 
 func (s *Service) GetOrderManagement(userId uint64) ([]portal.OrderDisplayData, error) {
@@ -56,7 +76,7 @@ func (s *Service) GetOrderManagement(userId uint64) ([]portal.OrderDisplayData, 
 	}
 	var orderDisplay []portal.OrderDisplayData
 	for _, order := range orders {
-		var tmpOrderDisplay = convertToOrderDisplay(order)
+		var tmpOrderDisplay = s.convertToOrderDisplay(order)
 		orderDisplay = append(orderDisplay, tmpOrderDisplay)
 	}
 	return orderDisplay, nil
@@ -70,15 +90,16 @@ func (s *Service) GetMyOrders(userId uint64) ([]portal.OrderDisplayData, error) 
 	}
 	var orderDisplay []portal.OrderDisplayData
 	for _, order := range orders {
-		var tmpOrderDisplay = convertToOrderDisplay(order)
+		var tmpOrderDisplay = s.convertToOrderDisplay(order)
 		orderDisplay = append(orderDisplay, tmpOrderDisplay)
 	}
 	return orderDisplay, nil
 }
 
-func convertToOrderDisplay(order storage.Order) portal.OrderDisplayData {
+func (s *Service) convertToOrderDisplay(order storage.Order) portal.OrderDisplayData {
 	var tmpOrderDisplay portal.OrderDisplayData
 	tmpOrderDisplay.OrderId = order.OrderId
+	tmpOrderDisplay.OrderCode = order.OrderCode
 	tmpOrderDisplay.OwnerName = order.OwnerName
 	tmpOrderDisplay.UserName = order.UserName
 	tmpOrderDisplay.Address = order.Address
@@ -97,6 +118,18 @@ func convertToOrderDisplay(order storage.Order) portal.OrderDisplayData {
 		productPaymentDisp.Amount = productPayment.Amount
 		productPaymentDisp.AvatarBase64 = utils.ConvertImageToBase64(productPayment.Avatar)
 		productPaymentsDisp = append(productPaymentsDisp, productPaymentDisp)
+	}
+	var payment storage.Payment
+
+	if err := s.db.Where("id = ?", order.PaymentId).Find(&payment).Error; err != nil {
+		tmpOrderDisplay.ProductPaymentsDisplay = productPaymentsDisp
+		return tmpOrderDisplay
+	}
+
+	if payment.Status == storage.PaymentStatusPaid {
+		tmpOrderDisplay.PaymentStatus = 1
+	} else {
+		tmpOrderDisplay.PaymentStatus = 0
 	}
 	tmpOrderDisplay.ProductPaymentsDisplay = productPaymentsDisp
 	return tmpOrderDisplay
