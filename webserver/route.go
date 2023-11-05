@@ -56,6 +56,7 @@ func (s *WebServer) Route() {
 				r.Get("/info/{id}", productRouter.info)
 				r.Put("/update", productRouter.updateProduct)
 				r.Get("/list", productRouter.getListProducts)
+				r.Get("/store-list", productRouter.getListStore)
 				r.Delete("/delete/{id:[0-9]+}", productRouter.deleteProduct)
 			})
 		})

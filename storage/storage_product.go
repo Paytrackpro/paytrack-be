@@ -33,6 +33,17 @@ type Product struct {
 	CreatedAt   time.Time `json:"createdAt" gorm:"default:current_timestamp"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
+type StoreInfo struct {
+	OwnerId   uint64 `json:"ownerId"`
+	OwnerName string `json:"ownerName"`
+	Count     int    `json:"count"`
+}
+type ProductStatus int
+
+const (
+	ProductHidden PaymentStatus = iota
+	ProductActive
+)
 
 func (Product) TableName() string {
 	return "products"

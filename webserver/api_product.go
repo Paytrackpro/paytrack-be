@@ -63,6 +63,15 @@ func (a *apiProduct) getListProducts(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *apiProduct) getListStore(w http.ResponseWriter, r *http.Request) {
+	stores, err := a.service.GetStoreInfoList()
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		return
+	}
+	utils.ResponseOK(w, stores)
+}
+
 func (a *apiProduct) createProduct(w http.ResponseWriter, r *http.Request) {
 	var body portal.CreateProductForm
 	err := a.parseJSONAndValidate(r, &body)

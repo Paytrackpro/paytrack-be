@@ -87,6 +87,15 @@ func (s *Service) CreateProduct(userId uint64, ownerName string, request portal.
 	return &product, nil
 }
 
+func (s *Service) GetStoreInfoList() ([]storage.StoreInfo, error) {
+	var storeInfoList []storage.StoreInfo
+	query := fmt.Sprintf(`SELECT owner_id,owner_name,count(id) FROM products WHERE status = %d GROUP BY owner_id,owner_name`, storage.ProductActive)
+	if err := s.db.Raw(query).Scan(&storeInfoList).Error; err != nil {
+		return nil, err
+	}
+	return storeInfoList, nil
+}
+
 // Sync Shop related data when user Display name was changed
 func (s *Service) SyncShopUserInfo(db *gorm.DB, uID int, displayName, userName string, oldDisplayName string) error {
 	// Update Product owner on Product table
