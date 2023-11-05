@@ -278,9 +278,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 			}
 			//Cancel any Approval status when sender edit payment (for all approvers)
 			if len(approverSettings) > 0 {
-				fmt.Println(payment.Approvers)
-				for i, approver := range payment.Approvers {
-					fmt.Println(approver.ApproverId)
+				for i, _ := range payment.Approvers {
 					payment.Approvers[i].IsApproved = false
 				}
 			}
