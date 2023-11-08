@@ -56,11 +56,9 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 	}
 	user.PaymentSettings = userInfo.PaymentSettings
 	uName := ""
-	uDisplayName := ""
-	// if user.DisplayName was changed, sync with payment data
-	if len(userInfo.DisplayName) > 0 && strings.Compare(userInfo.DisplayName, user.DisplayName) != 0 {
-		uDisplayName = userInfo.DisplayName
-	}
+	oldDisplayName := user.DisplayName
+	oldShopName := user.ShopName
+	oldUserName := user.UserName
 
 	if isAdmin {
 		// if user.UserName was changed, check duplicate username, sync with payment data
@@ -85,9 +83,9 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 	} else {
 		utils.SetValue(&user.Otp, userInfo.Otp)
 	}
-
 	utils.SetValue(&user.UserName, userInfo.UserName)
-	utils.SetValue(&user.DisplayName, userInfo.DisplayName)
+	user.DisplayName = userInfo.DisplayName
+	user.ShopName = userInfo.ShopName
 
 	if !utils.IsEmpty(userInfo.Password) {
 		hash, err := bcrypt.GenerateFromPassword([]byte(userInfo.Password), bcrypt.DefaultCost)
@@ -105,13 +103,21 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 		return user, err
 	}
 
-	if err := s.SyncPaymentUser(tx, int(user.Id), uDisplayName, uName); err != nil {
+	if err := s.SyncPaymentUser(tx, int(user.Id), userInfo.DisplayName, oldDisplayName, uName); err != nil {
 		log.Error("UpdateUserInfo: Sync payment user fail with error: ", err)
 		tx.Rollback()
 		return user, err
 	}
 
-	if err := s.SyncShopUserInfo(tx, int(user.Id), uDisplayName, uName, userInfo.DisplayName); err != nil {
+	var shopName = ""
+	if strings.Compare(userInfo.ShopName, oldShopName) != 0 {
+		shopName = GetShopName(userInfo.UserName, userInfo.DisplayName, userInfo.ShopName)
+	}
+	var ownerName = ""
+	if strings.Compare(userInfo.DisplayName, oldDisplayName) != 0 || (utils.IsEmpty(userInfo.DisplayName) && strings.Compare(userInfo.UserName, oldUserName) != 0) {
+		ownerName = GetDisplayName(userInfo.UserName, userInfo.DisplayName)
+	}
+	if err := s.SyncShopUserInfo(tx, int(user.Id), shopName, ownerName); err != nil {
 		log.Error("UpdateUserInfo: Sync payment user fail with error: ", err)
 		tx.Rollback()
 		return user, err
@@ -119,6 +125,20 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 
 	tx.Commit()
 	return user, nil
+}
+
+func GetShopName(uName string, displayName string, shopName string) string {
+	if utils.IsEmpty(shopName) {
+		return GetDisplayName(uName, displayName)
+	}
+	return shopName
+}
+
+func GetDisplayName(uName string, displayName string) string {
+	if utils.IsEmpty(displayName) {
+		return uName
+	}
+	return displayName
 }
 
 func (s *Service) UpdateUserInfos(id uint64, userInfo portal.UpdateUserRequest) (storage.User, error) {
@@ -172,7 +192,7 @@ func (s *Service) UpdateUserInfos(id uint64, userInfo portal.UpdateUserRequest) 
 		return user, err
 	}
 
-	if err := s.SyncPaymentUser(tx, int(user.Id), uDisplayName, ""); err != nil {
+	if err := s.SyncPaymentUser(tx, int(user.Id), uDisplayName, "", ""); err != nil {
 		log.Error("UpdateUserInfo: Sync payment user fail with error: ", err)
 		tx.Rollback()
 		return user, err

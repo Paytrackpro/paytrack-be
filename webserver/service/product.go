@@ -66,7 +66,7 @@ func (s *Service) UpdateSingleProduct(product storage.Product) (storage.Product,
 	return product, nil
 }
 
-func (s *Service) CreateProduct(userId uint64, ownerName string, request portal.CreateProductForm) (*storage.Product, error) {
+func (s *Service) CreateProduct(userId uint64, ownerName string, shopName string, request portal.CreateProductForm) (*storage.Product, error) {
 	product := storage.Product{
 		ProductCode: request.ProductCode,
 		ProductName: request.ProductName,
@@ -79,6 +79,11 @@ func (s *Service) CreateProduct(userId uint64, ownerName string, request portal.
 		Avatar:      request.Avatar,
 		Images:      request.Images,
 		Status:      uint32(utils.Active),
+	}
+	if utils.IsEmpty(shopName) {
+		product.ShopName = ownerName
+	} else {
+		product.ShopName = shopName
 	}
 
 	if err := s.db.Save(&product).Error; err != nil {
@@ -97,19 +102,29 @@ func (s *Service) GetStoreInfoList() ([]storage.StoreInfo, error) {
 }
 
 // Sync Shop related data when user Display name was changed
-func (s *Service) SyncShopUserInfo(db *gorm.DB, uID int, displayName, userName string, oldDisplayName string) error {
+func (s *Service) SyncShopUserInfo(db *gorm.DB, uID int, shopName string, ownerName string) error {
 	// Update Product owner on Product table
 	updateProductOwnerBuilder := db.Model(&storage.Product{}).
 		Where("owner_id = ?", uID)
 
-	if !utils.IsEmpty(displayName) {
-		if err := updateProductOwnerBuilder.UpdateColumn("owner_name", displayName).Error; err != nil {
+	if utils.IsEmpty(shopName) {
+		if utils.IsEmpty(ownerName) {
+			return nil
+		}
+		if err := updateProductOwnerBuilder.UpdateColumn("owner_name", ownerName).Error; err != nil {
 			return err
 		}
-	} else if !utils.IsEmpty(userName) && utils.IsEmpty(oldDisplayName) {
-		if err := updateProductOwnerBuilder.UpdateColumn("owner_name", userName).Error; err != nil {
+	} else {
+		if utils.IsEmpty(ownerName) {
+			if err := updateProductOwnerBuilder.UpdateColumn("shop_name", shopName).Error; err != nil {
+				return err
+			}
+			return nil
+		}
+		if err := updateProductOwnerBuilder.UpdateColumns(storage.Product{ShopName: shopName, OwnerName: ownerName}).Error; err != nil {
 			return err
 		}
 	}
+
 	return nil
 }

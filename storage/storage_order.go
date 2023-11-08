@@ -41,6 +41,7 @@ type Order struct {
 	UserName        string          `json:"userName"`
 	OwnerId         uint64          `json:"ownerId"`
 	OwnerName       string          `json:"ownerName"`
+	ShopName        string          `json:"shopName"`
 	ProductPayments ProductPayments `json:"productPayments" gorm:"type:jsonb"`
 	PhoneNumber     string          `json:"phoneNumber"`
 	Address         string          `json:"address"`

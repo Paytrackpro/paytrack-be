@@ -7,6 +7,7 @@ import (
 type CartForm struct {
 	OwnerId   uint64 `json:"ownerId"`
 	OwnerName string `json:"ownerName"`
+	ShopName  string `json:"shopName"`
 	ProductId uint64 `json:"productId"`
 	Quantity  int    `json:"quantity"`
 }
@@ -14,6 +15,7 @@ type CartForm struct {
 type CartDisplayData struct {
 	OwnerId      uint64  `json:"ownerId"`
 	OwnerName    string  `json:"ownerName"`
+	ShopName     string  `json:"shopName"`
 	AvatarBase64 string  `json:"avatarBase64"`
 	AvatarName   string  `json:"avatarName"`
 	ProductId    uint64  `json:"productId"`

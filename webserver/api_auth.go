@@ -26,6 +26,7 @@ type authClaims struct {
 	Expire                int64
 	UserName              string
 	DisplayName           string
+	ShopName              string
 	Otp                   bool
 	ShowDraftForRecipient bool
 	ShowDateOnInvoiceLine bool
@@ -130,6 +131,7 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		Expire:                time.Now().Add(time.Hour * time.Duration(a.conf.AliveSessionHours)).Unix(),
 		UserName:              user.UserName,
 		DisplayName:           user.DisplayName,
+		ShopName:              user.ShopName,
 		ShowDraftForRecipient: user.ShowDraftForRecipient,
 		ShowDateOnInvoiceLine: user.ShowDateOnInvoiceLine,
 	}
@@ -197,6 +199,7 @@ func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
 		Expire:                time.Now().Add(time.Hour * time.Duration(a.conf.AliveSessionHours)).Unix(),
 		UserName:              user.UserName,
 		DisplayName:           user.DisplayName,
+		ShopName:              user.ShopName,
 		ShowDraftForRecipient: user.ShowDraftForRecipient,
 		ShowDateOnInvoiceLine: user.ShowDateOnInvoiceLine,
 	}

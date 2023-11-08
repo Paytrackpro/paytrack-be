@@ -27,6 +27,7 @@ type Product struct {
 	Images      string    `json:"images"`
 	OwnerId     uint64    `json:"ownerId"`
 	OwnerName   string    `json:"ownerName"`
+	ShopName    string    `json:"shopName"`
 	Price       float64   `json:"price"`
 	Stock       int       `json:"stock"`
 	Status      uint32    `json:"status"`
@@ -36,6 +37,7 @@ type Product struct {
 type StoreInfo struct {
 	OwnerId   uint64 `json:"ownerId"`
 	OwnerName string `json:"ownerName"`
+	ShopName  string `json:"shopName"`
 	Count     int    `json:"count"`
 }
 type ProductStatus int

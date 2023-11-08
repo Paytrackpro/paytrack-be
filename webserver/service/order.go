@@ -18,6 +18,7 @@ func (s *Service) CreateOrders(userId uint64, userName string, displayName strin
 			OrderCode:       orderData.OrderCode,
 			OwnerId:         orderData.OwnerId,
 			OwnerName:       orderData.OwnerName,
+			ShopName:        orderData.ShopName,
 			PhoneNumber:     orderData.PhoneNumber,
 			Address:         orderData.Address,
 			Memo:            orderData.Memo,
@@ -100,7 +101,9 @@ func (s *Service) convertToOrderDisplay(order storage.Order) portal.OrderDisplay
 	var tmpOrderDisplay portal.OrderDisplayData
 	tmpOrderDisplay.OrderId = order.OrderId
 	tmpOrderDisplay.OrderCode = order.OrderCode
+	tmpOrderDisplay.OwnerId = order.OwnerId
 	tmpOrderDisplay.OwnerName = order.OwnerName
+	tmpOrderDisplay.ShopName = order.ShopName
 	tmpOrderDisplay.UserName = order.UserName
 	tmpOrderDisplay.Address = order.Address
 	tmpOrderDisplay.CreatedAt = order.CreatedAt

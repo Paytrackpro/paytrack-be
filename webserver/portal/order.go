@@ -15,6 +15,7 @@ type OrderData struct {
 	OwnerId         uint64                  `json:"ownerId"`
 	OrderCode       string                  `json:"orderCode"`
 	OwnerName       string                  `json:"ownerName"`
+	ShopName        string                  `json:"shopName"`
 	PhoneNumber     string                  `json:"phoneNumber"`
 	Address         string                  `json:"address"`
 	Memo            string                  `json:"memo"`
@@ -26,7 +27,9 @@ type OrderDisplayData struct {
 	OrderCode              string                         `json:"orderCode"`
 	PaymentStatus          int                            `json:"paymentStatus"`
 	UserName               string                         `json:"userName"`
+	OwnerId                uint64                         `json:"ownerId"`
 	OwnerName              string                         `json:"ownerName"`
+	ShopName               string                         `json:"shopName"`
 	PhoneNumber            string                         `json:"phoneNumber"`
 	Address                string                         `json:"address"`
 	Memo                   string                         `json:"memo"`

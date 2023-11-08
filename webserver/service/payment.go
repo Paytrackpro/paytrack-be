@@ -200,7 +200,7 @@ func (s *Service) CreateOrderBillPayment(userId uint64, userName string, display
 		ShowDateOnInvoiceLine: true,
 	}
 
-	payment.Description = "Payment for orders: <a href='{{{" + strconv.FormatUint(orderId, 10) + "}}}'>" + orderCode + "</a>"
+	payment.Description = "Payment for orders: " + orderCode
 
 	if request.SenderId > 0 {
 		if err := s.db.Where("id = ?", request.SenderId).First(&owner).Error; err != nil {
@@ -225,6 +225,7 @@ func (s *Service) CreateOrderBillPayment(userId uint64, userName string, display
 	payment.Amount = request.Amount
 	payment.SentAt = time.Now()
 	payment.ProductPay = true
+	payment.OrderId = orderId
 
 	if err := s.db.Save(&payment).Error; err != nil {
 		return nil, err
@@ -500,14 +501,14 @@ func calculateAmount(request portal.PaymentRequest) (float64, error) {
 }
 
 // Sync Payment data when user Display name was changed
-func (s *Service) SyncPaymentUser(db *gorm.DB, uID int, displayName, userName string) error {
+func (s *Service) SyncPaymentUser(db *gorm.DB, uID int, displayName, oldDisplayName, userName string) error {
 	//update displayname for every payment request current user is sender or receiver
 	updateSenderBuilder := db.Model(&storage.Payment{}).
 		Where("sender_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, storage.PaymentStatusPaid, storage.PaymentStatusRejected)
 
 	updatereceiverBuilder := db.Model(&storage.Payment{}).Where("receiver_id = ? AND status NOT IN (?,?) AND created_at >= date_trunc('month', now()) - interval '3 month'", uID, storage.PaymentStatusPaid, storage.PaymentStatusRejected)
 
-	if !utils.IsEmpty(displayName) {
+	if strings.Compare(displayName, oldDisplayName) != 0 {
 		if err := updateSenderBuilder.UpdateColumn("sender_display_name", displayName).Error; err != nil {
 			return err
 		}
@@ -525,4 +526,46 @@ func (s *Service) SyncPaymentUser(db *gorm.DB, uID int, displayName, userName st
 		}
 	}
 	return nil
+}
+
+func (s *Service) DeletePaymentProduct(request portal.ProductForDelete) (*storage.Payment, error) {
+	//if delete all, delete payment and order
+	if request.DeleteAll {
+		//delete payment
+		if err := s.db.Where("id = ?", request.Id).Delete(&storage.Payment{}).Error; err != nil {
+			return nil, err
+		}
+		//delete order
+		if err := s.db.Where("order_id = ?", request.OrderId).Delete(&storage.Order{}).Error; err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+	var payment storage.Payment
+	if err := s.db.First(&payment, "id = ?", request.Id).Error; err != nil {
+		return nil, err
+	}
+	var order storage.Order
+	if err := s.db.First(&order, "order_id = ?", request.OrderId).Error; err != nil {
+		return nil, err
+	}
+
+	var newProductPayments storage.ProductPayments
+	var sumAmount = 0.0
+	for _, value := range order.ProductPayments {
+		if value.ProductId != request.ProductId {
+			newProductPayments = append(newProductPayments, value)
+			sumAmount += value.Amount
+		}
+	}
+	order.ProductPayments = newProductPayments
+	payment.Amount = sumAmount
+
+	if err := s.db.Save(&payment).Error; err != nil {
+		return nil, err
+	}
+	if err := s.db.Save(&order).Error; err != nil {
+		return nil, err
+	}
+	return &payment, nil
 }

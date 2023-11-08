@@ -104,3 +104,10 @@ type SummaryFilter struct {
 	Month uint64 `json:"month`
 	Ids   string `json:"ids`
 }
+
+type ProductForDelete struct {
+	DeleteAll bool   `json:"deleteAll"`
+	Id        uint64 `json:"id"`
+	OrderId   uint64 `json:"orderId"`
+	ProductId uint64 `json:"productId"`
+}

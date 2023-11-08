@@ -60,6 +60,7 @@ func (a *apiCart) getCartList(w http.ResponseWriter, r *http.Request) {
 		var tmpCartData portal.CartDisplayData
 		tmpCartData.OwnerId = product.OwnerId
 		tmpCartData.OwnerName = product.OwnerName
+		tmpCartData.ShopName = product.ShopName
 		tmpCartData.Quantity = cart.Quantity
 		tmpCartData.Price = product.Price
 		tmpCartData.Currency = product.Currency

@@ -86,7 +86,7 @@ func (a *apiProduct) createProduct(w http.ResponseWriter, r *http.Request) {
 	if utils.IsEmpty(ownerName) {
 		ownerName = userInfo.UserName
 	}
-	product, err := a.service.CreateProduct(userInfo.Id, ownerName, body)
+	product, err := a.service.CreateProduct(userInfo.Id, ownerName, userInfo.ShopName, body)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusOK, err, nil)

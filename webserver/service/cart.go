@@ -103,6 +103,7 @@ func (s *Service) AddToCart(userId uint64, request portal.CartForm) (*storage.Ca
 		UserId:    userId,
 		OwnerId:   request.OwnerId,
 		OwnerName: request.OwnerName,
+		ShopName:  request.ShopName,
 		ProductId: request.ProductId,
 		Quantity:  request.Quantity,
 		UpdatedAt: time.Now(),

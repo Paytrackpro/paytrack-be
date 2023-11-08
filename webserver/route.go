@@ -113,6 +113,7 @@ func (s *WebServer) Route() {
 			r.Get("/monthly-summary", paymentRouter.getMonthlySummary)
 			r.Get("/initialization-count", paymentRouter.getInitializationCount)
 			r.Get("/bulk-pay-count", paymentRouter.countBulkPayBTC)
+			r.Post("/delete-payment-product", paymentRouter.deletePaymentProduct)
 		})
 	})
 }

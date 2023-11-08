@@ -19,6 +19,7 @@ type Cart struct {
 	UserId    uint64    `json:"userId" gorm:"primaryKey;autoIncrement:false"`
 	OwnerId   uint64    `json:"ownerId"`
 	OwnerName string    `json:"ownerName"`
+	ShopName  string    `json:"shopName"`
 	UpdatedAt time.Time `json:"updatedAt"`
 	ProductId uint64    `json:"productId" gorm:"primaryKey;autoIncrement:false"`
 	Quantity  int       `json:"quantity"`

@@ -161,7 +161,22 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
-	utils.ResponseOK(w, payment)
+
+	var orderData portal.OrderDisplayData
+	if payment.ProductPay {
+		tmpOrder, err2 := a.service.GetOrderDetail(payment.OrderId)
+		if err2 != nil {
+			utils.Response(w, http.StatusInternalServerError, err2, nil)
+			return
+		}
+		orderData = tmpOrder
+	}
+
+	// utils.ResponseOK(w, payment)
+	utils.ResponseOK(w, Map{
+		"payment":   payment,
+		"orderData": orderData,
+	})
 }
 
 func (a *apiPayment) getMonthlySummary(w http.ResponseWriter, r *http.Request) {
@@ -494,4 +509,21 @@ func (a *apiPayment) bulkPaidBTC(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.ResponseOK(w, nil)
+}
+
+func (a *apiPayment) deletePaymentProduct(w http.ResponseWriter, r *http.Request) {
+	var body portal.ProductForDelete
+	err := a.parseJSONAndValidate(r, &body)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+
+	payment, err := a.service.DeletePaymentProduct(body)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+
+	utils.ResponseOK(w, payment)
 }

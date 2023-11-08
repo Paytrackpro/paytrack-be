@@ -42,6 +42,7 @@ type User struct {
 	Id                    uint64          `json:"id" gorm:"primarykey"`
 	UserName              string          `json:"userName" gorm:"index:users_user_name_idx,unique"`
 	DisplayName           string          `json:"displayName"`
+	ShopName              string          `json:"shopName"`
 	PasswordHash          string          `json:"-"`
 	Email                 string          `json:"email"`
 	HourlyLaborRate       float64         `json:"hourlyLaborRate"`
