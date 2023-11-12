@@ -216,6 +216,9 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		payment.Details = request.Details
 		payment.HourlyRate = request.HourlyRate
 		payment.PaymentSettings = request.PaymentSettings
+		if !utils.IsEmpty(request.ReceiptImg) && request.Status == storage.PaymentStatusPaid {
+			payment.ReceiptImg = request.ReceiptImg
+		}
 		if len(request.Details) > 0 {
 			amount, err := calculateAmount(request)
 			if err != nil {

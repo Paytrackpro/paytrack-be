@@ -25,6 +25,7 @@ type PaymentRequest struct {
 	Status             storage.PaymentStatus   `json:"status"`
 	TxId               string                  `json:"txId"`
 	Token              string                  `json:"token"`
+	ReceiptImg         string                  `json:"receiptImg"`
 	ShowDraftRecipient bool                    `json:"showDraftRecipient"`
 }
 
