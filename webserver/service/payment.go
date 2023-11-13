@@ -270,6 +270,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 					}
 					payment.Approvers = approvers
 				}
+				payment.Status = request.Status
 			}
 		}
 		//if sender edit payment request, force off status back to received (sent)
