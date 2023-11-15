@@ -207,6 +207,41 @@ func (a *apiUser) usersExist(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *apiUser) membersExist(w http.ResponseWriter, r *http.Request) {
+	userNames := r.FormValue("userNames")
+	if utils.IsEmpty(userNames) {
+		return
+	}
+	listUserName := strings.Split(userNames, ",")
+	users, err := a.db.QueryUserWithList("user_name", listUserName)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
+			return
+		} else {
+			utils.Response(w, http.StatusInternalServerError, err, nil)
+			return
+		}
+	}
+
+	if len(users) == len(listUserName) {
+		utils.ResponseOK(w, users)
+		return
+	} else {
+		userMap := make(map[string]bool)
+		for _, u := range users {
+			userMap[u.UserName] = true
+		}
+
+		for _, v := range listUserName {
+			if !userMap[v] {
+				utils.Response(w, http.StatusBadRequest, fmt.Errorf("Member '%s' not found", v), nil)
+				return
+			}
+		}
+	}
+}
+
 func (a *apiUser) generateQr(w http.ResponseWriter, r *http.Request) {
 	var f portal.GenerateQRForm
 	err := a.parseJSON(r, &f)
