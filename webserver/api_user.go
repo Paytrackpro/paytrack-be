@@ -132,6 +132,28 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *apiUser) getUserSelectionList(w http.ResponseWriter, r *http.Request) {
+	var f storage.UserFilter
+	if err := a.parseQueryAndValidate(r, &f); err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	var users []storage.User
+	if err := a.db.GetList(&f, &users); err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		return
+	}
+	var userSelection []portal.UserSelection
+	for _, user := range users {
+		userSelection = append(userSelection, portal.UserSelection{
+			Id:          user.Id,
+			UserName:    user.UserName,
+			DisplayName: user.DisplayName,
+		})
+	}
+	utils.ResponseOK(w, userSelection)
+}
+
 func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
 	userName := r.FormValue("userName")
 	claims, _ := a.credentialsInfo(r)

@@ -29,6 +29,12 @@ type OtpForm struct {
 	FirstTime bool
 }
 
+type UserSelection struct {
+	Id          uint64 `json:"id"`
+	UserName    string `json:"userName"`
+	DisplayName string `json:"displayName"`
+}
+
 type GenerateQRForm struct {
 	Password string `validate:"required"`
 }

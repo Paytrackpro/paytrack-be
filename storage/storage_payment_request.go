@@ -125,6 +125,8 @@ type PaymentDetail struct {
 	Cost        float64 `json:"cost"`
 	Description string  `json:"description"`
 	Date        string  `json:"date"`
+	ProjectId   uint64  `json:"projectId"`
+	ProjectName string  `json:"projectName"`
 }
 
 type PaymentDetails []PaymentDetail

@@ -6,21 +6,20 @@ import (
 	"errors"
 	"time"
 
+	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"gorm.io/gorm"
 )
 
 type ProjectStatus int
 
 type Project struct {
-	ProjectId     uint64        `gorm:"primarykey" json:"projectId"`
-	ProjectName   string        `json:"projectName"`
-	Client        string        `json:"client"`
-	Members       Members       `json:"members" gorm:"type:jsonb"`
-	ProposalToken string        `json:"proposalToken"`
-	CreatorId     uint64        `json:"creatorId"`
-	Status        ProjectStatus `json:"status"`
-	CreatedAt     time.Time     `json:"createdAt"`
-	UpdatedAt     time.Time     `json:"updatedAt"`
+	ProjectId   uint64        `gorm:"primarykey" json:"projectId"`
+	ProjectName string        `json:"projectName"`
+	Members     Members       `json:"members" gorm:"type:jsonb"`
+	CreatorId   uint64        `json:"creatorId"`
+	Status      ProjectStatus `json:"status"`
+	CreatedAt   time.Time     `json:"createdAt"`
+	UpdatedAt   time.Time     `json:"updatedAt"`
 }
 
 type Members []Member
@@ -65,12 +64,30 @@ func (a ProjectFilter) RequestedSort() string {
 	return ""
 }
 func (a ProjectFilter) BindQuery(db *gorm.DB) *gorm.DB {
-	return db.Where("creator_id = ?", a.CreatorId)
+	if a.CreatorId > 0 {
+		db = db.Where("creator_id = ?", a.CreatorId)
+	}
+	if !utils.IsEmpty(a.ProjectName) {
+		db = db.Where("project_name = ?", a.ProjectName)
+	}
+	return db
 }
 func (a ProjectFilter) BindFirst(db *gorm.DB) *gorm.DB {
+	if a.CreatorId > 0 {
+		db = db.Where("creator_id = ?", a.CreatorId)
+	}
+	if !utils.IsEmpty(a.ProjectName) {
+		db = db.Where("project_name = ?", a.ProjectName)
+	}
 	return db
 }
 func (a ProjectFilter) BindCount(db *gorm.DB) *gorm.DB {
+	if a.CreatorId > 0 {
+		db = db.Where("creator_id = ?", a.CreatorId)
+	}
+	if !utils.IsEmpty(a.ProjectName) {
+		db = db.Where("project_name = ?", a.ProjectName)
+	}
 	return db
 }
 func (a ProjectFilter) Sortable() map[string]bool {

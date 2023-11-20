@@ -39,6 +39,7 @@ func (s *WebServer) Route() {
 			r.Put("/info", userRouter.update)
 			r.Put("/change-password", userRouter.changePassword)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
+			r.Get("/get-user-list", userRouter.getUserSelectionList)
 			r.Get("/exists", userRouter.usersExist)
 			r.Get("/member-exist", userRouter.membersExist)
 			r.Post("/generate-otp", userRouter.generateQr)
@@ -90,6 +91,9 @@ func (s *WebServer) Route() {
 			var projectRouter = apiProject{WebServer: s}
 			r.Post("/create", projectRouter.createProject)
 			r.Get("/get-list", projectRouter.getProjects)
+			r.Get("/get-my-project", projectRouter.getMyProjects)
+			r.Put("/edit", projectRouter.editProject)
+			r.Delete("/delete/{id:[0-9]+}", projectRouter.deleteProject)
 		})
 	})
 }
