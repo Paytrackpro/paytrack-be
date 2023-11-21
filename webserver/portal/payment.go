@@ -33,6 +33,9 @@ type PaymentConfirm struct {
 	Id             uint64       `validate:"required" json:"id"`
 	TxId           string       `json:"txId"`
 	Token          string       `json:"token"`
+	ConvertRate    float64      `json:"convertRate"`
+	ConvertTime    time.Time    `json:"convertTime"`
+	ExpectedAmount float64      `json:"expectedAmount"`
 	PaymentMethod  utils.Method `validate:"required" json:"paymentMethod"`
 	PaymentAddress string       `validate:"required" json:"paymentAddress"`
 }
@@ -41,6 +44,11 @@ func (p *PaymentConfirm) Process(payment *storage.Payment) {
 	payment.TxId = p.TxId
 	payment.PaidAt = time.Now()
 	payment.Status = storage.PaymentStatusPaid
+	payment.ConvertRate = p.ConvertRate
+	payment.ConvertTime = p.ConvertTime
+	payment.ExpectedAmount = p.ExpectedAmount
+	payment.PaymentMethod = p.PaymentMethod
+	payment.PaymentAddress = p.PaymentAddress
 }
 
 type PaymentRequestRate struct {

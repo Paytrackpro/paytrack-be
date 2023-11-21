@@ -21,34 +21,34 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int, order str
 	payments := make([]storage.Payment, 0)
 	offset := page * pageSize
 
-	build :=
-		s.db.Model(&storage.Payment{}).Order(order).
-			Where("payments.payment_method = ? AND payments.status = ? AND payments.receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId).
-			Scan(&payments)
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE payment_settings @> '[{"type": "%s"}]' AND status <> %d AND status <> %d AND status <> %d AND receiver_id = %d LIMIT %d OFFSET %d`,
+		utils.PaymentTypeBTC.String(), storage.PaymentStatusPaid, storage.PaymentStatusRejected, storage.PaymentStatusCreated, userId, pageSize, offset)
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE payment_settings @> '[{"type": "%s"}]' AND status <> %d AND status <> %d AND status <> %d AND receiver_id = %d`,
+		utils.PaymentTypeBTC.String(), storage.PaymentStatusPaid, storage.PaymentStatusRejected, storage.PaymentStatusCreated, userId)
 
-	buildCount := s.db.Model(&storage.Payment{}).Where("payment_method = ? AND status = ? AND receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId)
-	if err := buildCount.Count(&count).Error; err != nil {
-		return nil, 0, err
-	}
-
-	build = build.Limit(pageSize).Offset(offset)
-	if err := build.Find(&payments).Error; err != nil {
+	if err := s.db.Raw(query).Scan(&payments).Order(order).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return payments, 0, nil
 		}
 		return nil, 0, err
 	}
 
+	if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, 0, nil
+		}
+		return nil, 0, err
+	}
 	return payments, count, nil
 }
 
 func (s *Service) CountBulkPaymentBTC(userId uint64) (int64, error) {
 	var count int64
-	buildCount := s.db.Model(&storage.Payment{}).Where("payment_method = ? AND status = ? AND receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId)
-	if err := buildCount.Count(&count).Error; err != nil {
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE payment_settings @> '[{"type": "%s"}]'  AND status <> %d AND status <> %d AND status <> %d AND receiver_id = %d`, utils.PaymentTypeBTC.String(), storage.PaymentStatusPaid, storage.PaymentStatusRejected, storage.PaymentStatusCreated, userId)
+
+	if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
 		return 0, err
 	}
-
 	return count, nil
 }
 

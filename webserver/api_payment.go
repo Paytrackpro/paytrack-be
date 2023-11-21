@@ -278,16 +278,11 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
 	}
-	p.PaymentMethod = f.PaymentMethod
-	p.PaymentAddress = f.PaymentAddress
-	p.ConvertRate = rate
-	p.ConvertTime = time.Now()
-	p.ExpectedAmount = utils.BtcRoundFloat(p.Amount / rate)
-	if err = a.db.Save(&p); err != nil {
-		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
-		return
-	}
-	utils.ResponseOK(w, p)
+	utils.ResponseOK(w, Map{
+		"rate":           rate,
+		"convertTime":    time.Now(),
+		"expectedAmount": utils.BtcRoundFloat(p.Amount / rate),
+	})
 }
 
 func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
