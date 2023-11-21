@@ -67,6 +67,7 @@ type UpdateUserRequest struct {
 	ShowMonthlyReport     bool                     `json:"showMonthlyReport"`
 	ShowDraftForRecipient bool                     `json:"showDraftForRecipient"`
 	ShowDateOnInvoiceLine bool                     `json:"showDateOnInvoiceLine"`
+	Role                  utils.UserRole           `json:"role"`
 }
 
 type UserWithList struct {

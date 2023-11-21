@@ -1,13 +1,17 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/jpeg"
 	"net/http"
 	"net/url"
+	"os"
+	"path"
 
 	"github.com/gorilla/schema"
 )
@@ -111,4 +115,55 @@ func ImageToBase64(img image.Image) (string, error) {
 	imgBase64Str := "data:image/png;base64," + base64.StdEncoding.EncodeToString(qrBytesString)
 
 	return imgBase64Str, nil
+}
+
+var imagePath = getBinPath() + "\\upload\\images"
+
+func getBinPath() string {
+	e, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	path := path.Dir(e)
+	return path
+}
+
+func GetImagePath() string {
+	return imagePath
+}
+
+func ConvertImageToBase64(fileName string) string {
+	imgFile, err := os.Open(imagePath + "\\" + fileName) //Image file
+
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	defer imgFile.Close()
+
+	// create a new buffer base on file size
+	fInfo, _ := imgFile.Stat()
+	var size int64 = fInfo.Size()
+	buf := make([]byte, size)
+
+	// read file content into buffer
+	fReader := bufio.NewReader(imgFile)
+	fReader.Read(buf)
+
+	// convert the buffer bytes to base64 string - use buf.Bytes() for new image
+	imgBase64Str := base64.StdEncoding.EncodeToString(buf)
+	return imgBase64Str
+}
+
+func ContainsUint64(inputArr []uint64, value uint64) bool {
+	if inputArr == nil {
+		return false
+	}
+	for _, v := range inputArr {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }

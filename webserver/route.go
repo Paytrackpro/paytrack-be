@@ -48,6 +48,16 @@ func (s *WebServer) Route() {
 			})
 		})
 
+		r.Route("/file", func(r chi.Router) {
+			r.Use(s.loggedInMiddleware)
+			var fileRouter = apiFileUpload{WebServer: s}
+			r.Post("/upload", fileRouter.uploadFiles)
+			r.Post("/upload-one", fileRouter.uploadOneFile)
+			r.Get("/base64", fileRouter.getProductImagesBase64)
+			r.Get("/base64-one", fileRouter.getOneImageBase64)
+			r.Get("/img-base64", fileRouter.getImageBase64)
+		})
+
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware, s.adminMiddleware)
 			r.Route("/user", func(r chi.Router) {
@@ -71,7 +81,8 @@ func (s *WebServer) Route() {
 			r.Get("/rate", paymentRouter.getRate)
 			r.Delete("/delete/{id:[0-9]+}", paymentRouter.deleteDraft)
 			r.Get("/monthly-summary", paymentRouter.getMonthlySummary)
-			r.Get("/approval-count", paymentRouter.getApprovalCount)
+			r.Get("/initialization-count", paymentRouter.getInitializationCount)
+			r.Get("/bulk-pay-count", paymentRouter.countBulkPayBTC)
 		})
 	})
 }

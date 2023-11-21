@@ -171,6 +171,7 @@ type Payment struct {
 	UpdatedAt             time.Time       `json:"updatedAt"`
 	SentAt                time.Time       `json:"sentAt"`
 	PaidAt                time.Time       `json:"paidAt"`
+	ReceiptImg            string          `json:"receiptImg"`
 	ShowDraftRecipient    bool            `json:"showDraftRecipient"`
 	ShowDateOnInvoiceLine bool            `json:"showDateOnInvoiceLine"`
 }
