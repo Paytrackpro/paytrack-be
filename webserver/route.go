@@ -85,6 +85,9 @@ func (s *WebServer) Route() {
 			r.Get("/monthly-summary", paymentRouter.getMonthlySummary)
 			r.Get("/initialization-count", paymentRouter.getInitializationCount)
 			r.Get("/bulk-pay-count", paymentRouter.countBulkPayBTC)
+			r.Get("/payment-report", paymentRouter.paymentReport)
+			r.Get("/invoice-report", paymentRouter.invoiceReport)
+			r.Get("/address-report", paymentRouter.addressReport)
 		})
 		r.Route("/project", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)
