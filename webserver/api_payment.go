@@ -157,11 +157,39 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
+	a.sortPaymentDetails(payment)
 	if err := a.verifyAccessPayment(token, payment, r); err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
 	utils.ResponseOK(w, payment)
+}
+
+func (a *apiPayment) sortPaymentDetails(payment storage.Payment) {
+	if len(payment.Details) < 2 {
+		return
+	}
+	for i := 0; i < len(payment.Details); i++ {
+		for j := i + 1; j < len(payment.Details); j++ {
+			date1, err := time.Parse("2006/01/02", payment.Details[i].Date)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			date2, err := time.Parse("2006/01/02", payment.Details[j].Date)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			beforeUnix := date1.Unix()
+			afterUnix := date2.Unix()
+			if afterUnix < beforeUnix {
+				var tmpDetail = payment.Details[i]
+				payment.Details[i] = payment.Details[j]
+				payment.Details[j] = tmpDetail
+			}
+		}
+	}
 }
 
 func (a *apiPayment) getMonthlySummary(w http.ResponseWriter, r *http.Request) {
