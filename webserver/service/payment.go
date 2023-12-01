@@ -382,8 +382,8 @@ func (s *Service) GetPaymentsForReport(userId uint64, request portal.ReportFilte
 		projectQuery = fmt.Sprintf(`AND (%s)`, orQuery)
 	}
 
-	query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND paid_at < '%s' AND paid_at > '%s' %s %s ORDER BY paid_at DESC`,
-		storage.PaymentStatusPaid, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate), memberQuery, projectQuery)
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND paid_at < '%s' AND paid_at > '%s' AND receiver_id = %d %s %s ORDER BY paid_at DESC`,
+		storage.PaymentStatusPaid, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate), userId, memberQuery, projectQuery)
 	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return payments, nil
@@ -413,8 +413,8 @@ func (s *Service) GetForInvoiceReport(userId uint64, request portal.ReportFilter
 		projectQuery = fmt.Sprintf(`AND (%s)`, orQuery)
 	}
 
-	query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND paid_at < '%s' AND paid_at > '%s' AND details @> '[{"price": 0}]' %s %s ORDER BY paid_at DESC`,
-		storage.PaymentStatusPaid, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate), memberQuery, projectQuery)
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND paid_at < '%s' AND paid_at > '%s' AND details @> '[{"price": 0}]' AND receiver_id = %d %s %s ORDER BY paid_at DESC`,
+		storage.PaymentStatusPaid, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate), userId, memberQuery, projectQuery)
 	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return payments, nil
