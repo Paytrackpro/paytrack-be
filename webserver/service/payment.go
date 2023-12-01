@@ -362,6 +362,68 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	return payments, count, nil
 }
 
+func (s *Service) GetPaymentsForReport(userId uint64, request portal.ReportFilter) ([]storage.Payment, error) {
+	payments := make([]storage.Payment, 0)
+	var memberQuery = ""
+	var projectQuery = ""
+	if !utils.IsEmpty(request.MemberIds) {
+		memberQuery = fmt.Sprintf(`AND sender_id IN (%s)`, request.MemberIds)
+	}
+	if !utils.IsEmpty(request.ProjectIds) {
+		var orQuery = ""
+		var projectIdArr = strings.Split(request.ProjectIds, ",")
+		for index, projectId := range projectIdArr {
+			if index == 0 {
+				orQuery = fmt.Sprintf(`details @> '[{"projectId": %s}]'`, projectId)
+			} else {
+				orQuery = fmt.Sprint(orQuery, fmt.Sprintf(` OR details @> '[{"projectId": %s}]'`, projectId))
+			}
+		}
+		projectQuery = fmt.Sprintf(`AND (%s)`, orQuery)
+	}
+
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND paid_at < '%s' AND paid_at > '%s' AND receiver_id = %d %s %s ORDER BY paid_at DESC`,
+		storage.PaymentStatusPaid, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate), userId, memberQuery, projectQuery)
+	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, nil
+		}
+		return nil, err
+	}
+	return payments, nil
+}
+
+func (s *Service) GetForInvoiceReport(userId uint64, request portal.ReportFilter) ([]storage.Payment, error) {
+	payments := make([]storage.Payment, 0)
+	var memberQuery = ""
+	var projectQuery = ""
+	if !utils.IsEmpty(request.MemberIds) {
+		memberQuery = fmt.Sprintf(`AND sender_id IN (%s)`, request.MemberIds)
+	}
+	if !utils.IsEmpty(request.ProjectIds) {
+		var orQuery = ""
+		var projectIdArr = strings.Split(request.ProjectIds, ",")
+		for index, projectId := range projectIdArr {
+			if index == 0 {
+				orQuery = fmt.Sprintf(`details @> '[{"projectId": %s}]'`, projectId)
+			} else {
+				orQuery = fmt.Sprint(orQuery, fmt.Sprintf(` OR details @> '[{"projectId": %s}]'`, projectId))
+			}
+		}
+		projectQuery = fmt.Sprintf(`AND (%s)`, orQuery)
+	}
+
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND paid_at < '%s' AND paid_at > '%s' AND details @> '[{"price": 0}]' AND receiver_id = %d %s %s ORDER BY paid_at DESC`,
+		storage.PaymentStatusPaid, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate), userId, memberQuery, projectQuery)
+	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, nil
+		}
+		return nil, err
+	}
+	return payments, nil
+}
+
 func (s *Service) GetApprovalsCount(userId uint64) (int64, error) {
 	var count int64
 	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]'`, storage.PaymentStatusSent, userId)

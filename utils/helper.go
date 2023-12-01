@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"time"
 
 	"github.com/gorilla/schema"
 )
@@ -166,4 +167,16 @@ func ContainsUint64(inputArr []uint64, value uint64) bool {
 		}
 	}
 	return false
+}
+
+// convert time to string, format yyyy-mm-dd hh:MM:ss
+func TimeToStringWithoutTimeZone(date time.Time) string {
+	return date.Format("2006-01-02 15:04:05")
+}
+
+func GetUserDisplayName(userName string, displayName string) string {
+	if IsEmpty(displayName) {
+		return userName
+	}
+	return displayName
 }
