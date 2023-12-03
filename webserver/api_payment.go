@@ -157,11 +157,39 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
+	a.sortPaymentDetails(payment)
 	if err := a.verifyAccessPayment(token, payment, r); err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
 	utils.ResponseOK(w, payment)
+}
+
+func (a *apiPayment) sortPaymentDetails(payment storage.Payment) {
+	if len(payment.Details) < 2 {
+		return
+	}
+	for i := 0; i < len(payment.Details); i++ {
+		for j := i + 1; j < len(payment.Details); j++ {
+			date1, err := time.Parse("2006/01/02", payment.Details[i].Date)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			date2, err := time.Parse("2006/01/02", payment.Details[j].Date)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			beforeUnix := date1.Unix()
+			afterUnix := date2.Unix()
+			if afterUnix < beforeUnix {
+				var tmpDetail = payment.Details[i]
+				payment.Details[i] = payment.Details[j]
+				payment.Details[j] = tmpDetail
+			}
+		}
+	}
 }
 
 func (a *apiPayment) getMonthlySummary(w http.ResponseWriter, r *http.Request) {
@@ -404,6 +432,135 @@ func (a *apiPayment) countBulkPayBTC(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.ResponseOK(w, count)
+}
+
+func (a *apiPayment) paymentReport(w http.ResponseWriter, r *http.Request) {
+	var f portal.ReportFilter
+	err := a.parseQueryAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	claims, _ := a.parseBearer(r)
+	if claims.Id < 1 {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	payments, err := a.service.GetPaymentsForReport(claims.Id, f)
+	result := make([]portal.PaymentReport, 0)
+	var tmpPaymentReport = portal.PaymentReport{}
+	var currentMonth = -1
+	var currentYear = -1
+	for index, payment := range payments {
+		if currentMonth != int(payment.PaidAt.Month()) || currentYear != payment.PaidAt.Year() {
+			currentMonth = int(payment.PaidAt.Month())
+			currentYear = payment.PaidAt.Year()
+			if !utils.IsEmpty(tmpPaymentReport.Month) {
+				result = append(result, tmpPaymentReport)
+			}
+			tmpPaymentReport = portal.PaymentReport{}
+			tmpPaymentReport.PaymentUnits = make([]portal.PaymentReportUnit, 0)
+			tmpPaymentReport.Month = fmt.Sprint(currentYear, "-", currentMonth)
+		}
+		var paymentUnit = portal.PaymentReportUnit{}
+		paymentUnit.DisplayName = payment.SenderDisplayName
+		paymentUnit.Amount = payment.Amount
+		paymentUnit.ExpectedAmount = payment.ExpectedAmount
+		paymentUnit.PaymentMethod = payment.PaymentMethod
+		tmpPaymentReport.PaymentUnits = append(tmpPaymentReport.PaymentUnits, paymentUnit)
+		//if is last element
+		if index == len(payments)-1 {
+			result = append(result, tmpPaymentReport)
+		}
+	}
+	utils.ResponseOK(w, result)
+}
+
+func (a *apiPayment) invoiceReport(w http.ResponseWriter, r *http.Request) {
+	var f portal.ReportFilter
+	err := a.parseQueryAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	claims, _ := a.parseBearer(r)
+	if claims.Id < 1 {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	payments, err := a.service.GetForInvoiceReport(claims.Id, f)
+	var reportMap = map[string][]portal.InvoiceReportUnit{}
+	for _, payment := range payments {
+		if len(payment.Details) == 0 {
+			continue
+		}
+		var displayName = utils.GetUserDisplayName(payment.SenderName, payment.SenderDisplayName)
+		for _, detail := range payment.Details {
+			if detail.Price != 0 {
+				continue
+			}
+			var key = displayName
+			if detail.ProjectId < 1 {
+				key = fmt.Sprint(key, ";")
+			} else {
+				key = fmt.Sprint(key, ";", detail.ProjectName)
+			}
+			var tmpUnit = portal.InvoiceReportUnit{}
+			tmpUnit.Date = detail.Date
+			tmpUnit.Description = detail.Description
+			tmpUnit.Hours = detail.Quantity
+			if val, ok := reportMap[key]; ok {
+				val = append(val, tmpUnit)
+				reportMap[key] = val
+			} else {
+				newUnitArr := make([]portal.InvoiceReportUnit, 0)
+				newUnitArr = append(newUnitArr, tmpUnit)
+				reportMap[key] = newUnitArr
+			}
+		}
+	}
+	utils.ResponseOK(w, reportMap)
+}
+
+func (a *apiPayment) addressReport(w http.ResponseWriter, r *http.Request) {
+	var f portal.ReportFilter
+	err := a.parseQueryAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	claims, _ := a.parseBearer(r)
+	if claims.Id < 1 {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	payments, err := a.service.GetPaymentsForReport(claims.Id, f)
+	var reportMap = map[string]portal.AddressReport{}
+	for _, payment := range payments {
+		if payment.PaymentMethod.String() == "none" {
+			continue
+		}
+		var displayName = utils.GetUserDisplayName(payment.SenderName, payment.SenderDisplayName)
+		var tmpUnit = portal.AddressReportUnit{}
+		tmpUnit.DateTime = payment.PaidAt.Format("2006/01/02")
+		tmpUnit.Amount = payment.Amount
+		tmpUnit.ExpectedAmount = payment.ExpectedAmount
+		if val, ok := reportMap[payment.PaymentAddress]; ok {
+			addressUnits := val.AddressUnits
+			addressUnits = append(addressUnits, tmpUnit)
+			val.AddressUnits = addressUnits
+			reportMap[payment.PaymentAddress] = val
+		} else {
+			var tmpAddress = portal.AddressReport{}
+			tmpAddress.PaymentMethod = payment.PaymentMethod.String()
+			tmpAddress.DisplayName = displayName
+			units := make([]portal.AddressReportUnit, 0)
+			units = append(units, tmpUnit)
+			tmpAddress.AddressUnits = units
+			reportMap[payment.PaymentAddress] = tmpAddress
+		}
+	}
+	utils.ResponseOK(w, reportMap)
 }
 
 func (a *apiPayment) approveRequest(w http.ResponseWriter, r *http.Request) {

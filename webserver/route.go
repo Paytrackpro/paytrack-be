@@ -39,7 +39,9 @@ func (s *WebServer) Route() {
 			r.Put("/info", userRouter.update)
 			r.Put("/change-password", userRouter.changePassword)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
+			r.Get("/get-user-list", userRouter.getUserSelectionList)
 			r.Get("/exists", userRouter.usersExist)
+			r.Get("/member-exist", userRouter.membersExist)
 			r.Post("/generate-otp", userRouter.generateQr)
 			r.Post("/disable-otp", userRouter.disableOtp)
 			r.Route("/setting", func(r chi.Router) {
@@ -83,6 +85,18 @@ func (s *WebServer) Route() {
 			r.Get("/monthly-summary", paymentRouter.getMonthlySummary)
 			r.Get("/initialization-count", paymentRouter.getInitializationCount)
 			r.Get("/bulk-pay-count", paymentRouter.countBulkPayBTC)
+			r.Get("/payment-report", paymentRouter.paymentReport)
+			r.Get("/invoice-report", paymentRouter.invoiceReport)
+			r.Get("/address-report", paymentRouter.addressReport)
+		})
+		r.Route("/project", func(r chi.Router) {
+			r.Use(s.loggedInMiddleware)
+			var projectRouter = apiProject{WebServer: s}
+			r.Post("/create", projectRouter.createProject)
+			r.Get("/get-list", projectRouter.getProjects)
+			r.Get("/get-my-project", projectRouter.getMyProjects)
+			r.Put("/edit", projectRouter.editProject)
+			r.Delete("/delete/{id:[0-9]+}", projectRouter.deleteProject)
 		})
 	})
 }

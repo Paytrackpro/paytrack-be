@@ -132,6 +132,28 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *apiUser) getUserSelectionList(w http.ResponseWriter, r *http.Request) {
+	var f storage.UserFilter
+	if err := a.parseQueryAndValidate(r, &f); err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	var users []storage.User
+	if err := a.db.GetList(&f, &users); err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		return
+	}
+	var userSelection []portal.UserSelection
+	for _, user := range users {
+		userSelection = append(userSelection, portal.UserSelection{
+			Id:          user.Id,
+			UserName:    user.UserName,
+			DisplayName: user.DisplayName,
+		})
+	}
+	utils.ResponseOK(w, userSelection)
+}
+
 func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
 	userName := r.FormValue("userName")
 	claims, _ := a.credentialsInfo(r)
@@ -201,6 +223,41 @@ func (a *apiUser) usersExist(w http.ResponseWriter, r *http.Request) {
 		for _, v := range listUserName {
 			if !userMap[v] {
 				utils.Response(w, http.StatusBadRequest, fmt.Errorf("user %s not found", v), nil)
+				return
+			}
+		}
+	}
+}
+
+func (a *apiUser) membersExist(w http.ResponseWriter, r *http.Request) {
+	userNames := r.FormValue("userNames")
+	if utils.IsEmpty(userNames) {
+		return
+	}
+	listUserName := strings.Split(userNames, ",")
+	users, err := a.db.QueryUserWithList("user_name", listUserName)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
+			return
+		} else {
+			utils.Response(w, http.StatusInternalServerError, err, nil)
+			return
+		}
+	}
+
+	if len(users) == len(listUserName) {
+		utils.ResponseOK(w, users)
+		return
+	} else {
+		userMap := make(map[string]bool)
+		for _, u := range users {
+			userMap[u.UserName] = true
+		}
+
+		for _, v := range listUserName {
+			if !userMap[v] {
+				utils.Response(w, http.StatusBadRequest, fmt.Errorf("Member '%s' not found", v), nil)
 				return
 			}
 		}

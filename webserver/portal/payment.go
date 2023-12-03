@@ -102,14 +102,56 @@ type GetRateResponse struct {
 	ConvertTime int64   `json:"convertTime"`
 }
 type PaymentSummary struct {
-	RequestReceived uint64  `json:"requestReceived`
-	RequestSent     uint64  `json:"requestSent`
-	RequestPaid     uint64  `json:"requestPaid`
-	TotalPaid       float64 `json:"totalPaid`
-	TotalReceived   float64 `json:"totalReceived`
+	RequestReceived uint64  `json:"requestReceived"`
+	RequestSent     uint64  `json:"requestSent"`
+	RequestPaid     uint64  `json:"requestPaid"`
+	TotalPaid       float64 `json:"totalPaid"`
+	TotalReceived   float64 `json:"totalReceived"`
 }
 
 type SummaryFilter struct {
-	Month uint64 `json:"month`
-	Ids   string `json:"ids`
+	Month uint64 `json:"month"`
+	Ids   string `json:"ids"`
+}
+
+type PaymentReport struct {
+	Month        string              `json:"month"`
+	PaymentUnits []PaymentReportUnit `json:"paymentUnits"`
+}
+
+type PaymentReportUnit struct {
+	DisplayName    string       `json:"displayName"`
+	Amount         float64      `json:"amount"`
+	ExpectedAmount float64      `json:"expectedAmount"`
+	PaymentMethod  utils.Method `json:"paymentMethod"`
+}
+
+type InvoiceReport struct {
+	Project      string              `json:"project"`
+	DisplayName  string              `json:"displayName"`
+	InvoiceUnits []InvoiceReportUnit `json:"invoiceUnits"`
+}
+
+type InvoiceReportUnit struct {
+	Date        string  `json:"date"`
+	Hours       float64 `json:"hours"`
+	Description string  `json:"description"`
+}
+type AddressReport struct {
+	PaymentMethod string              `json:"paymentMethod"`
+	DisplayName   string              `json:"displayName"`
+	AddressUnits  []AddressReportUnit `json:"addressUnits"`
+}
+
+type AddressReportUnit struct {
+	DateTime       string  `json:"dateTime"`
+	Amount         float64 `json:"amount"`
+	ExpectedAmount float64 `json:"expectedAmount"`
+}
+
+type ReportFilter struct {
+	StartDate  time.Time
+	EndDate    time.Time
+	MemberIds  string
+	ProjectIds string
 }
