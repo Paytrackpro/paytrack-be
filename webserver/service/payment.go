@@ -362,6 +362,15 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	return payments, count, nil
 }
 
+func (s *Service) CheckHasReport(userId uint64) bool {
+	var count int64
+	err := s.db.Model(&storage.Payment{}).Where("status = ? AND receiver_id = ?", storage.PaymentStatusPaid, userId).Count(&count).Error
+	if err != nil || count < 1 {
+		return false
+	}
+	return true
+}
+
 func (s *Service) GetPaymentsForReport(userId uint64, request portal.ReportFilter) ([]storage.Payment, error) {
 	payments := make([]storage.Payment, 0)
 	var memberQuery = ""
