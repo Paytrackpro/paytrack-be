@@ -171,12 +171,12 @@ func (a *apiPayment) sortPaymentDetails(payment storage.Payment) {
 	}
 	for i := 0; i < len(payment.Details); i++ {
 		for j := i + 1; j < len(payment.Details); j++ {
-			date1, err := time.Parse("2006/01/02", payment.Details[i].Date)
+			date1, err := time.Parse("2006/01/02", utils.HandlerDateFormat(payment.Details[i].Date))
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
-			date2, err := time.Parse("2006/01/02", payment.Details[j].Date)
+			date2, err := time.Parse("2006/01/02", utils.HandlerDateFormat(payment.Details[j].Date))
 			if err != nil {
 				fmt.Println(err)
 				continue
@@ -432,6 +432,16 @@ func (a *apiPayment) countBulkPayBTC(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.ResponseOK(w, count)
+}
+
+func (a *apiPayment) hasReport(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.parseBearer(r)
+	if claims.Id < 1 {
+		utils.ResponseOK(w, false)
+		return
+	}
+	hasReport := a.service.CheckHasReport(claims.Id)
+	utils.ResponseOK(w, hasReport)
 }
 
 func (a *apiPayment) paymentReport(w http.ResponseWriter, r *http.Request) {
