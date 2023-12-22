@@ -125,7 +125,7 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payment, err := a.service.CreatePayment(userInfo.Id, userInfo.UserName, userInfo.DisplayName, userInfo.ShowDateOnInvoiceLine,
+	payment, err := a.service.CreatePayment(userInfo.Id, userInfo.UserName, userInfo.DisplayName,
 		userInfo.ShowDraftForRecipient, body)
 	if err != nil {
 		log.Error(err)
