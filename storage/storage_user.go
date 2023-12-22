@@ -50,6 +50,7 @@ type User struct {
 	CreatedAt             time.Time       `json:"createdAt"`
 	UpdatedAt             time.Time       `json:"updatedAt"`
 	LastSeen              time.Time       `json:"lastSeen" gorm:"default:current_timestamp"`
+	HidePaid              bool            `json:"hidePaid"`
 	Secret                string          `json:"-"`
 	Otp                   bool            `json:"otp"`
 	Locked                bool            `json:"locked"`

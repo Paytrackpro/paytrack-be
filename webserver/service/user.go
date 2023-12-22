@@ -49,6 +49,7 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 	utils.SetValue(&user.HourlyLaborRate, userInfo.HourlyLaborRate)
 	utils.SetValue(&user.ShowDateOnInvoiceLine, userInfo.ShowDateOnInvoiceLine)
 	utils.SetValue(&user.ShowDraftForRecipient, userInfo.ShowDraftForRecipient)
+	utils.SetValue(&user.HidePaid, userInfo.HidePaid)
 
 	if isAdmin {
 		user.Role = userInfo.Role
