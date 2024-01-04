@@ -246,6 +246,7 @@ func (f *PaymentFilter) BindFirst(db *gorm.DB) *gorm.DB {
 func (f *PaymentFilter) Sortable() map[string]bool {
 	return map[string]bool{
 		"createdAt": true,
+		"updatedAt": true,
 		"paidAt":    true,
 		"status":    true,
 		"amount":    true,
