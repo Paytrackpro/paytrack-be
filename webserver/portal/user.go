@@ -72,6 +72,7 @@ type UpdateUserRequest struct {
 	Locked                bool                     `json:"locked"`
 	ShowDraftForRecipient bool                     `json:"showDraftForRecipient"`
 	ShowDateOnInvoiceLine bool                     `json:"showDateOnInvoiceLine"`
+	HidePaid              bool                     `json:"hidePaid"`
 	Role                  utils.UserRole           `json:"role"`
 }
 

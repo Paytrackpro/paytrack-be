@@ -113,7 +113,7 @@ func (s *Service) GetRequestSummary(userId uint64, summaryFilter portal.SummaryF
 	return paymentSummary, nil
 }
 
-func (s *Service) CreatePayment(userId uint64, userName string, displayName string, showDateOnInvoiceLine bool, showDraftForRecipient bool, request portal.PaymentRequest) (*storage.Payment, error) {
+func (s *Service) CreatePayment(userId uint64, userName string, displayName string, showDraftForRecipient bool, request portal.PaymentRequest) (*storage.Payment, error) {
 	var reciver storage.User
 	payment := storage.Payment{
 		SenderId:              userId,
@@ -125,7 +125,7 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 		HourlyRate:            request.HourlyRate,
 		PaymentSettings:       request.PaymentSettings,
 		ShowDraftRecipient:    showDraftForRecipient,
-		ShowDateOnInvoiceLine: showDateOnInvoiceLine,
+		ShowDateOnInvoiceLine: request.ShowDateOnInvoiceLine,
 	}
 
 	// payment is internal
@@ -216,6 +216,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		payment.Details = request.Details
 		payment.HourlyRate = request.HourlyRate
 		payment.PaymentSettings = request.PaymentSettings
+		payment.ShowDateOnInvoiceLine = request.ShowDateOnInvoiceLine
 		if !utils.IsEmpty(request.ReceiptImg) && request.Status == storage.PaymentStatusPaid {
 			payment.ReceiptImg = request.ReceiptImg
 		}

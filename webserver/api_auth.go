@@ -29,6 +29,7 @@ type authClaims struct {
 	Otp                   bool
 	ShowDraftForRecipient bool
 	ShowDateOnInvoiceLine bool
+	HidePaid              bool
 }
 
 func (c authClaims) Valid() error {
@@ -56,6 +57,8 @@ func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
+	//default: set display date on invoice is true
+	user.ShowDateOnInvoiceLine = true
 	if err := a.db.CreateUser(user); err != nil {
 		// 23505 is  duplicate key value error for postgresql
 		if e, ok := err.(*pgconn.PgError); ok && e.Code == utils.PgsqlDuplicateErrorCode {
@@ -132,6 +135,7 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		DisplayName:           user.DisplayName,
 		ShowDraftForRecipient: user.ShowDraftForRecipient,
 		ShowDateOnInvoiceLine: user.ShowDateOnInvoiceLine,
+		HidePaid:              user.HidePaid,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, authClaim)
 	tokenString, err := token.SignedString([]byte(a.conf.HmacSecretKey))
@@ -199,6 +203,7 @@ func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
 		DisplayName:           user.DisplayName,
 		ShowDraftForRecipient: user.ShowDraftForRecipient,
 		ShowDateOnInvoiceLine: user.ShowDateOnInvoiceLine,
+		HidePaid:              user.HidePaid,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, authClaim)
 	tokenString, err := token.SignedString([]byte(a.conf.HmacSecretKey))
