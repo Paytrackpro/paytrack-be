@@ -398,6 +398,12 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(query.Sort.Order, "updatedAt") {
 		query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "updatedAt", "updated_at")
 	}
+	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "sentAt", "sent_at")
+	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "receiverName", "receiver_name")
+	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "senderName", "sender_name")
+	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "acceptedCoins", "accepted_coins")
+	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "startDate", "start_date")
+
 	if query.RequestType == storage.PaymentTypeBulkPayBTC {
 		payments, count, err := a.service.GetBulkPaymentBTC(claims.Id, query.Page, query.Size, query.Sort.Order)
 		if err != nil {

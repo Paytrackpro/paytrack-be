@@ -176,6 +176,7 @@ type Payment struct {
 	ReceiptImg            string          `json:"receiptImg"`
 	ShowDraftRecipient    bool            `json:"showDraftRecipient"`
 	ShowDateOnInvoiceLine bool            `json:"showDateOnInvoiceLine"`
+	StartDate             time.Time       `json:"startDate"`
 }
 
 type PaymentFilter struct {
@@ -250,5 +251,10 @@ func (f *PaymentFilter) Sortable() map[string]bool {
 		"paidAt":    true,
 		"status":    true,
 		"amount":    true,
+		"sentAt" : true,
+		"startDate" : true,
+		"receiverName": true,
+		"senderName": true,
+		"acceptedCoins": true,
 	}
 }

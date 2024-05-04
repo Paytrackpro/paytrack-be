@@ -74,6 +74,7 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 func (s *WebServer) Run() error {
 	s.Route()
 	log.Info("mgmtng is running on port:", s.conf.Port)
+	s.service.RunMigrations()
 	s.service.RunTimeTask()
 	var server = http.Server{
 		Addr:              fmt.Sprintf(":%d", s.conf.Port),
