@@ -126,6 +126,8 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 		PaymentSettings:       request.PaymentSettings,
 		ShowDraftRecipient:    showDraftForRecipient,
 		ShowDateOnInvoiceLine: request.ShowDateOnInvoiceLine,
+		ShowProjectOnInvoice:  request.ShowProjectOnInvoice,
+		ProjectId:             request.ProjectId,
 	}
 
 	// payment is internal
@@ -158,6 +160,11 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 			return nil, utils.NewError(err, utils.ErrorBadRequest)
 		}
 		payment.Amount = amount
+		startDate, err := getStartDate(request)
+		if err != nil {
+			return nil, utils.NewError(err, utils.ErrorBadRequest)
+		}
+		payment.StartDate = startDate
 	} else {
 		payment.Amount = request.Amount
 	}
@@ -217,6 +224,8 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		payment.HourlyRate = request.HourlyRate
 		payment.PaymentSettings = request.PaymentSettings
 		payment.ShowDateOnInvoiceLine = request.ShowDateOnInvoiceLine
+		payment.ShowProjectOnInvoice = request.ShowProjectOnInvoice
+		payment.ProjectId = request.ProjectId
 		if !utils.IsEmpty(request.ReceiptImg) && request.Status == storage.PaymentStatusPaid {
 			payment.ReceiptImg = request.ReceiptImg
 		}
@@ -226,6 +235,11 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 				return nil, utils.NewError(err, utils.ErrorBadRequest)
 			}
 			payment.Amount = amount
+			startDate, err := getStartDate(request)
+			if err != nil {
+				return nil, utils.NewError(err, utils.ErrorBadRequest)
+			}
+			payment.StartDate = startDate
 		} else {
 			payment.Amount = request.Amount
 		}
@@ -529,6 +543,17 @@ func calculateAmount(request portal.PaymentRequest) (float64, error) {
 		amount += detail.Cost
 	}
 	return amount, nil
+}
+
+func getStartDate(request portal.PaymentRequest) (time.Time, error) {
+	var start_date = time.Now().AddDate(1000, 0, 0)
+	for _, detail := range request.Details {
+		parse_date, err := time.Parse("2006/01/02", detail.Date)
+		if err == nil && parse_date.Before(start_date) {
+			start_date = parse_date
+		}
+	}
+	return start_date, nil
 }
 
 // Sync Payment data when user Display name was changed

@@ -28,6 +28,8 @@ type PaymentRequest struct {
 	ReceiptImg            string                  `json:"receiptImg"`
 	ShowDraftRecipient    bool                    `json:"showDraftRecipient"`
 	ShowDateOnInvoiceLine bool                    `json:"showDateOnInvoiceLine"`
+	ShowProjectOnInvoice  bool                    `json:"showProjectOnInvoice"`
+	ProjectId             uint64                  `json:"projectId"`
 }
 
 type PaymentConfirm struct {
