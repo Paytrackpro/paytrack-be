@@ -59,6 +59,7 @@ func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 	}
 	//default: set display date on invoice is true
 	user.ShowDateOnInvoiceLine = true
+	user.ShowDraftForRecipient = true
 	if err := a.db.CreateUser(user); err != nil {
 		// 23505 is  duplicate key value error for postgresql
 		if e, ok := err.(*pgconn.PgError); ok && e.Code == utils.PgsqlDuplicateErrorCode {
