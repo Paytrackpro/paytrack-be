@@ -305,6 +305,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		// if status is Draft, save show draft for recipient flag
 		if request.Status == storage.PaymentStatusCreated {
 			payment.ShowDraftRecipient = request.ShowDraftRecipient
+			payment.Status = request.Status
 		}
 	}
 
