@@ -60,13 +60,22 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 			utils.Response(w, http.StatusInternalServerError, err, nil)
 			return
 		}
-
+		if body.Status == storage.PaymentStatusSent || body.Status == storage.PaymentStatusCreated {
+			a.reloadList([]string{fmt.Sprint(body.ReceiverId)}, "")
+		}
 		utils.ResponseOK(w, Map{
 			"payment": payment,
 			"token":   "",
 		}, nil)
 	} else {
 		utils.Response(w, http.StatusForbidden, utils.NewError(fmt.Errorf("do not have access"), utils.ErrorBadRequest), nil)
+	}
+}
+
+func (a *apiPayment) reloadList(rooms []string, data interface{}) {
+	for _, room := range rooms {
+		log.Debug("send data ", data, " to room ", room)
+		a.socket.BroadcastToRoom("", room, "reloadList", data)
 	}
 }
 
@@ -135,7 +144,7 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 	res := Map{
 		"payment": payment,
 	}
-
+	a.reloadList([]string{fmt.Sprint(payment.ReceiverId)}, "")
 	if body.ContactMethod == storage.PaymentTypeEmail {
 		token, customErr := a.sendNotification(storage.PaymentStatusCreated, *payment, userInfo)
 		res["token"] = token
@@ -355,12 +364,17 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
 	}
+	a.reloadList([]string{fmt.Sprint(payment.ReceiverId)}, "")
 	utils.ResponseOK(w, payment)
 }
 
 func (a *apiPayment) deleteDraft(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	a.db.GetDB().Where("id = ?", id).Delete(&storage.Payment{})
+	payment := &storage.Payment{}
+	if err := a.db.GetDB().Where("id = ?", id).First(payment).Error; err == nil {
+		a.reloadList([]string{fmt.Sprint(payment.SenderId)}, "")
+		a.db.GetDB().Where("id = ?", id).Delete(&storage.Payment{})
+	}
 	utils.ResponseOK(w, nil)
 }
 

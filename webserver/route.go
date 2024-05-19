@@ -21,6 +21,7 @@ func (s *WebServer) Route() {
 	s.mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("MGMT-NG API is up and running"))
 	})
+	s.mux.Get("/socket.io/", s.handleSocket())
 	s.mux.Route("/api", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
 			var authRouter = apiAuth{WebServer: s}
