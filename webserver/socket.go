@@ -17,6 +17,10 @@ func NewSocketServer() *socketio.Server {
 		s.Join(msg)
 	})
 
+	server.OnEvent("/", "left", func(s socketio.Conn, msg string) {
+		s.Leave(msg)
+	})
+
 	server.OnError("/", func(s socketio.Conn, e error) {
 		s.Close()
 	})

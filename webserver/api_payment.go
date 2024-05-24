@@ -74,7 +74,6 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 
 func (a *apiPayment) reloadList(rooms []string, data interface{}) {
 	for _, room := range rooms {
-		log.Debug("send data ", data, " to room ", room)
 		a.socket.BroadcastToRoom("", room, "reloadList", data)
 	}
 }

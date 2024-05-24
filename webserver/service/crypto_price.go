@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 )
@@ -119,4 +120,23 @@ func (s *Service) getBittrexPrice(currency utils.Method) (float64, error) {
 	}
 
 	return res.Price, nil
+}
+
+type Map map[string]interface{}
+
+func (s *Service) NotifyCryptoPriceChanged() {
+	for range time.Tick(time.Second * 5) {
+		for _, currency := range []utils.Method{utils.PaymentTypeBTC, utils.PaymentTypeDCR, utils.PaymentTypeLTC} {
+			rate, err := s.GetRate(currency)
+			if err != nil {
+				fmt.Printf("error getting %s rate: %v\n", currency.String(), err)
+				continue
+			}
+			s.socket.BroadcastToRoom("", "exchangeRate", currency.String(), Map{
+				"currency":    currency.String(),
+				"rate":        rate,
+				"convertTime": time.Now(),
+			})
+		}
+	}
 }

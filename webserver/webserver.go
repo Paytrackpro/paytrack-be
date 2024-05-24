@@ -60,7 +60,8 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 		return nil, err
 	}
 
-	sv := service.NewService(c.Service, db.GetDB())
+	socket := NewSocketServer()
+	sv := service.NewService(c.Service, db.GetDB(), socket)
 
 	return &WebServer{
 		mux:       chi.NewRouter(),
@@ -70,7 +71,7 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 		mail:      mailClient,
 		crypto:    crypto,
 		service:   sv,
-		socket:    NewSocketServer(),
+		socket:    socket,
 	}, nil
 }
 
@@ -79,6 +80,8 @@ func (s *WebServer) Run() error {
 	log.Info("mgmtng is running on port:", s.conf.Port)
 	s.service.RunMigrations()
 	s.service.RunTimeTask()
+	go s.socket.Serve()
+	go s.service.NotifyCryptoPriceChanged()
 	var server = http.Server{
 		Addr:              fmt.Sprintf(":%d", s.conf.Port),
 		Handler:           s.mux,
@@ -94,7 +97,6 @@ func (s *WebServer) Run() error {
 		BaseContext:       nil,
 		ConnContext:       nil,
 	}
-	go s.socket.Serve()
 	defer s.socket.Close()
 	return server.ListenAndServe()
 }
