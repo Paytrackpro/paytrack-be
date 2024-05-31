@@ -57,6 +57,7 @@ func (s *WebServer) Route() {
 			r.Get("/get-running-timer", userRouter.getRunningTimer)
 			r.Get("/get-time-log", userRouter.getTimeLogList)
 			r.Put("/update-timer", userRouter.updateTimer)
+			r.Delete("/timer-delete/{id:[0-9]+}", userRouter.deleteTimer)
 		})
 
 		r.Route("/file", func(r chi.Router) {

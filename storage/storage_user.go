@@ -60,6 +60,12 @@ type User struct {
 	ShowDateOnInvoiceLine bool            `json:"showDateOnInvoiceLine"`
 }
 
+type UserWorkingDisplay struct {
+	User
+	Working bool `json:"working"`
+	Pausing bool `json:"pausing"`
+}
+
 type UserTimer struct {
 	Id          uint64        `json:"id" gorm:"primarykey"`
 	UserId      uint64        `json:"userId"`
@@ -71,6 +77,12 @@ type UserTimer struct {
 	Pausing     bool          `json:"pausing"`
 	ProjectId   uint64        `json:"projectId"`
 	Description string        `json:"description"`
+}
+
+type UserTimerSockerData struct {
+	UserId  uint64
+	Working bool
+	Pausing bool
 }
 
 type PauseStatuses []PauseStatus

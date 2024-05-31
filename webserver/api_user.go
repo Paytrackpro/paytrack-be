@@ -189,10 +189,23 @@ func (a *apiUser) resumeTimer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	socketData := storage.UserTimerSockerData{
+		UserId:  claims.Id,
+		Working: true,
+		Pausing: false,
+	}
+	a.HandlerForReloadAdminUsers(socketData)
+
 	utils.ResponseOK(w, Map{
 		"error":        false,
 		"runningTimer": runningTimer,
 	})
+}
+
+func (a *apiUser) deleteTimer(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	a.db.GetDB().Where("id = ?", id).Delete(&storage.UserTimer{})
+	utils.ResponseOK(w, nil)
 }
 
 func (a *apiUser) updateTimer(w http.ResponseWriter, r *http.Request) {
@@ -282,6 +295,13 @@ func (a *apiUser) stopTimer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	socketData := storage.UserTimerSockerData{
+		UserId:  claims.Id,
+		Working: false,
+		Pausing: false,
+	}
+	a.HandlerForReloadAdminUsers(socketData)
+
 	utils.ResponseOK(w, Map{
 		"error":        false,
 		"runningTimer": runningTimer,
@@ -322,6 +342,13 @@ func (a *apiUser) pauseTimer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	socketData := storage.UserTimerSockerData{
+		UserId:  claims.Id,
+		Working: true,
+		Pausing: true,
+	}
+	a.HandlerForReloadAdminUsers(socketData)
+
 	utils.ResponseOK(w, Map{
 		"error":        false,
 		"runningTimer": runningTimer,
@@ -352,9 +379,27 @@ func (a *apiUser) startTimer(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
+	socketData := storage.UserTimerSockerData{
+		UserId:  claims.Id,
+		Working: true,
+		Pausing: false,
+	}
+	a.HandlerForReloadAdminUsers(socketData)
 	utils.ResponseOK(w, Map{
 		"runningTimer": userTimer,
 	})
+}
+
+func (a *apiUser) HandlerForReloadAdminUsers(socketData storage.UserTimerSockerData) {
+	if adminIds, err := a.service.GetAdminIds(); err == nil {
+		adminIdStrs := make([]string, 0)
+		for _, adminId := range adminIds {
+			adminIdStrs = append(adminIdStrs, fmt.Sprint(adminId))
+		}
+		if len(adminIdStrs) > 0 {
+			a.reloadUserList(adminIdStrs, socketData)
+		}
+	}
 }
 
 func (a *apiUser) getTimeLogList(w http.ResponseWriter, r *http.Request) {
@@ -371,8 +416,15 @@ func (a *apiUser) getTimeLogList(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
-
-	utils.ResponseOK(w, timerList)
+	timerCount, countErr := a.service.CountLogTimer(claims.Id, filter)
+	if countErr != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(countErr, utils.ErrorInternalCode), nil)
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"timers": timerList,
+		"count":  timerCount,
+	})
 }
 
 func (a *apiUser) getRunningTimer(w http.ResponseWriter, r *http.Request) {
@@ -538,6 +590,13 @@ func CheckExistOnIntArray(intArr []uint64, checkInt uint64) bool {
 	return false
 }
 
+func (a *apiUser) reloadUserList(rooms []string, data interface{}) {
+	for _, room := range rooms {
+		log.Debug("send data ", data, " to room ", room)
+		a.socket.BroadcastToRoom("", room, "reloadUserList", data)
+	}
+}
+
 func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 	var f storage.UserFilter
 	if err := a.parseQueryAndValidate(r, &f); err != nil {
@@ -554,8 +613,29 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	count, _ := a.db.Count(&f, &storage.User{})
+	//get working flg
+	workingMap, err := a.service.GetWorkingUserList()
+	userResList := make([]storage.UserWorkingDisplay, 0)
+	for _, user := range users {
+		working := false
+		pausing := false
+		if err == nil {
+			tmpPausing, exist := workingMap[user.Id]
+			if exist {
+				working = true
+				pausing = tmpPausing
+			}
+		}
+		userRes := storage.UserWorkingDisplay{
+			User:    user,
+			Working: working,
+			Pausing: pausing,
+		}
+		userResList = append(userResList, userRes)
+	}
+
 	utils.ResponseOK(w, Map{
-		"users": users,
+		"users": userResList,
 		"count": count,
 	})
 }
