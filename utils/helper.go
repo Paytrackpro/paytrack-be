@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -198,4 +199,8 @@ func HandlerDateFormat(date string) string {
 		dateArr[2] = fmt.Sprintf("0%s", dateArr[2])
 	}
 	return strings.Join(dateArr, "/")
+}
+
+func GetSecondDurationFromStartEnd(startTime, endTime time.Time) uint64 {
+	return uint64(math.Floor(endTime.Sub(startTime).Seconds()))
 }

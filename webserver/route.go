@@ -50,6 +50,11 @@ func (s *WebServer) Route() {
 				r.Get("/payment", userRouter.getPaymentSetting)
 				r.Put("/payment", userRouter.updatePaymentSetting)
 			})
+			r.Post("/start_timer", userRouter.startTimer)
+			r.Post("/pause_timer", userRouter.pauseTimer)
+			r.Post("/resume_timer", userRouter.resumeTimer)
+			r.Post("/stop_timer", userRouter.stopTimer)
+			r.Get("/get-running-timer", userRouter.getRunningTimer)
 		})
 
 		r.Route("/file", func(r chi.Router) {

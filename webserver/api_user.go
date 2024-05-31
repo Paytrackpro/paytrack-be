@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
@@ -124,6 +125,256 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.ResponseOK(w, user)
+}
+
+func (a *apiUser) resumeTimer(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	//check if exist timer is running
+	runningTimer, runningErr := a.service.GetRunningTimer(claims.Id)
+	if runningErr != nil || runningTimer == nil {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("%s", "Get running timer error"), nil)
+		return
+	}
+
+	//check pausing status
+	if runningTimer.Fininshed || !runningTimer.Pausing {
+		utils.ResponseOK(w, Map{
+			"error": true,
+			"msg":   "Timer has Finished or is not in pause state. Can not resume",
+		})
+		return
+	}
+	//check newest sum
+	pauseState := runningTimer.PauseState
+	if len(pauseState) < 1 {
+		utils.ResponseOK(w, Map{
+			"error": true,
+			"msg":   "Timer has not been paused. Cannot resume",
+		})
+		return
+	}
+
+	var lastIndex int
+	var lastPause *storage.PauseStatus
+	for index, pauseStatus := range pauseState {
+		if !pauseStatus.Stop.IsZero() {
+			continue
+		}
+		startPause := pauseStatus.Start
+		if lastPause == nil {
+			lastPause = &pauseStatus
+			lastIndex = index
+			continue
+		}
+		if startPause.After(lastPause.Start) {
+			lastIndex = index
+			lastPause = &pauseStatus
+		}
+	}
+
+	if lastPause == nil {
+		utils.ResponseOK(w, Map{
+			"error": true,
+			"msg":   "Timer has not been paused. Cannot resume",
+		})
+		return
+	}
+
+	lastPause.Stop = time.Now()
+	runningTimer.PauseState[lastIndex] = *lastPause
+	runningTimer.Pausing = false
+	//update running timer
+	if err := a.db.UpdateUserTimer(runningTimer); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	utils.ResponseOK(w, Map{
+		"error":        false,
+		"runningTimer": runningTimer,
+	})
+}
+
+func (a *apiUser) stopTimer(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	//check if exist timer is running
+	runningTimer, runningErr := a.service.GetRunningTimer(claims.Id)
+	if runningErr != nil || runningTimer == nil {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("%s", "Get running timer error"), nil)
+		return
+	}
+	//check pausing status
+	if runningTimer.Fininshed {
+		utils.ResponseOK(w, Map{
+			"error": true,
+			"msg":   "Timer has finished, cannot be stopped!",
+		})
+		return
+	}
+
+	//update running timer
+	runningTimer.Stop = time.Now()
+	var pauseIndex int
+	var updatePauseStatus *storage.PauseStatus
+	if runningTimer.Pausing && len(runningTimer.PauseState) > 0 {
+		for index, pauseStatus := range runningTimer.PauseState {
+			if !pauseStatus.Stop.IsZero() {
+				continue
+			}
+			pauseStatus.Stop = time.Now()
+			updatePauseStatus = &pauseStatus
+			pauseIndex = index
+			break
+		}
+		if updatePauseStatus != nil {
+			runningTimer.PauseState[pauseIndex] = *updatePauseStatus
+		}
+	}
+
+	totalSecond := uint64(0)
+	allDurationSec := utils.GetSecondDurationFromStartEnd(runningTimer.Start, runningTimer.Stop)
+	totalPauseSec := uint64(0)
+	//caculate sum of pausing seconds
+	if len(runningTimer.PauseState) > 0 {
+		for _, pauseState := range runningTimer.PauseState {
+			if pauseState.Start.IsZero() || pauseState.Stop.IsZero() {
+				continue
+			}
+			pauseSec := utils.GetSecondDurationFromStartEnd(pauseState.Start, pauseState.Stop)
+			totalPauseSec += pauseSec
+		}
+	}
+	totalSecond = allDurationSec - totalPauseSec
+	runningTimer.Duration = totalSecond
+	runningTimer.Fininshed = true
+	runningTimer.Pausing = false
+
+	//update running timer
+	if err := a.db.UpdateUserTimer(runningTimer); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	utils.ResponseOK(w, Map{
+		"error":        false,
+		"runningTimer": runningTimer,
+	})
+}
+
+func (a *apiUser) pauseTimer(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	//check if exist timer is running
+	runningTimer, runningErr := a.service.GetRunningTimer(claims.Id)
+	if runningErr != nil || runningTimer == nil {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("%s", "Get running timer error"), nil)
+		return
+	}
+
+	//check pausing status
+	if runningTimer.Fininshed || runningTimer.Pausing {
+		utils.ResponseOK(w, Map{
+			"error": true,
+			"msg":   "Timer has been paused or finished. Can not pause",
+		})
+		return
+	}
+	//create new pausing state
+	newPausingState := storage.PauseStatus{
+		Start: time.Now(),
+	}
+	if len(runningTimer.PauseState) > 0 {
+		runningTimer.PauseState = append(runningTimer.PauseState, newPausingState)
+	} else {
+		runningTimer.PauseState = []storage.PauseStatus{newPausingState}
+	}
+
+	runningTimer.Pausing = true
+	//update running timer
+	if err := a.db.UpdateUserTimer(runningTimer); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	utils.ResponseOK(w, Map{
+		"error":        false,
+		"runningTimer": runningTimer,
+	})
+}
+
+func (a *apiUser) startTimer(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	//check if exist timer is running
+	runningTimer, runningErr := a.service.GetRunningTimer(claims.Id)
+	if runningErr != nil {
+		utils.Response(w, http.StatusInternalServerError, runningErr, nil)
+		return
+	}
+
+	//if exist running timer, return error running timer
+	if runningTimer != nil {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("%s", "Other timer is running. Can't start new timer"), nil)
+		return
+	}
+
+	//Create new timer
+	var userTimer = storage.UserTimer{
+		UserId: claims.Id,
+		Start:  time.Now(),
+	}
+	if err := a.db.CreateUserTimer(&userTimer); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"runningTimer": userTimer,
+	})
+}
+
+func (a *apiUser) getRunningTimer(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	//check if exist timer is running
+	runningTimer, runningErr := a.service.GetRunningTimer(claims.Id)
+	if runningErr != nil || runningTimer == nil {
+		utils.ResponseOK(w, Map{
+			"exist": false,
+		})
+		return
+	}
+
+	totalSecond := uint64(0)
+	startDate := runningTimer.Start
+	var endDate time.Time
+	if runningTimer.Fininshed {
+		endDate = runningTimer.Stop
+	} else {
+		endDate = time.Now()
+	}
+
+	allDurationSec := utils.GetSecondDurationFromStartEnd(startDate, endDate)
+	totalPauseSec := uint64(0)
+	//caculate sum of pausing seconds
+	if len(runningTimer.PauseState) > 0 {
+		for _, pauseState := range runningTimer.PauseState {
+			if pauseState.Start.IsZero() {
+				continue
+			}
+			var pauseStopTime time.Time
+			if pauseState.Stop.IsZero() {
+				pauseStopTime = time.Now()
+			} else {
+				pauseStopTime = pauseState.Stop
+			}
+			pauseSec := utils.GetSecondDurationFromStartEnd(pauseState.Start, pauseStopTime)
+			totalPauseSec += pauseSec
+		}
+	}
+	totalSecond = allDurationSec - totalPauseSec
+
+	utils.ResponseOK(w, Map{
+		"runningTimer": runningTimer,
+		"totalSeconds": totalSecond,
+		"exist":        true,
+	})
 }
 
 func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) {

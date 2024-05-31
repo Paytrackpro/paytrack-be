@@ -23,6 +23,17 @@ func (s *Service) GetUserInfo(id uint64) (storage.User, error) {
 	return user, nil
 }
 
+func (s *Service) GetRunningTimer(userId uint64) (*storage.UserTimer, error) {
+	var userTimer storage.UserTimer
+	if err := s.db.Where("user_id = ? AND fininshed = ?", userId, false).First(&userTimer).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &userTimer, nil
+}
+
 func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, isAdmin bool) (storage.User, error) {
 	var user storage.User
 	if err := s.db.Where("id = ?", id).First(&user).Error; err != nil {
