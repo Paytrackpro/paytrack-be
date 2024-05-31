@@ -126,6 +126,122 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, user)
 }
 
+func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) {
+	var rf storage.AdminReportFilter
+	if err := a.parseQueryAndValidate(r, &rf); err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	payments, err := a.service.GetAllPayments(rf)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	reportSummary := portal.AdminSummaryReport{
+		TotalInvoices: len(payments),
+	}
+	totalAmount := float64(0)
+	sentInfo := portal.PaymentStatusSummary{}
+	pendingInfo := portal.PaymentStatusSummary{}
+	paidInfo := portal.PaymentStatusSummary{}
+	usersSummaryMap := make(map[uint64]*portal.UserUsageSummary)
+	userIds := make([]uint64, 0)
+	for _, payment := range payments {
+		if !CheckExistOnIntArray(userIds, payment.SenderId) {
+			userIds = append(userIds, payment.SenderId)
+		}
+		if !CheckExistOnIntArray(userIds, payment.ReceiverId) {
+			userIds = append(userIds, payment.ReceiverId)
+		}
+		totalAmount += payment.Amount
+		switch payment.Status {
+		case storage.PaymentStatusConfirmed:
+			pendingInfo.InvoiceNum++
+			pendingInfo.Amount += payment.Amount
+		case storage.PaymentStatusPaid:
+			paidInfo.InvoiceNum++
+			paidInfo.Amount += payment.Amount
+		default:
+			sentInfo.InvoiceNum++
+			sentInfo.Amount += payment.Amount
+		}
+		senderId := payment.SenderId
+		receiverId := payment.ReceiverId
+		var senderInMap *portal.UserUsageSummary
+		var receiverInMap *portal.UserUsageSummary
+		senderInMap = usersSummaryMap[senderId]
+		receiverInMap = usersSummaryMap[receiverId]
+		if senderInMap != nil {
+			senderInMap.SendNum++
+			senderInMap.SentUsd = payment.Amount
+		} else {
+			senderInMap = &portal.UserUsageSummary{
+				Username: payment.SenderName,
+				SendNum:  1,
+				SentUsd:  payment.Amount,
+			}
+		}
+
+		if receiverInMap != nil {
+			receiverInMap.ReceiveNum++
+			receiverInMap.ReceiveUsd = payment.Amount
+		} else {
+			receiverInMap = &portal.UserUsageSummary{
+				Username:   payment.ReceiverName,
+				ReceiveNum: 1,
+				ReceiveUsd: payment.Amount,
+			}
+		}
+		usersSummaryMap[senderId] = senderInMap
+		usersSummaryMap[receiverId] = receiverInMap
+	}
+	userUsageArr := make([]portal.UserUsageSummary, 0)
+	pageNum := rf.Sort.Page
+	numPerpage := rf.Sort.Size
+	startIndex := (pageNum - 1) * numPerpage
+	endIndex := int(0)
+	reportSummary.TotalAmount = totalAmount
+	reportSummary.PaidInvoices = paidInfo
+	reportSummary.PayableInvoices = pendingInfo
+	reportSummary.SentInvoices = sentInfo
+	if startIndex > len(userIds)-1 {
+		reportSummary.UserUsageSummary = userUsageArr
+		utils.ResponseOK(w, Map{
+			"report": reportSummary,
+			"count":  len(userIds),
+		})
+		return
+	}
+	if startIndex+numPerpage >= len(userIds) {
+		endIndex = len(userIds) - 1
+	} else {
+		endIndex = startIndex + numPerpage - 1
+	}
+
+	for i := startIndex; i <= endIndex; i++ {
+		userId := userIds[i]
+		userUsage := usersSummaryMap[userId]
+		if userUsage == nil {
+			continue
+		}
+		userUsageArr = append(userUsageArr, *userUsage)
+	}
+	reportSummary.UserUsageSummary = userUsageArr
+	utils.ResponseOK(w, Map{
+		"report": reportSummary,
+		"count":  len(userIds),
+	})
+}
+
+func CheckExistOnIntArray(intArr []uint64, checkInt uint64) bool {
+	for _, num := range intArr {
+		if num == checkInt {
+			return true
+		}
+	}
+	return false
+}
+
 func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 	var f storage.UserFilter
 	if err := a.parseQueryAndValidate(r, &f); err != nil {

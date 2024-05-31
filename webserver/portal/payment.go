@@ -59,6 +59,7 @@ type PaymentRequestRate struct {
 	Token          string       `json:"token"`
 	PaymentMethod  utils.Method `json:"paymentMethod"`
 	PaymentAddress string       `json:"paymentAddress"`
+	Exchange       string       `json:"exchange"`
 }
 
 type ListPaymentSettingRequest struct {

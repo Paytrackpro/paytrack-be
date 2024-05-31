@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,13 +12,17 @@ import (
 
 const (
 	binancePriceURL = "https://api.binance.com/api/v3/ticker/price"
+	kucoinPriceURL  = "https://api.kucoin.com/api/v1/market/stats"
 	coinMaketCapURL = "https://pro-api.coinmarketcap.com/v2/tools/price-conversion"
 	bittrexURL      = "https://api.bittrex.com/v3/markets/"
+	mexcPriceURL    = "https://api.mexc.com/api/v3/ticker/price"
 )
 
 const (
 	Bittrex       = "bittrex"
 	Binance       = "binance"
+	Kucoin        = "kucoin"
+	Mexc          = "mexc"
 	Coinmarketcap = "coinmarketcap"
 )
 
@@ -49,17 +54,89 @@ type CoinMarketCapConvert struct {
 	} `json:"quote"`
 }
 
+type KucoinPriceResponse struct {
+	Code string             `json:"code"`
+	Data KucoinResponseData `json:"data"`
+}
+
+type KucoinResponseData struct {
+	Symbol           string `json:"symbol"`
+	Time             int64  `json:"time"`
+	Buy              string `json:"buy"`
+	Sell             string `json:"sell"`
+	ChangeRate       string `json:"changeRate"`
+	ChangePrice      string `json:"changePrice"`
+	High             string `json:"high"`
+	Low              string `json:"low"`
+	Vol              string `json:"vol"`
+	VolValue         string `json:"volValue"`
+	Last             string `json:"last"`
+	AveragePrice     string `json:"averagePrice"`
+	TakerFeeRate     string `json:"takerFeeRate"`
+	MakerFeeRate     string `json:"makerFeeRate"`
+	TakerCoefficient string `json:"takerCoefficient"`
+	MakerCoefficient string `json:"makerCoefficient"`
+}
+
 func (s *Service) GetRate(currency utils.Method) (float64, error) {
 	switch s.exchange {
 	case Binance:
 		return s.getBinancePrice(currency)
+	case Kucoin:
+		return s.getKucoinPrice(currency)
 	case Coinmarketcap:
 		return s.getCoinMarketCapPrice(currency)
 	case Bittrex:
 		return s.getBittrexPrice(currency)
+	case Mexc:
+		return s.getMexcPrice(currency)
 	default:
 		return 0, fmt.Errorf("exchange not set")
 	}
+}
+
+func (s *Service) GetExchangeRate(exchange string, currency utils.Method) (float64, error) {
+	switch exchange {
+	case Binance:
+		return s.getBinancePrice(currency)
+	case Kucoin:
+		return s.getKucoinPrice(currency)
+	case Coinmarketcap:
+		return s.getCoinMarketCapPrice(currency)
+	case Bittrex:
+		return s.getBittrexPrice(currency)
+	case Mexc:
+		return s.getMexcPrice(currency)
+	default:
+		return 0, fmt.Errorf("exchange not set")
+	}
+}
+
+// GetPrice get the price of the cryptocurrency based on kucoin api
+// at the moment, the use of kucoin is simple, so we build a simple function for it
+func (s *Service) getKucoinPrice(currency utils.Method) (float64, error) {
+	var symbol = fmt.Sprintf("%s-USDT", strings.ToUpper(currency.String()))
+	query := map[string]string{
+		"symbol": symbol,
+	}
+	req := &ReqConfig{
+		Method:  http.MethodGet,
+		HttpUrl: kucoinPriceURL,
+		Payload: query,
+	}
+	var kuCoinRes KucoinPriceResponse
+	if err := HttpRequest(req, &kuCoinRes); err != nil {
+		return 0, err
+	}
+
+	if kuCoinRes.Code != "200000" {
+		return 0, fmt.Errorf("Get Kucoin %s price failed", currency)
+	}
+	lastPrice, parseErr := strconv.ParseFloat(kuCoinRes.Data.Last, 64)
+	if parseErr != nil {
+		return 0, parseErr
+	}
+	return lastPrice, nil
 }
 
 // GetPrice get the price of the cryptocurrency based on binance api
@@ -72,6 +149,26 @@ func (s *Service) getBinancePrice(currency utils.Method) (float64, error) {
 	req := &ReqConfig{
 		Method:  http.MethodGet,
 		HttpUrl: binancePriceURL,
+		Payload: query,
+	}
+	var t ticker
+	if err := HttpRequest(req, &t); err != nil {
+		return 0, err
+	}
+
+	return t.Price, nil
+}
+
+// GetPrice get the price of the cryptocurrency based on binance api
+// at the moment, the use of binance is simple, so we build a simple function for it
+func (s *Service) getMexcPrice(currency utils.Method) (float64, error) {
+	var symbol = fmt.Sprintf("%sUSDT", strings.ToUpper(currency.String()))
+	query := map[string]string{
+		"symbol": symbol,
+	}
+	req := &ReqConfig{
+		Method:  http.MethodGet,
+		HttpUrl: mexcPriceURL,
 		Payload: query,
 	}
 	var t ticker

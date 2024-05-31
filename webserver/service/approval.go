@@ -12,12 +12,14 @@ import (
 
 type Config struct {
 	Exchange        string `yaml:"exchange"`
+	ExchangeList    string `yaml:"allowexchanges"`
 	CoimarketcapKey string `yaml:"coimarketcapKey"`
 }
 
 type Service struct {
 	db              *gorm.DB
 	exchange        string
+	ExchangeList    string
 	coinMaketCapKey string
 	timeState       *actionTimeState
 	socket          *socketio.Server
@@ -28,6 +30,7 @@ func NewService(conf Config, db *gorm.DB, socket *socketio.Server) *Service {
 		db:              db,
 		exchange:        conf.Exchange,
 		coinMaketCapKey: conf.CoimarketcapKey,
+		ExchangeList:    conf.ExchangeList,
 		timeState:       NewActionTime(),
 		socket:          socket,
 	}

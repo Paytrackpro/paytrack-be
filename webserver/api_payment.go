@@ -10,6 +10,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
+	"code.cryptopower.dev/mgmt-ng/be/webserver/service"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -300,7 +301,12 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if p.Status == storage.PaymentStatusPaid {
-		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("the payment was marked as paid"), utils.ErrorBadRequest), nil)
+		utils.ResponseOK(w, Map{
+			"rate":           float64(0),
+			"convertTime":    time.Now(),
+			"expectedAmount": float64(0),
+			"isPaid":         true,
+		})
 		return
 	}
 	// only the requested user has the access to process the payment
@@ -308,7 +314,11 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
-	rate, err := a.service.GetRate(f.PaymentMethod)
+	if utils.IsEmpty(f.Exchange) {
+		f.Exchange = service.Binance
+	}
+	handlerExchange := strings.ToLower(f.Exchange)
+	rate, err := a.service.GetExchangeRate(handlerExchange, f.PaymentMethod)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
@@ -414,7 +424,6 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "sentAt", "sent_at")
 	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "receiverName", "receiver_name")
 	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "senderName", "sender_name")
-	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "acceptedCoins", "accepted_coins")
 	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "startDate", "start_date")
 
 	if query.RequestType == storage.PaymentTypeBulkPayBTC {
@@ -549,6 +558,15 @@ func (a *apiPayment) invoiceReport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	utils.ResponseOK(w, reportMap)
+}
+
+func (a *apiPayment) getExchangeList(w http.ResponseWriter, r *http.Request) {
+	exchanges := a.service.ExchangeList
+	if utils.IsEmpty(exchanges) {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("%s", "Get exchange list failed"), utils.ErrorBadRequest), nil)
+		return
+	}
+	utils.ResponseOK(w, strings.Split(exchanges, ","))
 }
 
 func (a *apiPayment) addressReport(w http.ResponseWriter, r *http.Request) {

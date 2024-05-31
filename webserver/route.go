@@ -64,12 +64,13 @@ func (s *WebServer) Route() {
 
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware, s.adminMiddleware)
+			var userRouter = apiUser{WebServer: s}
 			r.Route("/user", func(r chi.Router) {
-				var userRouter = apiUser{WebServer: s}
 				r.Get("/info/{id}", userRouter.infoWithId)
 				r.Put("/info", userRouter.adminUpdateUser)
 				r.Get("/list", userRouter.getListUsers)
 			})
+			r.Get("/report-summary", userRouter.getAdminReportSummary)
 		})
 		r.Route("/payment", func(r chi.Router) {
 			var paymentRouter = apiPayment{WebServer: s}
@@ -91,6 +92,7 @@ func (s *WebServer) Route() {
 			r.Get("/payment-report", paymentRouter.paymentReport)
 			r.Get("/invoice-report", paymentRouter.invoiceReport)
 			r.Get("/address-report", paymentRouter.addressReport)
+			r.Get("/exchange-list", paymentRouter.getExchangeList)
 		})
 		r.Route("/project", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)

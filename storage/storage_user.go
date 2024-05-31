@@ -100,6 +100,12 @@ type UserFilter struct {
 	Email     string
 }
 
+type AdminReportFilter struct {
+	Sort
+	StartDate time.Time
+	EndDate   time.Time
+}
+
 func (f *UserFilter) BindQuery(db *gorm.DB) *gorm.DB {
 	db = f.Sort.BindQuery(db)
 	return f.BindCount(db)

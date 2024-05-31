@@ -167,6 +167,7 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 		payment.StartDate = startDate
 	} else {
 		payment.Amount = request.Amount
+		payment.StartDate = time.Now()
 	}
 
 	if payment.Status == storage.PaymentStatusSent {
@@ -407,8 +408,22 @@ func (s *Service) GetPaymentsForReport(userId uint64, request portal.ReportFilte
 		projectQuery = fmt.Sprintf(`AND (%s)`, orQuery)
 	}
 
-	query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND paid_at < '%s' AND paid_at > '%s' AND receiver_id = %d %s %s ORDER BY paid_at DESC`,
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND (paid_at AT TIME ZONE 'UTC') < '%s' AND (paid_at AT TIME ZONE 'UTC') > '%s' AND receiver_id = %d %s %s ORDER BY paid_at DESC`,
 		storage.PaymentStatusPaid, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate), userId, memberQuery, projectQuery)
+	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, nil
+		}
+		return nil, err
+	}
+	return payments, nil
+}
+
+// get all payments exculed draft status
+func (s *Service) GetAllPayments(request storage.AdminReportFilter) ([]storage.Payment, error) {
+	payments := make([]storage.Payment, 0)
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE status <> %d AND status <> %d AND (sent_at AT TIME ZONE 'UTC') < '%s' AND (sent_at AT TIME ZONE 'UTC') > '%s' ORDER BY sent_at DESC`,
+		storage.PaymentStatusCreated, storage.PaymentStatusRejected, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate))
 	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return payments, nil
