@@ -195,6 +195,33 @@ func (a *apiUser) resumeTimer(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *apiUser) updateTimer(w http.ResponseWriter, r *http.Request) {
+	var body portal.TimerUpdateRequest
+	err := a.parseJSONAndValidate(r, &body)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	//get timer with id
+	userTimer, err := a.service.GetUserTimer(body.TimerId)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("%s", "Get user timer error"), nil)
+		return
+	}
+	if body.ProjectId >= 0 {
+		userTimer.ProjectId = uint64(body.ProjectId)
+	}
+	if !utils.IsEmpty(body.Description) {
+		userTimer.Description = body.Description
+	}
+	//update running timer
+	if err := a.db.UpdateUserTimer(&userTimer); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	utils.ResponseOK(w, userTimer)
+}
+
 func (a *apiUser) stopTimer(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
 	//check if exist timer is running
@@ -328,6 +355,24 @@ func (a *apiUser) startTimer(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, Map{
 		"runningTimer": userTimer,
 	})
+}
+
+func (a *apiUser) getTimeLogList(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	var filter storage.AdminReportFilter
+	err := a.parseQueryAndValidate(r, &filter)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+
+	timerList, err := a.service.GetLogTimeList(claims.Id, filter)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		return
+	}
+
+	utils.ResponseOK(w, timerList)
 }
 
 func (a *apiUser) getRunningTimer(w http.ResponseWriter, r *http.Request) {

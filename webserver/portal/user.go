@@ -145,3 +145,9 @@ type ChangePasswordRequest struct {
 	OldPassword string `json:"oldPassword"`
 	Otp         string `json:"otp"`
 }
+
+type TimerUpdateRequest struct {
+	TimerId     uint64 `json:"timerId"`
+	ProjectId   int64 `json:"projectId"`
+	Description string `json:"description"`
+}

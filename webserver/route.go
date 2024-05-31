@@ -55,6 +55,8 @@ func (s *WebServer) Route() {
 			r.Post("/resume_timer", userRouter.resumeTimer)
 			r.Post("/stop_timer", userRouter.stopTimer)
 			r.Get("/get-running-timer", userRouter.getRunningTimer)
+			r.Get("/get-time-log", userRouter.getTimeLogList)
+			r.Put("/update-timer", userRouter.updateTimer)
 		})
 
 		r.Route("/file", func(r chi.Router) {

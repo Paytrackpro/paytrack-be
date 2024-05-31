@@ -23,6 +23,31 @@ func (s *Service) GetUserInfo(id uint64) (storage.User, error) {
 	return user, nil
 }
 
+func (s *Service) GetUserTimer(timerId uint64) (storage.UserTimer, error) {
+	var userTimer storage.UserTimer
+	if err := s.db.Where("id = ?", timerId).Find(&userTimer).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return userTimer, utils.NewError(fmt.Errorf("user timer not found"), utils.ErrorNotFound)
+		}
+		log.Error("GetUserTimer:get user timer info fail with error: ", err)
+		return userTimer, err
+	}
+	return userTimer, nil
+}
+
+func (s *Service) GetLogTimeList(userId uint64, request storage.AdminReportFilter) ([]storage.UserTimer, error) {
+	timerList := make([]storage.UserTimer, 0)
+	query := fmt.Sprintf(`SELECT * FROM user_timer WHERE user_id = %d AND (start AT TIME ZONE 'UTC') < '%s' AND (start AT TIME ZONE 'UTC') > '%s' ORDER BY start DESC`,
+		userId, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate))
+	if err := s.db.Raw(query).Scan(&timerList).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return timerList, nil
+		}
+		return nil, err
+	}
+	return timerList, nil
+}
+
 func (s *Service) GetRunningTimer(userId uint64) (*storage.UserTimer, error) {
 	var userTimer storage.UserTimer
 	if err := s.db.Where("user_id = ? AND fininshed = ?", userId, false).First(&userTimer).Error; err != nil {
