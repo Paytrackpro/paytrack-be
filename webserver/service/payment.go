@@ -509,17 +509,32 @@ func (s *Service) BulkPaidBTC(userId uint64, txId string, bulkPays []portal.Bulk
 
 	// validate payment
 	for _, paym := range payments {
-		if paym.Status != storage.PaymentStatusConfirmed {
-			return fmt.Errorf("all payments need to be ready for payment")
+		if paym.Status != storage.PaymentStatusConfirmed && paym.Status != storage.PaymentStatusSent {
+			return fmt.Errorf("%s", "all payments need to be ready for payment")
 		}
 
 		if paym.ReceiverId != userId {
-			return fmt.Errorf("all payments must be yours")
+			return fmt.Errorf("%s", "all payments must be yours")
+		}
+		if len(paym.PaymentSettings) <= 0 {
+			return fmt.Errorf("%s", "Get payment method list failed")
 		}
 
-		if paym.PaymentMethod != utils.PaymentTypeBTC {
-			return fmt.Errorf("all payments needs the payment method to be BTC")
+		hasBTCMethod := false
+		btcAddress := ""
+		for _, paySetting := range paym.PaymentSettings {
+			if paySetting.Type == utils.PaymentTypeBTC {
+				hasBTCMethod = true
+				btcAddress = paySetting.Address
+				break
+			}
 		}
+		if !hasBTCMethod {
+			return fmt.Errorf("%s", "Payment is not set to pay for BTC")
+		}
+
+		paym.PaymentMethod = utils.PaymentTypeBTC
+		paym.PaymentAddress = btcAddress
 		paym.TxId = txId
 		paym.PaidAt = time.Now()
 		paym.Status = storage.PaymentStatusPaid
@@ -529,9 +544,7 @@ func (s *Service) BulkPaidBTC(userId uint64, txId string, bulkPays []portal.Bulk
 	for _, pay := range payments {
 		id := int(pay.Id)
 		pay.ConvertRate = bulkMap[id].Rate
-		pay.PaymentMethod = bulkMap[id].PaymentMethod
 		pay.ConvertTime = time.Unix(bulkMap[id].ConvertTime, 0)
-		pay.PaymentAddress = bulkMap[id].PaymentAddress
 		pay.TxId = txId
 	}
 
