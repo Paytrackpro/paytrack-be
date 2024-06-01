@@ -248,11 +248,12 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 			payment.Amount = amount
 			startDate, err := getStartDate(request)
 			if err != nil {
-				return nil, utils.NewError(err, utils.ErrorBadRequest)
+				startDate = payment.CreatedAt
 			}
 			payment.StartDate = startDate
 		} else {
 			payment.Amount = request.Amount
+			payment.StartDate = payment.CreatedAt
 		}
 		// use for sender update status from save as draft to sent
 		if payment.Status == storage.PaymentStatusCreated {
@@ -586,13 +587,44 @@ func calculateAmount(request portal.PaymentRequest) (float64, error) {
 
 func getStartDate(request portal.PaymentRequest) (time.Time, error) {
 	var start_date = time.Now().AddDate(1000, 0, 0)
+	hasStartDate := false
 	for _, detail := range request.Details {
-		parse_date, err := time.Parse("2006/01/02", detail.Date)
+		fullFormatDate := GetFullFormatDate(detail.Date)
+		parse_date, err := time.Parse("2006/01/02", fullFormatDate)
 		if err == nil && parse_date.Before(start_date) {
 			start_date = parse_date
+			hasStartDate = true
 		}
 	}
+	if !hasStartDate {
+		return time.Now(), fmt.Errorf("%s", "Don't have start date on details")
+	}
 	return start_date, nil
+}
+
+func GetFullFormatDate(inputDate string) string {
+	if utils.IsEmpty(inputDate) {
+		return inputDate
+	}
+	dateArr := strings.Split(inputDate, "/")
+	if len(dateArr) < 3 {
+		return inputDate
+	}
+	year := dateArr[0]
+	month := dateArr[1]
+	day := dateArr[2]
+	if strings.HasPrefix(day, "0") {
+		return inputDate
+	}
+	dayNumber, intErr := strconv.ParseInt(day, 0, 32)
+	if intErr != nil || dayNumber == 0 {
+		return inputDate
+	}
+	if dayNumber >= 10 {
+		return inputDate
+	}
+	dayDisp := fmt.Sprintf("0%d", dayNumber)
+	return fmt.Sprintf("%s/%s/%s", year, month, dayDisp)
 }
 
 // Sync Payment data when user Display name was changed
