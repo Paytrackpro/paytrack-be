@@ -30,6 +30,7 @@ type PaymentRequest struct {
 	ShowDateOnInvoiceLine bool                    `json:"showDateOnInvoiceLine"`
 	ShowProjectOnInvoice  bool                    `json:"showProjectOnInvoice"`
 	ProjectId             uint64                  `json:"projectId"`
+	ProjectName           string                  `json:"projectName"`
 }
 
 type PaymentConfirm struct {

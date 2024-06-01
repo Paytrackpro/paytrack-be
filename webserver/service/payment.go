@@ -128,6 +128,7 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 		ShowDateOnInvoiceLine: request.ShowDateOnInvoiceLine,
 		ShowProjectOnInvoice:  request.ShowProjectOnInvoice,
 		ProjectId:             request.ProjectId,
+		ProjectName:           request.ProjectName,
 	}
 
 	// payment is internal
@@ -227,6 +228,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		payment.ShowDateOnInvoiceLine = request.ShowDateOnInvoiceLine
 		payment.ShowProjectOnInvoice = request.ShowProjectOnInvoice
 		payment.ProjectId = request.ProjectId
+		payment.ProjectName = request.ProjectName
 		if !utils.IsEmpty(request.ReceiptImg) && request.Status == storage.PaymentStatusPaid {
 			payment.ReceiptImg = request.ReceiptImg
 		}

@@ -178,6 +178,7 @@ type Payment struct {
 	ShowDateOnInvoiceLine bool            `json:"showDateOnInvoiceLine"`
 	ShowProjectOnInvoice  bool            `json:"showProjectOnInvoice"`
 	ProjectId             uint64          `json:"projectId"`
+	ProjectName           string          `json:"projectName"`
 	StartDate             time.Time       `json:"startDate"`
 }
 
@@ -257,5 +258,6 @@ func (f *PaymentFilter) Sortable() map[string]bool {
 		"startDate":    true,
 		"receiverName": true,
 		"senderName":   true,
+		"projectName":  true,
 	}
 }

@@ -425,6 +425,7 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "receiverName", "receiver_name")
 	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "senderName", "sender_name")
 	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "startDate", "start_date")
+	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "projectName", "project_name")
 
 	if query.RequestType == storage.PaymentTypeBulkPayBTC {
 		payments, count, err := a.service.GetBulkPaymentBTC(claims.Id, query.Page, query.Size, query.Sort.Order)
