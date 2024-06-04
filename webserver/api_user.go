@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -573,6 +574,55 @@ func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) 
 			continue
 		}
 		userUsageArr = append(userUsageArr, *userUsage)
+	}
+	if strings.Contains(rf.Sort.Order, "username") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].Username > userUsageArr[b].Username
+			} else {
+				return userUsageArr[a].Username < userUsageArr[b].Username
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "send") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].SendNum > userUsageArr[b].SendNum
+			} else {
+				return userUsageArr[a].SendNum < userUsageArr[b].SendNum
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "sendusd") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].SentUsd > userUsageArr[b].SentUsd
+			} else {
+				return userUsageArr[a].SentUsd < userUsageArr[b].SentUsd
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "receiveusd") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].ReceiveUsd > userUsageArr[b].ReceiveUsd
+			} else {
+				return userUsageArr[a].ReceiveUsd < userUsageArr[b].ReceiveUsd
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "receive") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].ReceiveNum > userUsageArr[b].ReceiveNum
+			} else {
+				return userUsageArr[a].ReceiveNum < userUsageArr[b].ReceiveNum
+			}
+		})
 	}
 	reportSummary.UserUsageSummary = userUsageArr
 	utils.ResponseOK(w, Map{
