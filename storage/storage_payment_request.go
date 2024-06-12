@@ -176,6 +176,10 @@ type Payment struct {
 	ReceiptImg            string          `json:"receiptImg"`
 	ShowDraftRecipient    bool            `json:"showDraftRecipient"`
 	ShowDateOnInvoiceLine bool            `json:"showDateOnInvoiceLine"`
+	ShowProjectOnInvoice  bool            `json:"showProjectOnInvoice"`
+	ProjectId             uint64          `json:"projectId"`
+	ProjectName           string          `json:"projectName"`
+	StartDate             time.Time       `json:"startDate"`
 }
 
 type PaymentFilter struct {
@@ -245,10 +249,15 @@ func (f *PaymentFilter) BindFirst(db *gorm.DB) *gorm.DB {
 
 func (f *PaymentFilter) Sortable() map[string]bool {
 	return map[string]bool{
-		"createdAt": true,
-		"updatedAt": true,
-		"paidAt":    true,
-		"status":    true,
-		"amount":    true,
+		"createdAt":    true,
+		"updatedAt":    true,
+		"paidAt":       true,
+		"status":       true,
+		"amount":       true,
+		"sentAt":       true,
+		"startDate":    true,
+		"receiverName": true,
+		"senderName":   true,
+		"projectName":  true,
 	}
 }

@@ -21,6 +21,7 @@ func (s *WebServer) Route() {
 	s.mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("MGMT-NG API is up and running"))
 	})
+	s.mux.Get("/socket.io/", s.handleSocket())
 	s.mux.Route("/api", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
 			var authRouter = apiAuth{WebServer: s}
@@ -49,6 +50,14 @@ func (s *WebServer) Route() {
 				r.Get("/payment", userRouter.getPaymentSetting)
 				r.Put("/payment", userRouter.updatePaymentSetting)
 			})
+			r.Post("/start_timer", userRouter.startTimer)
+			r.Post("/pause_timer", userRouter.pauseTimer)
+			r.Post("/resume_timer", userRouter.resumeTimer)
+			r.Post("/stop_timer", userRouter.stopTimer)
+			r.Get("/get-running-timer", userRouter.getRunningTimer)
+			r.Get("/get-time-log", userRouter.getTimeLogList)
+			r.Put("/update-timer", userRouter.updateTimer)
+			r.Delete("/timer-delete/{id:[0-9]+}", userRouter.deleteTimer)
 		})
 
 		r.Route("/file", func(r chi.Router) {
@@ -63,12 +72,13 @@ func (s *WebServer) Route() {
 
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware, s.adminMiddleware)
+			var userRouter = apiUser{WebServer: s}
 			r.Route("/user", func(r chi.Router) {
-				var userRouter = apiUser{WebServer: s}
 				r.Get("/info/{id}", userRouter.infoWithId)
 				r.Put("/info", userRouter.adminUpdateUser)
 				r.Get("/list", userRouter.getListUsers)
 			})
+			r.Get("/report-summary", userRouter.getAdminReportSummary)
 		})
 		r.Route("/payment", func(r chi.Router) {
 			var paymentRouter = apiPayment{WebServer: s}
@@ -90,6 +100,7 @@ func (s *WebServer) Route() {
 			r.Get("/payment-report", paymentRouter.paymentReport)
 			r.Get("/invoice-report", paymentRouter.invoiceReport)
 			r.Get("/address-report", paymentRouter.addressReport)
+			r.Get("/exchange-list", paymentRouter.getExchangeList)
 		})
 		r.Route("/project", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)

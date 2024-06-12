@@ -10,6 +10,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/email"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
+	socketio "github.com/googollee/go-socket.io"
 	"github.com/gorilla/schema"
 
 	"code.cryptopower.dev/mgmt-ng/be/webserver/service"
@@ -35,6 +36,7 @@ type WebServer struct {
 	mail      *email.MailClient
 	crypto    *utils.Cryptography
 	service   *service.Service
+	socket    *socketio.Server
 }
 
 type key string
@@ -58,7 +60,8 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 		return nil, err
 	}
 
-	sv := service.NewService(c.Service, db.GetDB())
+	socket := NewSocketServer()
+	sv := service.NewService(c.Service, db.GetDB(), socket)
 
 	return &WebServer{
 		mux:       chi.NewRouter(),
@@ -68,13 +71,17 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 		mail:      mailClient,
 		crypto:    crypto,
 		service:   sv,
+		socket:    socket,
 	}, nil
 }
 
 func (s *WebServer) Run() error {
 	s.Route()
 	log.Info("mgmtng is running on port:", s.conf.Port)
+	s.service.RunMigrations()
 	s.service.RunTimeTask()
+	go s.socket.Serve()
+	go s.service.NotifyCryptoPriceChanged()
 	var server = http.Server{
 		Addr:              fmt.Sprintf(":%d", s.conf.Port),
 		Handler:           s.mux,
@@ -90,6 +97,7 @@ func (s *WebServer) Run() error {
 		BaseContext:       nil,
 		ConnContext:       nil,
 	}
+	defer s.socket.Close()
 	return server.ListenAndServe()
 }
 

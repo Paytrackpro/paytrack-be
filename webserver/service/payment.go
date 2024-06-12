@@ -126,6 +126,12 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 		PaymentSettings:       request.PaymentSettings,
 		ShowDraftRecipient:    showDraftForRecipient,
 		ShowDateOnInvoiceLine: request.ShowDateOnInvoiceLine,
+		ShowProjectOnInvoice:  request.ShowProjectOnInvoice,
+	}
+
+	if payment.ShowProjectOnInvoice {
+		payment.ProjectId = request.ProjectId
+		payment.ProjectName = request.ProjectName
 	}
 
 	// payment is internal
@@ -158,8 +164,14 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 			return nil, utils.NewError(err, utils.ErrorBadRequest)
 		}
 		payment.Amount = amount
+		startDate, err := getStartDate(request)
+		if err != nil {
+			return nil, utils.NewError(err, utils.ErrorBadRequest)
+		}
+		payment.StartDate = startDate
 	} else {
 		payment.Amount = request.Amount
+		payment.StartDate = time.Now()
 	}
 
 	if payment.Status == storage.PaymentStatusSent {
@@ -217,6 +229,14 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		payment.HourlyRate = request.HourlyRate
 		payment.PaymentSettings = request.PaymentSettings
 		payment.ShowDateOnInvoiceLine = request.ShowDateOnInvoiceLine
+		payment.ShowProjectOnInvoice = request.ShowProjectOnInvoice
+		if payment.ShowProjectOnInvoice {
+			payment.ProjectId = request.ProjectId
+			payment.ProjectName = request.ProjectName
+		} else {
+			payment.ProjectId = 0
+			payment.ProjectName = ""
+		}
 		if !utils.IsEmpty(request.ReceiptImg) && request.Status == storage.PaymentStatusPaid {
 			payment.ReceiptImg = request.ReceiptImg
 		}
@@ -226,8 +246,14 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 				return nil, utils.NewError(err, utils.ErrorBadRequest)
 			}
 			payment.Amount = amount
+			startDate, err := getStartDate(request)
+			if err != nil {
+				startDate = payment.CreatedAt
+			}
+			payment.StartDate = startDate
 		} else {
 			payment.Amount = request.Amount
+			payment.StartDate = payment.CreatedAt
 		}
 		// use for sender update status from save as draft to sent
 		if payment.Status == storage.PaymentStatusCreated {
@@ -291,6 +317,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		// if status is Draft, save show draft for recipient flag
 		if request.Status == storage.PaymentStatusCreated {
 			payment.ShowDraftRecipient = request.ShowDraftRecipient
+			payment.Status = request.Status
 		}
 	}
 
@@ -392,8 +419,22 @@ func (s *Service) GetPaymentsForReport(userId uint64, request portal.ReportFilte
 		projectQuery = fmt.Sprintf(`AND (%s)`, orQuery)
 	}
 
-	query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND paid_at < '%s' AND paid_at > '%s' AND receiver_id = %d %s %s ORDER BY paid_at DESC`,
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND (paid_at AT TIME ZONE 'UTC') < '%s' AND (paid_at AT TIME ZONE 'UTC') > '%s' AND receiver_id = %d %s %s ORDER BY paid_at DESC`,
 		storage.PaymentStatusPaid, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate), userId, memberQuery, projectQuery)
+	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, nil
+		}
+		return nil, err
+	}
+	return payments, nil
+}
+
+// get all payments exculed draft status
+func (s *Service) GetAllPayments(request storage.AdminReportFilter) ([]storage.Payment, error) {
+	payments := make([]storage.Payment, 0)
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE status <> %d AND status <> %d AND (sent_at AT TIME ZONE 'UTC') < '%s' AND (sent_at AT TIME ZONE 'UTC') > '%s' ORDER BY sent_at DESC`,
+		storage.PaymentStatusCreated, storage.PaymentStatusRejected, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate))
 	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return payments, nil
@@ -477,17 +518,32 @@ func (s *Service) BulkPaidBTC(userId uint64, txId string, bulkPays []portal.Bulk
 
 	// validate payment
 	for _, paym := range payments {
-		if paym.Status != storage.PaymentStatusConfirmed {
-			return fmt.Errorf("all payments need to be ready for payment")
+		if paym.Status != storage.PaymentStatusConfirmed && paym.Status != storage.PaymentStatusSent {
+			return fmt.Errorf("%s", "all payments need to be ready for payment")
 		}
 
 		if paym.ReceiverId != userId {
-			return fmt.Errorf("all payments must be yours")
+			return fmt.Errorf("%s", "all payments must be yours")
+		}
+		if len(paym.PaymentSettings) <= 0 {
+			return fmt.Errorf("%s", "Get payment method list failed")
 		}
 
-		if paym.PaymentMethod != utils.PaymentTypeBTC {
-			return fmt.Errorf("all payments needs the payment method to be BTC")
+		hasBTCMethod := false
+		btcAddress := ""
+		for _, paySetting := range paym.PaymentSettings {
+			if paySetting.Type == utils.PaymentTypeBTC {
+				hasBTCMethod = true
+				btcAddress = paySetting.Address
+				break
+			}
 		}
+		if !hasBTCMethod {
+			return fmt.Errorf("%s", "Payment is not set to pay for BTC")
+		}
+
+		paym.PaymentMethod = utils.PaymentTypeBTC
+		paym.PaymentAddress = btcAddress
 		paym.TxId = txId
 		paym.PaidAt = time.Now()
 		paym.Status = storage.PaymentStatusPaid
@@ -497,9 +553,7 @@ func (s *Service) BulkPaidBTC(userId uint64, txId string, bulkPays []portal.Bulk
 	for _, pay := range payments {
 		id := int(pay.Id)
 		pay.ConvertRate = bulkMap[id].Rate
-		pay.PaymentMethod = bulkMap[id].PaymentMethod
 		pay.ConvertTime = time.Unix(bulkMap[id].ConvertTime, 0)
-		pay.PaymentAddress = bulkMap[id].PaymentAddress
 		pay.TxId = txId
 	}
 
@@ -529,6 +583,48 @@ func calculateAmount(request portal.PaymentRequest) (float64, error) {
 		amount += detail.Cost
 	}
 	return amount, nil
+}
+
+func getStartDate(request portal.PaymentRequest) (time.Time, error) {
+	var start_date = time.Now().AddDate(1000, 0, 0)
+	hasStartDate := false
+	for _, detail := range request.Details {
+		fullFormatDate := GetFullFormatDate(detail.Date)
+		parse_date, err := time.Parse("2006/01/02", fullFormatDate)
+		if err == nil && parse_date.Before(start_date) {
+			start_date = parse_date
+			hasStartDate = true
+		}
+	}
+	if !hasStartDate {
+		return time.Now(), fmt.Errorf("%s", "Don't have start date on details")
+	}
+	return start_date, nil
+}
+
+func GetFullFormatDate(inputDate string) string {
+	if utils.IsEmpty(inputDate) {
+		return inputDate
+	}
+	dateArr := strings.Split(inputDate, "/")
+	if len(dateArr) < 3 {
+		return inputDate
+	}
+	year := dateArr[0]
+	month := dateArr[1]
+	day := dateArr[2]
+	if strings.HasPrefix(day, "0") {
+		return inputDate
+	}
+	dayNumber, intErr := strconv.ParseInt(day, 0, 32)
+	if intErr != nil || dayNumber == 0 {
+		return inputDate
+	}
+	if dayNumber >= 10 {
+		return inputDate
+	}
+	dayDisp := fmt.Sprintf("0%d", dayNumber)
+	return fmt.Sprintf("%s/%s/%s", year, month, dayDisp)
 }
 
 // Sync Payment data when user Display name was changed

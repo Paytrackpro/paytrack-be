@@ -28,6 +28,9 @@ type PaymentRequest struct {
 	ReceiptImg            string                  `json:"receiptImg"`
 	ShowDraftRecipient    bool                    `json:"showDraftRecipient"`
 	ShowDateOnInvoiceLine bool                    `json:"showDateOnInvoiceLine"`
+	ShowProjectOnInvoice  bool                    `json:"showProjectOnInvoice"`
+	ProjectId             uint64                  `json:"projectId"`
+	ProjectName           string                  `json:"projectName"`
 }
 
 type PaymentConfirm struct {
@@ -57,6 +60,7 @@ type PaymentRequestRate struct {
 	Token          string       `json:"token"`
 	PaymentMethod  utils.Method `json:"paymentMethod"`
 	PaymentAddress string       `json:"paymentAddress"`
+	Exchange       string       `json:"exchange"`
 }
 
 type ListPaymentSettingRequest struct {

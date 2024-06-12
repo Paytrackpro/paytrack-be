@@ -55,3 +55,33 @@ func (s *Service) RunTimeTask() {
 		}()
 	}
 }
+
+func (s *Service) updateStartDate() error {
+	var payments []storage.Payment
+	var err = s.db.Where("start_date IS NULL").Find(&payments).Error
+	if err == nil {
+		for _, payment := range payments {
+			var start_date = payment.CreatedAt
+			if payment.Details != nil {
+				for _, detail := range payment.Details {
+					parse_date, err := time.Parse("2006/01/02",detail.Date)
+					if err == nil && parse_date.Before(start_date){
+						start_date = parse_date
+					}
+				}
+			}
+			err = s.db.Model(&storage.Payment{}).Where("id = ?", payment.Id).Update("start_date", start_date).Error
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return err
+}
+
+func (s *Service) RunMigrations() error {
+	if err := s.updateStartDate(); err != nil {
+		return err
+	}
+	return nil
+}

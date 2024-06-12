@@ -39,6 +39,28 @@ type GenerateQRForm struct {
 	Password string `validate:"required"`
 }
 
+type AdminSummaryReport struct {
+	TotalInvoices    int                  `json:"totalInvoices"`
+	TotalAmount      float64              `json:"totalAmount"`
+	SentInvoices     PaymentStatusSummary `json:"sentInvoices"`
+	PayableInvoices  PaymentStatusSummary `json:"payableInvoices"`
+	PaidInvoices     PaymentStatusSummary `json:"paidInvoices"`
+	UserUsageSummary []UserUsageSummary   `json:"userUsageSummary"`
+}
+
+type UserUsageSummary struct {
+	Username   string  `json:"userName"`
+	SendNum    uint64  `json:"sendNum"`
+	SentUsd    float64 `json:"sentUsd"`
+	ReceiveNum uint64  `json:"receiveNum"`
+	ReceiveUsd float64 `json:"receiveUsd"`
+}
+
+type PaymentStatusSummary struct {
+	InvoiceNum uint64  `json:"invoiceNum"`
+	Amount     float64 `json:"amount"`
+}
+
 func (f RegisterForm) User() (*storage.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(f.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -122,4 +144,10 @@ type ChangePasswordRequest struct {
 	Password    string `json:"password"`
 	OldPassword string `json:"oldPassword"`
 	Otp         string `json:"otp"`
+}
+
+type TimerUpdateRequest struct {
+	TimerId     uint64 `json:"timerId"`
+	ProjectId   int64 `json:"projectId"`
+	Description string `json:"description"`
 }

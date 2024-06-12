@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
+	"time"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
@@ -126,6 +128,525 @@ func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, user)
 }
 
+func (a *apiUser) resumeTimer(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	//check if exist timer is running
+	runningTimer, runningErr := a.service.GetRunningTimer(claims.Id)
+	if runningErr != nil || runningTimer == nil {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("%s", "Get running timer error"), nil)
+		return
+	}
+
+	//check pausing status
+	if runningTimer.Fininshed || !runningTimer.Pausing {
+		utils.ResponseOK(w, Map{
+			"error": true,
+			"msg":   "Timer has Finished or is not in pause state. Can not resume",
+		})
+		return
+	}
+	//check newest sum
+	pauseState := runningTimer.PauseState
+	if len(pauseState) < 1 {
+		utils.ResponseOK(w, Map{
+			"error": true,
+			"msg":   "Timer has not been paused. Cannot resume",
+		})
+		return
+	}
+
+	var lastIndex int
+	var lastPause *storage.PauseStatus
+	for index, pauseStatus := range pauseState {
+		if !pauseStatus.Stop.IsZero() {
+			continue
+		}
+		startPause := pauseStatus.Start
+		if lastPause == nil {
+			lastPause = &pauseStatus
+			lastIndex = index
+			continue
+		}
+		if startPause.After(lastPause.Start) {
+			lastIndex = index
+			lastPause = &pauseStatus
+		}
+	}
+
+	if lastPause == nil {
+		utils.ResponseOK(w, Map{
+			"error": true,
+			"msg":   "Timer has not been paused. Cannot resume",
+		})
+		return
+	}
+
+	lastPause.Stop = time.Now()
+	runningTimer.PauseState[lastIndex] = *lastPause
+	runningTimer.Pausing = false
+	//update running timer
+	if err := a.db.UpdateUserTimer(runningTimer); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	socketData := storage.UserTimerSockerData{
+		UserId:  claims.Id,
+		Working: true,
+		Pausing: false,
+	}
+	a.HandlerForReloadAdminUsers(socketData)
+
+	utils.ResponseOK(w, Map{
+		"error":        false,
+		"runningTimer": runningTimer,
+	})
+}
+
+func (a *apiUser) deleteTimer(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	a.db.GetDB().Where("id = ?", id).Delete(&storage.UserTimer{})
+	utils.ResponseOK(w, nil)
+}
+
+func (a *apiUser) updateTimer(w http.ResponseWriter, r *http.Request) {
+	var body portal.TimerUpdateRequest
+	err := a.parseJSONAndValidate(r, &body)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	//get timer with id
+	userTimer, err := a.service.GetUserTimer(body.TimerId)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("%s", "Get user timer error"), nil)
+		return
+	}
+	if body.ProjectId >= 0 {
+		userTimer.ProjectId = uint64(body.ProjectId)
+	}
+	if !utils.IsEmpty(body.Description) {
+		userTimer.Description = body.Description
+	}
+	//update running timer
+	if err := a.db.UpdateUserTimer(&userTimer); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	utils.ResponseOK(w, userTimer)
+}
+
+func (a *apiUser) stopTimer(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	//check if exist timer is running
+	runningTimer, runningErr := a.service.GetRunningTimer(claims.Id)
+	if runningErr != nil || runningTimer == nil {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("%s", "Get running timer error"), nil)
+		return
+	}
+	//check pausing status
+	if runningTimer.Fininshed {
+		utils.ResponseOK(w, Map{
+			"error": true,
+			"msg":   "Timer has finished, cannot be stopped!",
+		})
+		return
+	}
+
+	//update running timer
+	runningTimer.Stop = time.Now()
+	var pauseIndex int
+	var updatePauseStatus *storage.PauseStatus
+	if runningTimer.Pausing && len(runningTimer.PauseState) > 0 {
+		for index, pauseStatus := range runningTimer.PauseState {
+			if !pauseStatus.Stop.IsZero() {
+				continue
+			}
+			pauseStatus.Stop = time.Now()
+			updatePauseStatus = &pauseStatus
+			pauseIndex = index
+			break
+		}
+		if updatePauseStatus != nil {
+			runningTimer.PauseState[pauseIndex] = *updatePauseStatus
+		}
+	}
+
+	totalSecond := uint64(0)
+	allDurationSec := utils.GetSecondDurationFromStartEnd(runningTimer.Start, runningTimer.Stop)
+	totalPauseSec := uint64(0)
+	//caculate sum of pausing seconds
+	if len(runningTimer.PauseState) > 0 {
+		for _, pauseState := range runningTimer.PauseState {
+			if pauseState.Start.IsZero() || pauseState.Stop.IsZero() {
+				continue
+			}
+			pauseSec := utils.GetSecondDurationFromStartEnd(pauseState.Start, pauseState.Stop)
+			totalPauseSec += pauseSec
+		}
+	}
+	totalSecond = allDurationSec - totalPauseSec
+	runningTimer.Duration = totalSecond
+	runningTimer.Fininshed = true
+	runningTimer.Pausing = false
+
+	//update running timer
+	if err := a.db.UpdateUserTimer(runningTimer); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	socketData := storage.UserTimerSockerData{
+		UserId:  claims.Id,
+		Working: false,
+		Pausing: false,
+	}
+	a.HandlerForReloadAdminUsers(socketData)
+
+	utils.ResponseOK(w, Map{
+		"error":        false,
+		"runningTimer": runningTimer,
+	})
+}
+
+func (a *apiUser) pauseTimer(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	//check if exist timer is running
+	runningTimer, runningErr := a.service.GetRunningTimer(claims.Id)
+	if runningErr != nil || runningTimer == nil {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("%s", "Get running timer error"), nil)
+		return
+	}
+
+	//check pausing status
+	if runningTimer.Fininshed || runningTimer.Pausing {
+		utils.ResponseOK(w, Map{
+			"error": true,
+			"msg":   "Timer has been paused or finished. Can not pause",
+		})
+		return
+	}
+	//create new pausing state
+	newPausingState := storage.PauseStatus{
+		Start: time.Now(),
+	}
+	if len(runningTimer.PauseState) > 0 {
+		runningTimer.PauseState = append(runningTimer.PauseState, newPausingState)
+	} else {
+		runningTimer.PauseState = []storage.PauseStatus{newPausingState}
+	}
+
+	runningTimer.Pausing = true
+	//update running timer
+	if err := a.db.UpdateUserTimer(runningTimer); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	socketData := storage.UserTimerSockerData{
+		UserId:  claims.Id,
+		Working: true,
+		Pausing: true,
+	}
+	a.HandlerForReloadAdminUsers(socketData)
+
+	utils.ResponseOK(w, Map{
+		"error":        false,
+		"runningTimer": runningTimer,
+	})
+}
+
+func (a *apiUser) startTimer(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	//check if exist timer is running
+	runningTimer, runningErr := a.service.GetRunningTimer(claims.Id)
+	if runningErr != nil {
+		utils.Response(w, http.StatusInternalServerError, runningErr, nil)
+		return
+	}
+
+	//if exist running timer, return error running timer
+	if runningTimer != nil {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("%s", "Other timer is running. Can't start new timer"), nil)
+		return
+	}
+
+	//Create new timer
+	var userTimer = storage.UserTimer{
+		UserId: claims.Id,
+		Start:  time.Now(),
+	}
+	if err := a.db.CreateUserTimer(&userTimer); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	socketData := storage.UserTimerSockerData{
+		UserId:  claims.Id,
+		Working: true,
+		Pausing: false,
+	}
+	a.HandlerForReloadAdminUsers(socketData)
+	utils.ResponseOK(w, Map{
+		"runningTimer": userTimer,
+	})
+}
+
+func (a *apiUser) HandlerForReloadAdminUsers(socketData storage.UserTimerSockerData) {
+	if adminIds, err := a.service.GetAdminIds(); err == nil {
+		adminIdStrs := make([]string, 0)
+		for _, adminId := range adminIds {
+			adminIdStrs = append(adminIdStrs, fmt.Sprint(adminId))
+		}
+		if len(adminIdStrs) > 0 {
+			a.reloadUserList(adminIdStrs, socketData)
+		}
+	}
+}
+
+func (a *apiUser) getTimeLogList(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	var filter storage.AdminReportFilter
+	err := a.parseQueryAndValidate(r, &filter)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+
+	timerList, err := a.service.GetLogTimeList(claims.Id, filter)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		return
+	}
+	timerCount, countErr := a.service.CountLogTimer(claims.Id, filter)
+	if countErr != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(countErr, utils.ErrorInternalCode), nil)
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"timers": timerList,
+		"count":  timerCount,
+	})
+}
+
+func (a *apiUser) getRunningTimer(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	//check if exist timer is running
+	runningTimer, runningErr := a.service.GetRunningTimer(claims.Id)
+	if runningErr != nil || runningTimer == nil {
+		utils.ResponseOK(w, Map{
+			"exist": false,
+		})
+		return
+	}
+
+	totalSecond := uint64(0)
+	startDate := runningTimer.Start
+	var endDate time.Time
+	if runningTimer.Fininshed {
+		endDate = runningTimer.Stop
+	} else {
+		endDate = time.Now()
+	}
+
+	allDurationSec := utils.GetSecondDurationFromStartEnd(startDate, endDate)
+	totalPauseSec := uint64(0)
+	//caculate sum of pausing seconds
+	if len(runningTimer.PauseState) > 0 {
+		for _, pauseState := range runningTimer.PauseState {
+			if pauseState.Start.IsZero() {
+				continue
+			}
+			var pauseStopTime time.Time
+			if pauseState.Stop.IsZero() {
+				pauseStopTime = time.Now()
+			} else {
+				pauseStopTime = pauseState.Stop
+			}
+			pauseSec := utils.GetSecondDurationFromStartEnd(pauseState.Start, pauseStopTime)
+			totalPauseSec += pauseSec
+		}
+	}
+	totalSecond = allDurationSec - totalPauseSec
+
+	utils.ResponseOK(w, Map{
+		"runningTimer": runningTimer,
+		"totalSeconds": totalSecond,
+		"exist":        true,
+	})
+}
+
+func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) {
+	var rf storage.AdminReportFilter
+	if err := a.parseQueryAndValidate(r, &rf); err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	payments, err := a.service.GetAllPayments(rf)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	reportSummary := portal.AdminSummaryReport{
+		TotalInvoices: len(payments),
+	}
+	totalAmount := float64(0)
+	sentInfo := portal.PaymentStatusSummary{}
+	pendingInfo := portal.PaymentStatusSummary{}
+	paidInfo := portal.PaymentStatusSummary{}
+	usersSummaryMap := make(map[uint64]*portal.UserUsageSummary)
+	userIds := make([]uint64, 0)
+	for _, payment := range payments {
+		if !CheckExistOnIntArray(userIds, payment.SenderId) {
+			userIds = append(userIds, payment.SenderId)
+		}
+		if !CheckExistOnIntArray(userIds, payment.ReceiverId) {
+			userIds = append(userIds, payment.ReceiverId)
+		}
+		totalAmount += payment.Amount
+		switch payment.Status {
+		case storage.PaymentStatusConfirmed:
+			pendingInfo.InvoiceNum++
+			pendingInfo.Amount += payment.Amount
+		case storage.PaymentStatusPaid:
+			paidInfo.InvoiceNum++
+			paidInfo.Amount += payment.Amount
+		default:
+			sentInfo.InvoiceNum++
+			sentInfo.Amount += payment.Amount
+		}
+		senderId := payment.SenderId
+		receiverId := payment.ReceiverId
+		var senderInMap *portal.UserUsageSummary
+		var receiverInMap *portal.UserUsageSummary
+		senderInMap = usersSummaryMap[senderId]
+		receiverInMap = usersSummaryMap[receiverId]
+		if senderInMap != nil {
+			senderInMap.SendNum++
+			senderInMap.SentUsd = payment.Amount
+		} else {
+			senderInMap = &portal.UserUsageSummary{
+				Username: payment.SenderName,
+				SendNum:  1,
+				SentUsd:  payment.Amount,
+			}
+		}
+
+		if receiverInMap != nil {
+			receiverInMap.ReceiveNum++
+			receiverInMap.ReceiveUsd = payment.Amount
+		} else {
+			receiverInMap = &portal.UserUsageSummary{
+				Username:   payment.ReceiverName,
+				ReceiveNum: 1,
+				ReceiveUsd: payment.Amount,
+			}
+		}
+		usersSummaryMap[senderId] = senderInMap
+		usersSummaryMap[receiverId] = receiverInMap
+	}
+	userUsageArr := make([]portal.UserUsageSummary, 0)
+	pageNum := rf.Sort.Page
+	numPerpage := rf.Sort.Size
+	startIndex := (pageNum - 1) * numPerpage
+	endIndex := int(0)
+	reportSummary.TotalAmount = totalAmount
+	reportSummary.PaidInvoices = paidInfo
+	reportSummary.PayableInvoices = pendingInfo
+	reportSummary.SentInvoices = sentInfo
+	if startIndex > len(userIds)-1 {
+		reportSummary.UserUsageSummary = userUsageArr
+		utils.ResponseOK(w, Map{
+			"report": reportSummary,
+			"count":  len(userIds),
+		})
+		return
+	}
+	if startIndex+numPerpage >= len(userIds) {
+		endIndex = len(userIds) - 1
+	} else {
+		endIndex = startIndex + numPerpage - 1
+	}
+
+	for i := startIndex; i <= endIndex; i++ {
+		userId := userIds[i]
+		userUsage := usersSummaryMap[userId]
+		if userUsage == nil {
+			continue
+		}
+		userUsageArr = append(userUsageArr, *userUsage)
+	}
+	if strings.Contains(rf.Sort.Order, "username") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].Username > userUsageArr[b].Username
+			} else {
+				return userUsageArr[a].Username < userUsageArr[b].Username
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "send") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].SendNum > userUsageArr[b].SendNum
+			} else {
+				return userUsageArr[a].SendNum < userUsageArr[b].SendNum
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "sendusd") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].SentUsd > userUsageArr[b].SentUsd
+			} else {
+				return userUsageArr[a].SentUsd < userUsageArr[b].SentUsd
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "receiveusd") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].ReceiveUsd > userUsageArr[b].ReceiveUsd
+			} else {
+				return userUsageArr[a].ReceiveUsd < userUsageArr[b].ReceiveUsd
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "receive") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].ReceiveNum > userUsageArr[b].ReceiveNum
+			} else {
+				return userUsageArr[a].ReceiveNum < userUsageArr[b].ReceiveNum
+			}
+		})
+	}
+	reportSummary.UserUsageSummary = userUsageArr
+	utils.ResponseOK(w, Map{
+		"report": reportSummary,
+		"count":  len(userIds),
+	})
+}
+
+func CheckExistOnIntArray(intArr []uint64, checkInt uint64) bool {
+	for _, num := range intArr {
+		if num == checkInt {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *apiUser) reloadUserList(rooms []string, data interface{}) {
+	for _, room := range rooms {
+		log.Debug("send data ", data, " to room ", room)
+		a.socket.BroadcastToRoom("", room, "reloadUserList", data)
+	}
+}
+
 func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 	var f storage.UserFilter
 	if err := a.parseQueryAndValidate(r, &f); err != nil {
@@ -142,8 +663,29 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	count, _ := a.db.Count(&f, &storage.User{})
+	//get working flg
+	workingMap, err := a.service.GetWorkingUserList()
+	userResList := make([]storage.UserWorkingDisplay, 0)
+	for _, user := range users {
+		working := false
+		pausing := false
+		if err == nil {
+			tmpPausing, exist := workingMap[user.Id]
+			if exist {
+				working = true
+				pausing = tmpPausing
+			}
+		}
+		userRes := storage.UserWorkingDisplay{
+			User:    user,
+			Working: working,
+			Pausing: pausing,
+		}
+		userResList = append(userResList, userRes)
+	}
+
 	utils.ResponseOK(w, Map{
-		"users": users,
+		"users": userResList,
 		"count": count,
 	})
 }
