@@ -191,6 +191,7 @@ type PaymentFilter struct {
 	HidePaid       bool             `schema:"hidePaid"`
 	Statuses       []PaymentStatus  `schema:"statuses"`
 	ContactMethods []PaymentContact `schema:"contactMethods"`
+	UserIds        []uint64         `schema:"userIds"`
 	Approvers      []ApproverSettings
 }
 
