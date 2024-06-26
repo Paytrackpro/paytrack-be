@@ -703,11 +703,13 @@ func (a *apiUser) getUserSelectionList(w http.ResponseWriter, r *http.Request) {
 	}
 	var userSelection []portal.UserSelection
 	for _, user := range users {
-		userSelection = append(userSelection, portal.UserSelection{
-			Id:          user.Id,
-			UserName:    user.UserName,
-			DisplayName: user.DisplayName,
-		})
+		if user.UserName != "" {
+			userSelection = append(userSelection, portal.UserSelection{
+				Id:          user.Id,
+				UserName:    user.UserName,
+				DisplayName: user.DisplayName,
+			})
+		}
 	}
 	utils.ResponseOK(w, userSelection)
 }
