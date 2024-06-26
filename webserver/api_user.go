@@ -539,7 +539,13 @@ func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) 
 				Username:   payment.ReceiverName,
 				ReceiveNum: 1,
 				ReceiveUsd: payment.Amount,
+				PaidNum:    0,
+				PaidUsd:    0,
 			}
+		}
+		if payment.Status == storage.PaymentStatusPaid {
+			receiverInMap.PaidNum++
+			receiverInMap.PaidUsd = payment.Amount
 		}
 		usersSummaryMap[senderId] = senderInMap
 		usersSummaryMap[receiverId] = receiverInMap

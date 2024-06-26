@@ -54,6 +54,8 @@ type UserUsageSummary struct {
 	SentUsd    float64 `json:"sentUsd"`
 	ReceiveNum uint64  `json:"receiveNum"`
 	ReceiveUsd float64 `json:"receiveUsd"`
+	PaidNum    uint64  `json:"paidNum"`
+	PaidUsd    float64 `json:"paidUsd"`
 }
 
 type PaymentStatusSummary struct {
@@ -148,6 +150,6 @@ type ChangePasswordRequest struct {
 
 type TimerUpdateRequest struct {
 	TimerId     uint64 `json:"timerId"`
-	ProjectId   int64 `json:"projectId"`
+	ProjectId   int64  `json:"projectId"`
 	Description string `json:"description"`
 }
