@@ -570,7 +570,7 @@ func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) 
 	for i := startIndex; i <= endIndex; i++ {
 		userId := userIds[i]
 		userUsage := usersSummaryMap[userId]
-		if userUsage == nil {
+		if userUsage == nil || userUsage.Username == "" {
 			continue
 		}
 		userUsageArr = append(userUsageArr, *userUsage)
@@ -703,13 +703,11 @@ func (a *apiUser) getUserSelectionList(w http.ResponseWriter, r *http.Request) {
 	}
 	var userSelection []portal.UserSelection
 	for _, user := range users {
-		if user.UserName != "" {
-			userSelection = append(userSelection, portal.UserSelection{
-				Id:          user.Id,
-				UserName:    user.UserName,
-				DisplayName: user.DisplayName,
-			})
-		}
+		userSelection = append(userSelection, portal.UserSelection{
+			Id:          user.Id,
+			UserName:    user.UserName,
+			DisplayName: user.DisplayName,
+		})
 	}
 	utils.ResponseOK(w, userSelection)
 }
