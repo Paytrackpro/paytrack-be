@@ -630,6 +630,25 @@ func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) 
 			}
 		})
 	}
+	if strings.Contains(rf.Sort.Order, "paidusd") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].PaidUsd > userUsageArr[b].PaidUsd
+			} else {
+				return userUsageArr[a].PaidUsd < userUsageArr[b].PaidUsd
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "paid") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].PaidNum > userUsageArr[b].PaidNum
+			} else {
+				return userUsageArr[a].PaidNum < userUsageArr[b].PaidNum
+			}
+		})
+	}
 	reportSummary.UserUsageSummary = userUsageArr
 	utils.ResponseOK(w, Map{
 		"report": reportSummary,
