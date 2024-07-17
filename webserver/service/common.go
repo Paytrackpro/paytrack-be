@@ -64,8 +64,8 @@ func (s *Service) updateStartDate() error {
 			var start_date = payment.CreatedAt
 			if payment.Details != nil {
 				for _, detail := range payment.Details {
-					parse_date, err := time.Parse("2006/01/02",detail.Date)
-					if err == nil && parse_date.Before(start_date){
+					parse_date, err := time.Parse("2006/01/02", detail.Date)
+					if err == nil && parse_date.Before(start_date) {
 						start_date = parse_date
 					}
 				}
@@ -79,8 +79,21 @@ func (s *Service) updateStartDate() error {
 	return err
 }
 
+func (s *Service) syncProjectName() error {
+	tx := s.db.Exec("UPDATE payments ps SET project_name = (SELECT project_name FROM projects pr WHERE pr.project_id = ps.project_id) WHERE ps.project_id > 0")
+	if tx.Error != nil {
+		return tx.Error
+	}
+	return nil
+}
+
 func (s *Service) RunMigrations() error {
+	//sync start date for old data
 	if err := s.updateStartDate(); err != nil {
+		return err
+	}
+	//sync project name for invalid data
+	if err := s.syncProjectName(); err != nil {
 		return err
 	}
 	return nil

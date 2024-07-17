@@ -86,10 +86,12 @@ func (s *Service) UpdateProject(userId uint64, projectRequest portal.ProjectRequ
 		}
 	}
 
-	if err := s.db.Save(&payments).Error; err != nil {
-		tx.Rollback()
-		log.Error("UpdateProject:update payment info fail with error: ", err)
-		return project, err
+	if len(payments) > 0 {
+		if err := s.db.Save(&payments).Error; err != nil {
+			tx.Rollback()
+			log.Error("UpdateProject:update payment info fail with error: ", err)
+			return project, err
+		}
 	}
 
 	tx.Commit()
