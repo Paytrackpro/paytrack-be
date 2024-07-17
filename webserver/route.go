@@ -91,7 +91,7 @@ func (s *WebServer) Route() {
 			r.Post("/reject", paymentRouter.rejectPayment)
 			r.Post("/bulk-paid-btc", paymentRouter.bulkPaidBTC)
 			r.With(s.loggedInMiddleware).Get("/list", paymentRouter.listPayments)
-			r.Get("/rate", paymentRouter.getRate)
+			r.Get("/btc-bulk-rate", paymentRouter.getBtcBulkRate)
 			r.Delete("/delete/{id:[0-9]+}", paymentRouter.deleteDraft)
 			r.Get("/monthly-summary", paymentRouter.getMonthlySummary)
 			r.Get("/initialization-count", paymentRouter.getInitializationCount)

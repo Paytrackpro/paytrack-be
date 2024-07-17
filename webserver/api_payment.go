@@ -257,19 +257,8 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 	return fmt.Errorf("you do not have access")
 }
 
-func (a *apiPayment) getRate(w http.ResponseWriter, r *http.Request) {
-	var query portal.GetRateRequest
-	if err := utils.DecodeQuery(&query, r.URL.Query()); err != nil {
-		utils.Response(w, http.StatusBadRequest, fmt.Errorf("symbol param is empty or not exist"), nil)
-		return
-	}
-
-	if query.Symbol == utils.PaymentTypeNotSet {
-		utils.Response(w, http.StatusBadRequest, fmt.Errorf("symbol param is empty or not exist"), nil)
-		return
-	}
-
-	rate, err := a.service.GetRate(query.Symbol)
+func (a *apiPayment) getBtcBulkRate(w http.ResponseWriter, r *http.Request) {
+	rate, err := a.service.GetBTCBulkRate()
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
@@ -567,7 +556,15 @@ func (a *apiPayment) getExchangeList(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("%s", "Get exchange list failed"), utils.ErrorBadRequest), nil)
 		return
 	}
-	utils.ResponseOK(w, strings.Split(exchanges, ","))
+	exchangeArr := strings.Split(exchanges, ",")
+	resData := make([]string, 0)
+	for _, exchange := range exchangeArr {
+		exchange = strings.TrimSpace(exchange)
+		if a.service.IsValidExchange(exchange) {
+			resData = append(resData, exchange)
+		}
+	}
+	utils.ResponseOK(w, resData)
 }
 
 func (a *apiPayment) addressReport(w http.ResponseWriter, r *http.Request) {
