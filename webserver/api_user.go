@@ -539,7 +539,13 @@ func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) 
 				Username:   payment.ReceiverName,
 				ReceiveNum: 1,
 				ReceiveUsd: payment.Amount,
+				PaidNum:    0,
+				PaidUsd:    0,
 			}
+		}
+		if payment.Status == storage.PaymentStatusPaid {
+			receiverInMap.PaidNum++
+			receiverInMap.PaidUsd = payment.Amount
 		}
 		usersSummaryMap[senderId] = senderInMap
 		usersSummaryMap[receiverId] = receiverInMap
@@ -570,7 +576,7 @@ func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) 
 	for i := startIndex; i <= endIndex; i++ {
 		userId := userIds[i]
 		userUsage := usersSummaryMap[userId]
-		if userUsage == nil {
+		if userUsage == nil || userUsage.Username == "" {
 			continue
 		}
 		userUsageArr = append(userUsageArr, *userUsage)
@@ -621,6 +627,25 @@ func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) 
 				return userUsageArr[a].ReceiveNum > userUsageArr[b].ReceiveNum
 			} else {
 				return userUsageArr[a].ReceiveNum < userUsageArr[b].ReceiveNum
+			}
+		})
+	}
+	if strings.Contains(rf.Sort.Order, "paidusd") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].PaidUsd > userUsageArr[b].PaidUsd
+			} else {
+				return userUsageArr[a].PaidUsd < userUsageArr[b].PaidUsd
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "paid") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].PaidNum > userUsageArr[b].PaidNum
+			} else {
+				return userUsageArr[a].PaidNum < userUsageArr[b].PaidNum
 			}
 		})
 	}

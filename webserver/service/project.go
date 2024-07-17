@@ -62,6 +62,36 @@ func (s *Service) UpdateProject(userId uint64, projectRequest portal.ProjectRequ
 		return project, err
 	}
 
+	// update all related data
+	payments := make([]*storage.Payment, 0)
+	if err := s.db.Where("project_id = ?", projectRequest.ProjectId).Find(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return project, nil
+		}
+		return project, err
+	}
+
+	// validate payment
+	for _, paym := range payments {
+		paym.ProjectName = projectRequest.ProjectName
+		if paym.Details != nil {
+			details := make([]storage.PaymentDetail, 0)
+			for _, detail := range paym.Details {
+				if detail.ProjectId == projectRequest.ProjectId {
+					detail.ProjectName = projectRequest.ProjectName
+				}
+				details = append(details, detail)
+			}
+			paym.Details = details
+		}
+	}
+
+	if err := s.db.Save(&payments).Error; err != nil {
+		tx.Rollback()
+		log.Error("UpdateProject:update payment info fail with error: ", err)
+		return project, err
+	}
+
 	tx.Commit()
 
 	return project, nil

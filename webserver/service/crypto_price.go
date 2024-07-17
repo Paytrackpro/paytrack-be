@@ -227,6 +227,20 @@ func (s *Service) NotifyCryptoPriceChanged() {
 			rate, err := s.GetRate(currency)
 			if err != nil {
 				fmt.Printf("error getting %s rate: %v\n", currency.String(), err)
+				exchangeLists := strings.Split(s.ExchangeList, ",")
+				if len(exchangeLists) > 0 {
+					index := -1
+					for idx, exchange := range exchangeLists {
+						if exchange == s.exchange {
+							index = idx
+							break
+						}
+					}
+					// remove the exchange from the list
+					exchangeLists = append(exchangeLists[:index], exchangeLists[index+1:]...)
+					s.exchange = exchangeLists[0]
+					s.ExchangeList = strings.Join(exchangeLists, ",")
+				}
 				continue
 			}
 			s.socket.BroadcastToRoom("", "exchangeRate", currency.String(), Map{

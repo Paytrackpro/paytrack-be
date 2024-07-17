@@ -338,19 +338,19 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	buildCount := s.db.Model(&storage.Payment{})
 	if request.RequestType == storage.PaymentTypeRequest {
 		if request.HidePaid {
-			builder = builder.Where("sender_id = ? AND status <> ?", userId, storage.PaymentStatusPaid)
-			buildCount = buildCount.Where("sender_id = ? AND status <> ?", userId, storage.PaymentStatusPaid)
+			builder = builder.Where("sender_id = ? AND status <> ? AND (? = 0 OR receiver_id IN (?))", userId, storage.PaymentStatusPaid, len(request.UserIds), request.UserIds)
+			buildCount = buildCount.Where("sender_id = ? AND status <> ? AND (? = 0 OR receiver_id IN (?))", userId, storage.PaymentStatusPaid, len(request.UserIds), request.UserIds)
 		} else {
-			builder = builder.Where("sender_id = ?", userId)
-			buildCount = buildCount.Where("sender_id = ?", userId)
+			builder = builder.Where("sender_id = ? AND (? = 0 OR receiver_id IN (?))", userId, len(request.UserIds), request.UserIds)
+			buildCount = buildCount.Where("sender_id = ? AND (? = 0 OR receiver_id IN (?))", userId, len(request.UserIds), request.UserIds)
 		}
 	} else if request.RequestType == storage.PaymentTypeReminder {
 		if request.HidePaid {
-			builder = builder.Where("receiver_id = ? AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
-			buildCount = buildCount.Where("receiver_id = ? AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+			builder = builder.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+			buildCount = buildCount.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
 		} else {
-			builder = builder.Where("receiver_id = ? AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
-			buildCount = buildCount.Where("receiver_id = ? AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+			builder = builder.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+			buildCount = buildCount.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
 		}
 	} else if request.RequestType == storage.PaymentTypeApproval {
 		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]' LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, request.Size, offset)
