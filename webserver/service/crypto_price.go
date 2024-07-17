@@ -95,6 +95,21 @@ func (s *Service) GetRate(currency utils.Method) (float64, error) {
 	}
 }
 
+func (s *Service) GetBTCBulkRate() (float64, error) {
+	if utils.IsEmpty(s.ExchangeList) {
+		return 0, fmt.Errorf("%s", "Get BTC rate failed")
+	}
+	exchangeLists := strings.Split(s.ExchangeList, ",")
+	for _, exchange := range exchangeLists {
+		exchange = strings.TrimSpace(exchange)
+		rate, err := s.GetExchangeRate(exchange, utils.PaymentTypeBTC)
+		if err == nil {
+			return rate, nil
+		}
+	}
+	return 0, fmt.Errorf("%s", "Get BTC rate failed")
+}
+
 func (s *Service) GetExchangeRate(exchange string, currency utils.Method) (float64, error) {
 	switch exchange {
 	case Binance:
@@ -219,35 +234,38 @@ func (s *Service) getBittrexPrice(currency utils.Method) (float64, error) {
 	return res.Price, nil
 }
 
+func (s *Service) IsValidExchange(exchange string) bool {
+	//Check valid exchange with DCR rate
+	_, err := s.GetExchangeRate(exchange, utils.PaymentTypeDCR)
+	return err == nil
+}
+
 type Map map[string]interface{}
 
 func (s *Service) NotifyCryptoPriceChanged() {
-	for range time.Tick(time.Second * 5) {
+	for range time.Tick(time.Second * 7) {
 		for _, currency := range []utils.Method{utils.PaymentTypeBTC, utils.PaymentTypeDCR, utils.PaymentTypeLTC} {
-			rate, err := s.GetRate(currency)
-			if err != nil {
-				fmt.Printf("error getting %s rate: %v\n", currency.String(), err)
-				exchangeLists := strings.Split(s.ExchangeList, ",")
-				if len(exchangeLists) > 0 {
-					index := -1
-					for idx, exchange := range exchangeLists {
-						if exchange == s.exchange {
-							index = idx
-							break
-						}
-					}
-					// remove the exchange from the list
-					exchangeLists = append(exchangeLists[:index], exchangeLists[index+1:]...)
-					s.exchange = exchangeLists[0]
-					s.ExchangeList = strings.Join(exchangeLists, ",")
-				}
+			if utils.IsEmpty(s.ExchangeList) {
 				continue
 			}
-			s.socket.BroadcastToRoom("", "exchangeRate", currency.String(), Map{
-				"currency":    currency.String(),
-				"rate":        rate,
-				"convertTime": time.Now(),
-			})
+			exchangeLists := strings.Split(s.ExchangeList, ",")
+			dataMap := make(map[string]Map)
+			for _, exchange := range exchangeLists {
+				if utils.IsEmpty(exchange) {
+					continue
+				}
+				rate, err := s.GetExchangeRate(exchange, currency)
+				if err != nil {
+					continue
+				}
+				exchangeData := Map{
+					"rate":        rate,
+					"convertTime": time.Now(),
+				}
+				dataMap[exchange] = exchangeData
+			}
+
+			s.socket.BroadcastToRoom("", "exchangeRate", currency.String(), dataMap)
 		}
 	}
 }
