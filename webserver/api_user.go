@@ -551,10 +551,19 @@ func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) 
 		usersSummaryMap[receiverId] = receiverInMap
 	}
 	userUsageArr := make([]portal.UserUsageSummary, 0)
-	pageNum := rf.Sort.Page
-	numPerpage := rf.Sort.Size
-	startIndex := (pageNum - 1) * numPerpage
-	endIndex := int(0)
+	var pageNum, numPerpage, startIndex, endIndex int
+	if rf.Sort.Size == 0 {
+		pageNum = 1
+		numPerpage = len(userIds)
+		startIndex = 0
+		endIndex = len(userIds) - 1
+	} else {
+		pageNum = rf.Sort.Page
+		numPerpage = rf.Sort.Size
+		startIndex = (pageNum - 1) * numPerpage
+		endIndex = int(0)
+	}
+
 	reportSummary.TotalAmount = totalAmount
 	reportSummary.PaidInvoices = paidInfo
 	reportSummary.PayableInvoices = pendingInfo
@@ -682,12 +691,16 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 	if utils.IsEmpty(f.Sort.Order) {
 		f.Sort.Order = "lastSeen desc"
 	}
+	count, _ := a.db.Count(&f, &storage.User{})
+	if f.Size == 0 {
+		f.Size = int(count)
+		f.Page = 1
+	}
 	var users []storage.User
 	if err := a.db.GetList(&f, &users); err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
-	count, _ := a.db.Count(&f, &storage.User{})
 	//get working flg
 	workingMap, err := a.service.GetWorkingUserList()
 	userResList := make([]storage.UserWorkingDisplay, 0)
