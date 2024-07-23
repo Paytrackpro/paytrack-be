@@ -19,12 +19,24 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int, order str
 	}
 	var count int64
 	payments := make([]storage.Payment, 0)
-	offset := page * pageSize
-
-	query := fmt.Sprintf(`SELECT * FROM payments WHERE payment_settings @> '[{"type": "%s"}]' AND status <> %d AND status <> %d AND status <> %d AND receiver_id = %d LIMIT %d OFFSET %d`,
-		utils.PaymentTypeBTC.String(), storage.PaymentStatusPaid, storage.PaymentStatusRejected, storage.PaymentStatusCreated, userId, pageSize, offset)
+	//Get count of payments
 	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE payment_settings @> '[{"type": "%s"}]' AND status <> %d AND status <> %d AND status <> %d AND receiver_id = %d`,
 		utils.PaymentTypeBTC.String(), storage.PaymentStatusPaid, storage.PaymentStatusRejected, storage.PaymentStatusCreated, userId)
+	if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, 0, nil
+		}
+		return nil, 0, err
+	}
+
+	if pageSize == 0 {
+		pageSize = int(count)
+		page = 1
+	}
+
+	offset := page * pageSize
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE payment_settings @> '[{"type": "%s"}]' AND status <> %d AND status <> %d AND status <> %d AND receiver_id = %d LIMIT %d OFFSET %d`,
+		utils.PaymentTypeBTC.String(), storage.PaymentStatusPaid, storage.PaymentStatusRejected, storage.PaymentStatusCreated, userId, pageSize, offset)
 
 	if err := s.db.Raw(query).Scan(&payments).Order(order).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -33,12 +45,6 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int, order str
 		return nil, 0, err
 	}
 
-	if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return payments, 0, nil
-		}
-		return nil, 0, err
-	}
 	return payments, count, nil
 }
 
@@ -333,7 +339,6 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	}
 	var count int64
 	payments := make([]storage.Payment, 0)
-	offset := request.Page * request.Size
 	builder := s.db
 	buildCount := s.db.Model(&storage.Payment{})
 	if request.RequestType == storage.PaymentTypeRequest {
@@ -353,16 +358,22 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 			buildCount = buildCount.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
 		}
 	} else if request.RequestType == storage.PaymentTypeApproval {
-		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]' LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, request.Size, offset)
 		countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]'`, storage.PaymentStatusSent, userId)
-		if err := s.db.Raw(query).Scan(&payments).Order(request.Sort.Order).Error; err != nil {
+		if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return payments, 0, nil
 			}
 			return nil, 0, err
 		}
 
-		if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
+		if request.Size == 0 {
+			request.Size = int(count)
+			request.Page = 1
+		}
+
+		offset := request.Page * request.Size
+		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]' LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, request.Size, offset)
+		if err := s.db.Raw(query).Scan(&payments).Order(request.Sort.Order).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return payments, 0, nil
 			}
@@ -380,6 +391,11 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		return nil, 0, err
 	}
 
+	if request.Size == 0 {
+		request.Size = int(count)
+		request.Page = 0
+	}
+	offset := request.Page * request.Size
 	if err := builder.Order(request.Sort.Order).Limit(request.Size).Offset(offset).Find(&payments).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return payments, 0, nil
