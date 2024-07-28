@@ -25,8 +25,15 @@ func (s *WebServer) Route() {
 	s.mux.Route("/api", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
 			var authRouter = apiAuth{WebServer: s}
+			r.Get("/auth-method", authRouter.getAuthMethod)
 			r.Post("/register", authRouter.register)
 			r.Post("/login", authRouter.login)
+			r.Post("/assertion-options", authRouter.AssertionOptions)
+			r.Post("/assertion-result", authRouter.AssertionResult)
+			r.Get("/username-checking", authRouter.CheckingUsernameExist)
+			r.Post("/cancel-register", authRouter.CancelPasskeyRegister)
+			r.Post("/register-start", authRouter.StartPasskeyRegister)
+			r.Post("/register-finish", authRouter.FinishPasskeyRegister)
 
 			r.Group(func(r chi.Router) {
 				r.Use(s.loggedInMiddleware)
@@ -81,8 +88,9 @@ func (s *WebServer) Route() {
 			r.Get("/report-summary", userRouter.getAdminReportSummary)
 		})
 		r.Route("/payment", func(r chi.Router) {
+			r.Use(s.loggedInMiddleware)
 			var paymentRouter = apiPayment{WebServer: s}
-			r.With(s.loggedInMiddleware).Post("/", paymentRouter.createPayment)
+			r.Post("/", paymentRouter.createPayment)
 			r.Get("/{id:[0-9]+}", paymentRouter.getPayment)
 			r.Post("/{id:[0-9]+}", paymentRouter.updatePayment)
 			r.Post("/request-rate", paymentRouter.requestRate)
@@ -90,7 +98,7 @@ func (s *WebServer) Route() {
 			r.Post("/approve", paymentRouter.approveRequest)
 			r.Post("/reject", paymentRouter.rejectPayment)
 			r.Post("/bulk-paid-btc", paymentRouter.bulkPaidBTC)
-			r.With(s.loggedInMiddleware).Get("/list", paymentRouter.listPayments)
+			r.Get("/list", paymentRouter.listPayments)
 			r.Get("/btc-bulk-rate", paymentRouter.getBtcBulkRate)
 			r.Delete("/delete/{id:[0-9]+}", paymentRouter.deleteDraft)
 			r.Get("/monthly-summary", paymentRouter.getMonthlySummary)

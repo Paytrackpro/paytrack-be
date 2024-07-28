@@ -19,10 +19,11 @@ type HttpClient struct {
 }
 
 type ReqConfig struct {
-	Payload interface{}
-	Method  string
-	HttpUrl string
-	Header  map[string]string
+	Payload  interface{}
+	Method   string
+	HttpUrl  string
+	Header   map[string]string
+	FormData url.Values
 }
 
 const defaultHttpClientTimeout = 30 * time.Second
@@ -133,5 +134,59 @@ func HttpRequest(reqConfig *ReqConfig, respObj interface{}) error {
 	}
 
 	httpResp.Body.Close()
+	return nil
+}
+
+type Error struct {
+	Code    int    `json:"code" example:"27"`
+	Message string `json:"message" example:"Error message"`
+}
+
+func GetHttpPost(reqConfig *ReqConfig, respObj interface{}) error {
+	resp, err := http.PostForm(reqConfig.HttpUrl, reqConfig.FormData)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == http.StatusOK {
+		json.NewDecoder(resp.Body).Decode(&respObj)
+		return nil
+	} else {
+		var e Error
+		json.NewDecoder(resp.Body).Decode(&e)
+		return fmt.Errorf("Error Status: %d, Msg: %s", e.Code, e.Message)
+	}
+}
+
+func HttpPost(httpUrl string, formData url.Values, respObj interface{}) error {
+	req := &ReqConfig{
+		Method:   http.MethodPost,
+		HttpUrl:  httpUrl,
+		FormData: formData,
+	}
+	if err := GetHttpPost(req, &respObj); err != nil {
+		return err
+	}
+	return nil
+}
+
+func HttpFullPost(httpUrl string, body io.ReadCloser, headers map[string]string, respObj interface{}) error {
+	req, err := http.NewRequest("POST", httpUrl, body)
+	if err != nil {
+		return err
+	}
+	for key := range headers {
+		req.Header.Set(key, headers[key])
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(respObj)
+	if err != nil {
+		return err
+	}
 	return nil
 }

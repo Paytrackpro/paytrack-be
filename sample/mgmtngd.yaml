@@ -9,6 +9,9 @@ webServer:
   aliveSessionHours: 24
   # aesSecretKey: a secret key used to encrypt sensitive data
   aesSecretKey: "A Secret String"
+  #Authentication type. 0: use local username/password, 1: use external auth microservice (With passkey)
+  authType: 1
+  authHost: http://localhost:8001
   service:
     # config to CEX use to convert coin rate
     # we support 3 CEXs: "binance", "bittrex", "coinmarketcap"

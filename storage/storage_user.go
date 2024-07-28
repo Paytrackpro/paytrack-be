@@ -16,6 +16,13 @@ const UserFieldUName = "user_name"
 const UserFieldId = "id"
 const RecipientId = "recipient_id"
 
+type AuthType int
+
+const (
+	AuthLocalUsernamePassword AuthType = iota
+	AuthMicroservicePasskey
+)
+
 type UserStorage interface {
 	CheckDuplicate(user *User) error
 	CreateUser(user *User) error
@@ -58,6 +65,18 @@ type User struct {
 	Locked                bool            `json:"locked"`
 	ShowDraftForRecipient bool            `json:"showDraftForRecipient"`
 	ShowDateOnInvoiceLine bool            `json:"showDateOnInvoiceLine"`
+}
+
+type AuthClaims struct {
+	Id           int64  `json:"id"`
+	Username     string `json:"username"`
+	Expire       int64  `json:"expire"`
+	Role         int    `json:"role"`
+	Token        string `json:"token"`
+	Contacts     string `json:"contacts"`
+	CredsArrJson string `json:"credsArrJson"`
+	Createdt     int64  `json:"createdt"`
+	LastLogindt  int64  `json:"lastLogindt"`
 }
 
 type UserWorkingDisplay struct {

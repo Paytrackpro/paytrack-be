@@ -23,6 +23,12 @@ type LoginForm struct {
 	Otp      string
 }
 
+type PasskeyRegisterInfo struct {
+	DisplayName string `json:"displayName"`
+	Email       string `json:"email"`
+	SessionKey  string `json:"sessionKey"`
+}
+
 type OtpForm struct {
 	Otp       string `validate:"required"`
 	Password  string `validate:"required"`

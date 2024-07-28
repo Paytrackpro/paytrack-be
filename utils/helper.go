@@ -204,3 +204,15 @@ func HandlerDateFormat(date string) string {
 func GetSecondDurationFromStartEnd(startTime, endTime time.Time) uint64 {
 	return uint64(math.Floor(endTime.Sub(startTime).Seconds()))
 }
+
+func CatchObject(from interface{}, to interface{}) error {
+	jsonBytes, err := json.Marshal(from)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(jsonBytes, &to)
+	if err != nil {
+		return err
+	}
+	return nil
+}
