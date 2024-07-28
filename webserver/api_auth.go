@@ -108,6 +108,69 @@ func (a *apiAuth) StartPasskeyRegister(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, response.Data)
 }
 
+func (a *apiAuth) UpdatePasskeyStart(w http.ResponseWriter, r *http.Request) {
+	var response utils.ResponseData
+	var bearer = r.Header.Get("Authorization")
+	if err := service.HttpPost(fmt.Sprintf("%s%s", a.conf.AuthHost, "/passkey/updateStart"), url.Values{"authorization": {bearer}}, &response); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	if response.IsError {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(response.Msg), nil)
+		return
+	}
+	utils.ResponseOK(w, response.Data)
+}
+
+func (a *apiAuth) UpdatePasskeyFinish(w http.ResponseWriter, r *http.Request) {
+	reqUrl := fmt.Sprintf("%s%s", a.conf.AuthHost, "/passkey/updateFinish")
+	Headers := map[string]string{
+		"Content-Type":  "application/json",
+		"Session-Key":   r.FormValue("sessionKey"),
+		"Is-Reset-Key":  r.FormValue("isReset"),
+		"Authorization": r.Header.Get("Authorization"),
+	}
+
+	var response utils.ResponseData
+	if err := service.HttpFullPost(reqUrl, r.Body, Headers, &response); err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	if response.IsError {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(response.Msg), nil)
+		return
+	}
+	data, isOk := response.Data.(map[string]any)
+	tokenString := ""
+	var authClaim storage.AuthClaims
+	if isOk {
+		tokenString, _ = data["token"].(string)
+		err := utils.CatchObject(data["user"], &authClaim)
+		if err != nil {
+			utils.Response(w, http.StatusInternalServerError, err, nil)
+			return
+		}
+	} else {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("No data returned"), nil)
+		return
+	}
+	//Get user info
+	user, err := a.db.QueryUser(storage.UserFieldUName, authClaim.Username)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			utils.Response(w, http.StatusNotFound, utils.InvalidCredential, nil)
+			return
+		}
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	//reset auth info
+	utils.ResponseOK(w, Map{
+		"token":    tokenString,
+		"userInfo": user,
+	})
+}
+
 func (a *apiAuth) FinishPasskeyRegister(w http.ResponseWriter, r *http.Request) {
 	reqUrl := fmt.Sprintf("%s%s", a.conf.AuthHost, "/passkey/registerFinish")
 	Headers := map[string]string{

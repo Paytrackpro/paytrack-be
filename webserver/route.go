@@ -34,6 +34,8 @@ func (s *WebServer) Route() {
 			r.Post("/cancel-register", authRouter.CancelPasskeyRegister)
 			r.Post("/register-start", authRouter.StartPasskeyRegister)
 			r.Post("/register-finish", authRouter.FinishPasskeyRegister)
+			r.Post("/update-passkey-start", authRouter.UpdatePasskeyStart)
+			r.Post("/update-passkey-finish", authRouter.UpdatePasskeyFinish)
 
 			r.Group(func(r chi.Router) {
 				r.Use(s.loggedInMiddleware)

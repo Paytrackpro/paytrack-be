@@ -86,7 +86,7 @@ func (s *Service) GetLogTimeList(userId uint64, request storage.AdminReportFilte
 
 func (s *Service) CountLogTimer(userId uint64, request storage.AdminReportFilter) (int64, error) {
 	var count int64
-	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM user_timer WHERE user_id = %d AND (start AT TIME ZONE 'UTC') < '%s' AND (start AT TIME ZONE 'UTC') > '%s'`, 
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM user_timer WHERE user_id = %d AND (start AT TIME ZONE 'UTC') < '%s' AND (start AT TIME ZONE 'UTC') > '%s'`,
 		userId, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate))
 
 	if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
