@@ -23,6 +23,89 @@ func (s *Service) GetUserInfo(id uint64) (storage.User, error) {
 	return user, nil
 }
 
+func (s *Service) GetUserTimer(timerId uint64) (storage.UserTimer, error) {
+	var userTimer storage.UserTimer
+	if err := s.db.Where("id = ?", timerId).Find(&userTimer).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return userTimer, utils.NewError(fmt.Errorf("user timer not found"), utils.ErrorNotFound)
+		}
+		log.Error("GetUserTimer:get user timer info fail with error: ", err)
+		return userTimer, err
+	}
+	return userTimer, nil
+}
+
+func (s *Service) GetAdminIds() ([]uint64, error) {
+	adminIds := make([]uint64, 0)
+	query := "SELECT id FROM users WHERE role = 1 AND locked = false"
+	if err := s.db.Raw(query).Scan(&adminIds).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return adminIds, nil
+		}
+		return nil, err
+	}
+	return adminIds, nil
+}
+
+func (s *Service) GetWorkingUserList() (map[uint64]bool, error) {
+	type UserPausing struct {
+		UserId  uint64 `json:"userId"`
+		Pausing bool   `json:"pausing"`
+	}
+	userPausingList := make([]UserPausing, 0)
+	resMap := make(map[uint64]bool)
+	query := "SELECT user_id,pausing FROM user_timer WHERE fininshed = false"
+	if err := s.db.Raw(query).Scan(&userPausingList).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return resMap, nil
+		}
+		return nil, err
+	}
+	for _, userPausing := range userPausingList {
+		resMap[userPausing.UserId] = userPausing.Pausing
+	}
+	return resMap, nil
+}
+
+func (s *Service) GetLogTimeList(userId uint64, request storage.AdminReportFilter) ([]storage.UserTimer, error) {
+	timerList := make([]storage.UserTimer, 0)
+	page := request.Page
+	if page != 0 {
+		page -= 1
+	}
+	query := fmt.Sprintf(`SELECT * FROM user_timer WHERE user_id = %d AND (start AT TIME ZONE 'UTC') < '%s' AND (start AT TIME ZONE 'UTC') > '%s' ORDER BY start DESC LIMIT %d OFFSET %d`,
+		userId, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate), request.Size, request.Size*page)
+	if err := s.db.Raw(query).Scan(&timerList).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return timerList, nil
+		}
+		return nil, err
+	}
+	return timerList, nil
+}
+
+func (s *Service) CountLogTimer(userId uint64, request storage.AdminReportFilter) (int64, error) {
+	var count int64
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM user_timer WHERE user_id = %d AND (start AT TIME ZONE 'UTC') < '%s' AND (start AT TIME ZONE 'UTC') > '%s'`, 
+		userId, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate))
+
+	if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (s *Service) GetRunningTimer(userId uint64) (*storage.UserTimer, error) {
+	var userTimer storage.UserTimer
+	if err := s.db.Where("user_id = ? AND fininshed = ?", userId, false).First(&userTimer).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &userTimer, nil
+}
+
 func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, isAdmin bool) (storage.User, error) {
 	var user storage.User
 	if err := s.db.Where("id = ?", id).First(&user).Error; err != nil {
@@ -47,9 +130,9 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 
 	utils.SetValue(&user.Email, userInfo.Email)
 	utils.SetValue(&user.HourlyLaborRate, userInfo.HourlyLaborRate)
-	utils.SetValue(&user.ShowMonthlyReport, userInfo.ShowMonthlyReport)
 	utils.SetValue(&user.ShowDateOnInvoiceLine, userInfo.ShowDateOnInvoiceLine)
 	utils.SetValue(&user.ShowDraftForRecipient, userInfo.ShowDraftForRecipient)
+	utils.SetValue(&user.HidePaid, userInfo.HidePaid)
 
 	if isAdmin {
 		user.Role = userInfo.Role

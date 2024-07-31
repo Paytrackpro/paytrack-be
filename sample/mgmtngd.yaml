@@ -14,6 +14,7 @@ webServer:
     # we support 3 CEXs: "binance", "bittrex", "coinmarketcap"
     # "coinmarketcap" requires API key
     exchange: "bittrex"
+    allowexchanges: "binance,kucoin,mexc"
     coimarketcapKey: "change me"
 
 # Config log level: "trace", "debug", "info", "warn", "error", "off"

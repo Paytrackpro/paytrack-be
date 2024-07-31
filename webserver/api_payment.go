@@ -10,6 +10,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
+	"code.cryptopower.dev/mgmt-ng/be/webserver/service"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -60,13 +61,21 @@ func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 			utils.Response(w, http.StatusInternalServerError, err, nil)
 			return
 		}
-
+		if body.Status == storage.PaymentStatusSent || body.Status == storage.PaymentStatusCreated {
+			a.reloadList([]string{fmt.Sprint(body.ReceiverId)}, "")
+		}
 		utils.ResponseOK(w, Map{
 			"payment": payment,
 			"token":   "",
 		}, nil)
 	} else {
 		utils.Response(w, http.StatusForbidden, utils.NewError(fmt.Errorf("do not have access"), utils.ErrorBadRequest), nil)
+	}
+}
+
+func (a *apiPayment) reloadList(rooms []string, data interface{}) {
+	for _, room := range rooms {
+		a.socket.BroadcastToRoom("", room, "reloadList", data)
 	}
 }
 
@@ -125,7 +134,7 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payment, err := a.service.CreatePayment(userInfo.Id, userInfo.UserName, userInfo.DisplayName, userInfo.ShowDateOnInvoiceLine,
+	payment, err := a.service.CreatePayment(userInfo.Id, userInfo.UserName, userInfo.DisplayName,
 		userInfo.ShowDraftForRecipient, body)
 	if err != nil {
 		log.Error(err)
@@ -135,7 +144,7 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 	res := Map{
 		"payment": payment,
 	}
-
+	a.reloadList([]string{fmt.Sprint(payment.ReceiverId)}, "")
 	if body.ContactMethod == storage.PaymentTypeEmail {
 		token, customErr := a.sendNotification(storage.PaymentStatusCreated, *payment, userInfo)
 		res["token"] = token
@@ -157,6 +166,7 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
+	a.sortPaymentDetails(payment)
 	if err := a.verifyAccessPayment(token, payment, r); err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
@@ -177,6 +187,33 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 		"payment":   payment,
 		"orderData": orderData,
 	})
+}
+
+func (a *apiPayment) sortPaymentDetails(payment storage.Payment) {
+	if len(payment.Details) < 2 {
+		return
+	}
+	for i := 0; i < len(payment.Details); i++ {
+		for j := i + 1; j < len(payment.Details); j++ {
+			date1, err := time.Parse("2006/01/02", utils.HandlerDateFormat(payment.Details[i].Date))
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			date2, err := time.Parse("2006/01/02", utils.HandlerDateFormat(payment.Details[j].Date))
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			beforeUnix := date1.Unix()
+			afterUnix := date2.Unix()
+			if afterUnix < beforeUnix {
+				var tmpDetail = payment.Details[i]
+				payment.Details[i] = payment.Details[j]
+				payment.Details[j] = tmpDetail
+			}
+		}
+	}
 }
 
 func (a *apiPayment) getMonthlySummary(w http.ResponseWriter, r *http.Request) {
@@ -235,19 +272,8 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 	return fmt.Errorf("you do not have access")
 }
 
-func (a *apiPayment) getRate(w http.ResponseWriter, r *http.Request) {
-	var query portal.GetRateRequest
-	if err := utils.DecodeQuery(&query, r.URL.Query()); err != nil {
-		utils.Response(w, http.StatusBadRequest, fmt.Errorf("symbol param is empty or not exist"), nil)
-		return
-	}
-
-	if query.Symbol == utils.PaymentTypeNotSet {
-		utils.Response(w, http.StatusBadRequest, fmt.Errorf("symbol param is empty or not exist"), nil)
-		return
-	}
-
-	rate, err := a.service.GetRate(query.Symbol)
+func (a *apiPayment) getBtcBulkRate(w http.ResponseWriter, r *http.Request) {
+	rate, err := a.service.GetBTCBulkRate()
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
@@ -279,7 +305,12 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if p.Status == storage.PaymentStatusPaid {
-		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("the payment was marked as paid"), utils.ErrorBadRequest), nil)
+		utils.ResponseOK(w, Map{
+			"rate":           float64(0),
+			"convertTime":    time.Now(),
+			"expectedAmount": float64(0),
+			"isPaid":         true,
+		})
 		return
 	}
 	// only the requested user has the access to process the payment
@@ -287,22 +318,21 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
 	}
-	rate, err := a.service.GetRate(f.PaymentMethod)
+	if utils.IsEmpty(f.Exchange) {
+		f.Exchange = service.Binance
+	}
+	handlerExchange := strings.ToLower(f.Exchange)
+	rate, err := a.service.GetExchangeRate(handlerExchange, f.PaymentMethod)
 	if err != nil {
 		log.Error(err)
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
 	}
-	p.PaymentMethod = f.PaymentMethod
-	p.PaymentAddress = f.PaymentAddress
-	p.ConvertRate = rate
-	p.ConvertTime = time.Now()
-	p.ExpectedAmount = utils.BtcRoundFloat(p.Amount / rate)
-	if err = a.db.Save(&p); err != nil {
-		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
-		return
-	}
-	utils.ResponseOK(w, p)
+	utils.ResponseOK(w, Map{
+		"rate":           rate,
+		"convertTime":    time.Now(),
+		"expectedAmount": utils.BtcRoundFloat(p.Amount / rate),
+	})
 }
 
 func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
@@ -347,12 +377,17 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
 	}
+	a.reloadList([]string{fmt.Sprint(payment.ReceiverId)}, "")
 	utils.ResponseOK(w, payment)
 }
 
 func (a *apiPayment) deleteDraft(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	a.db.GetDB().Where("id = ?", id).Delete(&storage.Payment{})
+	payment := &storage.Payment{}
+	if err := a.db.GetDB().Where("id = ?", id).First(payment).Error; err == nil {
+		a.reloadList([]string{fmt.Sprint(payment.SenderId)}, "")
+		a.db.GetDB().Where("id = ?", id).Delete(&storage.Payment{})
+	}
 	utils.ResponseOK(w, nil)
 }
 
@@ -385,11 +420,17 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.parseBearer(r)
 	//default sortable is createdAt desc (newest before)
 	if utils.IsEmpty(query.Sort.Order) {
-		query.Sort.Order = "created_at desc"
+		query.Sort.Order = "updated_at desc"
 	}
-	if strings.Contains(query.Sort.Order, "createdAt") {
-		query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "createdAt", "created_at")
+	if strings.Contains(query.Sort.Order, "updatedAt") {
+		query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "updatedAt", "updated_at")
 	}
+	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "sentAt", "sent_at")
+	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "receiverName", "receiver_name")
+	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "senderName", "sender_name")
+	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "startDate", "start_date")
+	query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "projectName", "project_name")
+
 	if query.RequestType == storage.PaymentTypeBulkPayBTC {
 		payments, count, err := a.service.GetBulkPaymentBTC(claims.Id, query.Page, query.Size, query.Sort.Order)
 		if err != nil {
@@ -424,6 +465,162 @@ func (a *apiPayment) countBulkPayBTC(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.ResponseOK(w, count)
+}
+
+func (a *apiPayment) hasReport(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.parseBearer(r)
+	if claims.Id < 1 {
+		utils.ResponseOK(w, false)
+		return
+	}
+	hasReport := a.service.CheckHasReport(claims.Id)
+	utils.ResponseOK(w, hasReport)
+}
+
+func (a *apiPayment) paymentReport(w http.ResponseWriter, r *http.Request) {
+	var f portal.ReportFilter
+	err := a.parseQueryAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	claims, _ := a.parseBearer(r)
+	if claims.Id < 1 {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	payments, err := a.service.GetPaymentsForReport(claims.Id, f)
+	result := make([]portal.PaymentReport, 0)
+	var tmpPaymentReport = portal.PaymentReport{}
+	var currentMonth = -1
+	var currentYear = -1
+	for index, payment := range payments {
+		if currentMonth != int(payment.PaidAt.Month()) || currentYear != payment.PaidAt.Year() {
+			currentMonth = int(payment.PaidAt.Month())
+			currentYear = payment.PaidAt.Year()
+			if !utils.IsEmpty(tmpPaymentReport.Month) {
+				result = append(result, tmpPaymentReport)
+			}
+			tmpPaymentReport = portal.PaymentReport{}
+			tmpPaymentReport.PaymentUnits = make([]portal.PaymentReportUnit, 0)
+			tmpPaymentReport.Month = fmt.Sprint(currentYear, "-", currentMonth)
+		}
+		var paymentUnit = portal.PaymentReportUnit{}
+		paymentUnit.DisplayName = payment.SenderDisplayName
+		paymentUnit.Amount = payment.Amount
+		paymentUnit.ExpectedAmount = payment.ExpectedAmount
+		paymentUnit.PaymentMethod = payment.PaymentMethod
+		tmpPaymentReport.PaymentUnits = append(tmpPaymentReport.PaymentUnits, paymentUnit)
+		//if is last element
+		if index == len(payments)-1 {
+			result = append(result, tmpPaymentReport)
+		}
+	}
+	utils.ResponseOK(w, result)
+}
+
+func (a *apiPayment) invoiceReport(w http.ResponseWriter, r *http.Request) {
+	var f portal.ReportFilter
+	err := a.parseQueryAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	claims, _ := a.parseBearer(r)
+	if claims.Id < 1 {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	payments, err := a.service.GetForInvoiceReport(claims.Id, f)
+	var reportMap = map[string][]portal.InvoiceReportUnit{}
+	for _, payment := range payments {
+		if len(payment.Details) == 0 {
+			continue
+		}
+		var displayName = utils.GetUserDisplayName(payment.SenderName, payment.SenderDisplayName)
+		for _, detail := range payment.Details {
+			if detail.Price != 0 {
+				continue
+			}
+			var key = displayName
+			if detail.ProjectId < 1 {
+				key = fmt.Sprint(key, ";")
+			} else {
+				key = fmt.Sprint(key, ";", detail.ProjectName)
+			}
+			var tmpUnit = portal.InvoiceReportUnit{}
+			tmpUnit.Date = detail.Date
+			tmpUnit.Description = detail.Description
+			tmpUnit.Hours = detail.Quantity
+			if val, ok := reportMap[key]; ok {
+				val = append(val, tmpUnit)
+				reportMap[key] = val
+			} else {
+				newUnitArr := make([]portal.InvoiceReportUnit, 0)
+				newUnitArr = append(newUnitArr, tmpUnit)
+				reportMap[key] = newUnitArr
+			}
+		}
+	}
+	utils.ResponseOK(w, reportMap)
+}
+
+func (a *apiPayment) getExchangeList(w http.ResponseWriter, r *http.Request) {
+	exchanges := a.service.ExchangeList
+	if utils.IsEmpty(exchanges) {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("%s", "Get exchange list failed"), utils.ErrorBadRequest), nil)
+		return
+	}
+	exchangeArr := strings.Split(exchanges, ",")
+	resData := make([]string, 0)
+	for _, exchange := range exchangeArr {
+		exchange = strings.TrimSpace(exchange)
+		if a.service.IsValidExchange(exchange) {
+			resData = append(resData, exchange)
+		}
+	}
+	utils.ResponseOK(w, resData)
+}
+
+func (a *apiPayment) addressReport(w http.ResponseWriter, r *http.Request) {
+	var f portal.ReportFilter
+	err := a.parseQueryAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	claims, _ := a.parseBearer(r)
+	if claims.Id < 1 {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	payments, err := a.service.GetPaymentsForReport(claims.Id, f)
+	var reportMap = map[string]portal.AddressReport{}
+	for _, payment := range payments {
+		if payment.PaymentMethod.String() == "none" {
+			continue
+		}
+		var displayName = utils.GetUserDisplayName(payment.SenderName, payment.SenderDisplayName)
+		var tmpUnit = portal.AddressReportUnit{}
+		tmpUnit.DateTime = payment.PaidAt.Format("2006/01/02")
+		tmpUnit.Amount = payment.Amount
+		tmpUnit.ExpectedAmount = payment.ExpectedAmount
+		if val, ok := reportMap[payment.PaymentAddress]; ok {
+			addressUnits := val.AddressUnits
+			addressUnits = append(addressUnits, tmpUnit)
+			val.AddressUnits = addressUnits
+			reportMap[payment.PaymentAddress] = val
+		} else {
+			var tmpAddress = portal.AddressReport{}
+			tmpAddress.PaymentMethod = payment.PaymentMethod.String()
+			tmpAddress.DisplayName = displayName
+			units := make([]portal.AddressReportUnit, 0)
+			units = append(units, tmpUnit)
+			tmpAddress.AddressUnits = units
+			reportMap[payment.PaymentAddress] = tmpAddress
+		}
+	}
+	utils.ResponseOK(w, reportMap)
 }
 
 func (a *apiPayment) approveRequest(w http.ResponseWriter, r *http.Request) {

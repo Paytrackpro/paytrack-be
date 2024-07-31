@@ -21,6 +21,7 @@ func (s *WebServer) Route() {
 	s.mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("MGMT-NG API is up and running"))
 	})
+	s.mux.Get("/socket.io/", s.handleSocket())
 	s.mux.Route("/api", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
 			var authRouter = apiAuth{WebServer: s}
@@ -38,14 +39,35 @@ func (s *WebServer) Route() {
 			r.Get("/info", userRouter.info)
 			r.Put("/info", userRouter.update)
 			r.Put("/change-password", userRouter.changePassword)
+			r.Put("/hide-paid", userRouter.hidePaid)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
+			r.Get("/get-user-list", userRouter.getUserSelectionList)
 			r.Get("/exists", userRouter.usersExist)
+			r.Get("/member-exist", userRouter.membersExist)
 			r.Post("/generate-otp", userRouter.generateQr)
 			r.Post("/disable-otp", userRouter.disableOtp)
 			r.Route("/setting", func(r chi.Router) {
 				r.Get("/payment", userRouter.getPaymentSetting)
 				r.Put("/payment", userRouter.updatePaymentSetting)
 			})
+			r.Post("/start_timer", userRouter.startTimer)
+			r.Post("/pause_timer", userRouter.pauseTimer)
+			r.Post("/resume_timer", userRouter.resumeTimer)
+			r.Post("/stop_timer", userRouter.stopTimer)
+			r.Get("/get-running-timer", userRouter.getRunningTimer)
+			r.Get("/get-time-log", userRouter.getTimeLogList)
+			r.Put("/update-timer", userRouter.updateTimer)
+			r.Delete("/timer-delete/{id:[0-9]+}", userRouter.deleteTimer)
+		})
+
+		r.Route("/file", func(r chi.Router) {
+			r.Use(s.loggedInMiddleware)
+			var fileRouter = apiFileUpload{WebServer: s}
+			r.Post("/upload", fileRouter.uploadFiles)
+			r.Post("/upload-one", fileRouter.uploadOneFile)
+			r.Get("/base64", fileRouter.getProductImagesBase64)
+			r.Get("/base64-one", fileRouter.getOneImageBase64)
+			r.Get("/img-base64", fileRouter.getImageBase64)
 		})
 
 		r.Route("/shop", func(r chi.Router) {
@@ -80,22 +102,15 @@ func (s *WebServer) Route() {
 			r.Get("/my-orders", apiRouter.getMyOrders)
 		})
 
-		r.Route("/file", func(r chi.Router) {
-			r.Use(s.loggedInMiddleware)
-			var fileRouter = apiFileUpload{WebServer: s}
-			r.Post("/upload", fileRouter.uploadFile)
-			r.Get("/base64", fileRouter.getProductImagesBase64)
-			r.Get("/img-base64", fileRouter.getImageBase64)
-		})
-
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware, s.adminMiddleware)
+			var userRouter = apiUser{WebServer: s}
 			r.Route("/user", func(r chi.Router) {
-				var userRouter = apiUser{WebServer: s}
 				r.Get("/info/{id}", userRouter.infoWithId)
 				r.Put("/info", userRouter.adminUpdateUser)
 				r.Get("/list", userRouter.getListUsers)
 			})
+			r.Get("/report-summary", userRouter.getAdminReportSummary)
 		})
 		r.Route("/payment", func(r chi.Router) {
 			var paymentRouter = apiPayment{WebServer: s}
@@ -108,12 +123,26 @@ func (s *WebServer) Route() {
 			r.Post("/reject", paymentRouter.rejectPayment)
 			r.Post("/bulk-paid-btc", paymentRouter.bulkPaidBTC)
 			r.With(s.loggedInMiddleware).Get("/list", paymentRouter.listPayments)
-			r.Get("/rate", paymentRouter.getRate)
+			r.Get("/btc-bulk-rate", paymentRouter.getBtcBulkRate)
 			r.Delete("/delete/{id:[0-9]+}", paymentRouter.deleteDraft)
 			r.Get("/monthly-summary", paymentRouter.getMonthlySummary)
 			r.Get("/initialization-count", paymentRouter.getInitializationCount)
 			r.Get("/bulk-pay-count", paymentRouter.countBulkPayBTC)
 			r.Post("/delete-payment-product", paymentRouter.deletePaymentProduct)
+			r.Get("/has-report", paymentRouter.hasReport)
+			r.Get("/payment-report", paymentRouter.paymentReport)
+			r.Get("/invoice-report", paymentRouter.invoiceReport)
+			r.Get("/address-report", paymentRouter.addressReport)
+			r.Get("/exchange-list", paymentRouter.getExchangeList)
+		})
+		r.Route("/project", func(r chi.Router) {
+			r.Use(s.loggedInMiddleware)
+			var projectRouter = apiProject{WebServer: s}
+			r.Post("/create", projectRouter.createProject)
+			r.Get("/get-list", projectRouter.getProjects)
+			r.Get("/get-my-project", projectRouter.getMyProjects)
+			r.Put("/edit", projectRouter.editProject)
+			r.Delete("/delete/{id:[0-9]+}", projectRouter.deleteProject)
 		})
 	})
 }

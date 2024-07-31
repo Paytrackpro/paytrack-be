@@ -29,8 +29,38 @@ type OtpForm struct {
 	FirstTime bool
 }
 
+type UserSelection struct {
+	Id          uint64 `json:"id"`
+	UserName    string `json:"userName"`
+	DisplayName string `json:"displayName"`
+}
+
 type GenerateQRForm struct {
 	Password string `validate:"required"`
+}
+
+type AdminSummaryReport struct {
+	TotalInvoices    int                  `json:"totalInvoices"`
+	TotalAmount      float64              `json:"totalAmount"`
+	SentInvoices     PaymentStatusSummary `json:"sentInvoices"`
+	PayableInvoices  PaymentStatusSummary `json:"payableInvoices"`
+	PaidInvoices     PaymentStatusSummary `json:"paidInvoices"`
+	UserUsageSummary []UserUsageSummary   `json:"userUsageSummary"`
+}
+
+type UserUsageSummary struct {
+	Username   string  `json:"userName"`
+	SendNum    uint64  `json:"sendNum"`
+	SentUsd    float64 `json:"sentUsd"`
+	ReceiveNum uint64  `json:"receiveNum"`
+	ReceiveUsd float64 `json:"receiveUsd"`
+	PaidNum    uint64  `json:"paidNum"`
+	PaidUsd    float64 `json:"paidUsd"`
+}
+
+type PaymentStatusSummary struct {
+	InvoiceNum uint64  `json:"invoiceNum"`
+	Amount     float64 `json:"amount"`
 }
 
 func (f RegisterForm) User() (*storage.User, error) {
@@ -65,9 +95,9 @@ type UpdateUserRequest struct {
 	PaymentSettings       []storage.PaymentSetting `json:"paymentSettings"`
 	HourlyLaborRate       float64                  `json:"hourlyLaborRate"`
 	Locked                bool                     `json:"locked"`
-	ShowMonthlyReport     bool                     `json:"showMonthlyReport"`
 	ShowDraftForRecipient bool                     `json:"showDraftForRecipient"`
 	ShowDateOnInvoiceLine bool                     `json:"showDateOnInvoiceLine"`
+	HidePaid              bool                     `json:"hidePaid"`
 	Role                  utils.UserRole           `json:"role"`
 }
 
@@ -117,4 +147,10 @@ type ChangePasswordRequest struct {
 	Password    string `json:"password"`
 	OldPassword string `json:"oldPassword"`
 	Otp         string `json:"otp"`
+}
+
+type TimerUpdateRequest struct {
+	TimerId     uint64 `json:"timerId"`
+	ProjectId   int64  `json:"projectId"`
+	Description string `json:"description"`
 }

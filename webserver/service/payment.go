@@ -19,20 +19,26 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int, order str
 	}
 	var count int64
 	payments := make([]storage.Payment, 0)
-	offset := page * pageSize
-
-	build :=
-		s.db.Model(&storage.Payment{}).Order(order).
-			Where("payments.payment_method = ? AND payments.status = ? AND payments.receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId).
-			Scan(&payments)
-
-	buildCount := s.db.Model(&storage.Payment{}).Where("payment_method = ? AND status = ? AND receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId)
-	if err := buildCount.Count(&count).Error; err != nil {
+	//Get count of payments
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE payment_settings @> '[{"type": "%s"}]' AND status <> %d AND status <> %d AND status <> %d AND receiver_id = %d`,
+		utils.PaymentTypeBTC.String(), storage.PaymentStatusPaid, storage.PaymentStatusRejected, storage.PaymentStatusCreated, userId)
+	if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, 0, nil
+		}
 		return nil, 0, err
 	}
 
-	build = build.Limit(pageSize).Offset(offset)
-	if err := build.Find(&payments).Error; err != nil {
+	if pageSize == 0 {
+		pageSize = int(count)
+		page = 1
+	}
+
+	offset := page * pageSize
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE payment_settings @> '[{"type": "%s"}]' AND status <> %d AND status <> %d AND status <> %d AND receiver_id = %d LIMIT %d OFFSET %d`,
+		utils.PaymentTypeBTC.String(), storage.PaymentStatusPaid, storage.PaymentStatusRejected, storage.PaymentStatusCreated, userId, pageSize, offset)
+
+	if err := s.db.Raw(query).Scan(&payments).Order(order).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return payments, 0, nil
 		}
@@ -44,11 +50,11 @@ func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int, order str
 
 func (s *Service) CountBulkPaymentBTC(userId uint64) (int64, error) {
 	var count int64
-	buildCount := s.db.Model(&storage.Payment{}).Where("payment_method = ? AND status = ? AND receiver_id = ?", utils.PaymentTypeBTC, storage.PaymentStatusConfirmed, userId)
-	if err := buildCount.Count(&count).Error; err != nil {
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE payment_settings @> '[{"type": "%s"}]'  AND status <> %d AND status <> %d AND status <> %d AND receiver_id = %d`, utils.PaymentTypeBTC.String(), storage.PaymentStatusPaid, storage.PaymentStatusRejected, storage.PaymentStatusCreated, userId)
+
+	if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
 		return 0, err
 	}
-
 	return count, nil
 }
 
@@ -113,7 +119,7 @@ func (s *Service) GetRequestSummary(userId uint64, summaryFilter portal.SummaryF
 	return paymentSummary, nil
 }
 
-func (s *Service) CreatePayment(userId uint64, userName string, displayName string, showDateOnInvoiceLine bool, showDraftForRecipient bool, request portal.PaymentRequest) (*storage.Payment, error) {
+func (s *Service) CreatePayment(userId uint64, userName string, displayName string, showDraftForRecipient bool, request portal.PaymentRequest) (*storage.Payment, error) {
 	var reciver storage.User
 	payment := storage.Payment{
 		SenderId:              userId,
@@ -125,7 +131,13 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 		HourlyRate:            request.HourlyRate,
 		PaymentSettings:       request.PaymentSettings,
 		ShowDraftRecipient:    showDraftForRecipient,
-		ShowDateOnInvoiceLine: showDateOnInvoiceLine,
+		ShowDateOnInvoiceLine: request.ShowDateOnInvoiceLine,
+		ShowProjectOnInvoice:  request.ShowProjectOnInvoice,
+	}
+
+	if payment.ShowProjectOnInvoice {
+		payment.ProjectId = request.ProjectId
+		payment.ProjectName = request.ProjectName
 	}
 
 	// payment is internal
@@ -158,8 +170,14 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 			return nil, utils.NewError(err, utils.ErrorBadRequest)
 		}
 		payment.Amount = amount
+		startDate, err := getStartDate(request)
+		if err != nil {
+			return nil, utils.NewError(err, utils.ErrorBadRequest)
+		}
+		payment.StartDate = startDate
 	} else {
 		payment.Amount = request.Amount
+		payment.StartDate = time.Now()
 	}
 
 	if payment.Status == storage.PaymentStatusSent {
@@ -259,14 +277,32 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		payment.Details = request.Details
 		payment.HourlyRate = request.HourlyRate
 		payment.PaymentSettings = request.PaymentSettings
+		payment.ShowDateOnInvoiceLine = request.ShowDateOnInvoiceLine
+		payment.ShowProjectOnInvoice = request.ShowProjectOnInvoice
+		if payment.ShowProjectOnInvoice {
+			payment.ProjectId = request.ProjectId
+			payment.ProjectName = request.ProjectName
+		} else {
+			payment.ProjectId = 0
+			payment.ProjectName = ""
+		}
+		if !utils.IsEmpty(request.ReceiptImg) && request.Status == storage.PaymentStatusPaid {
+			payment.ReceiptImg = request.ReceiptImg
+		}
 		if len(request.Details) > 0 {
 			amount, err := calculateAmount(request)
 			if err != nil {
 				return nil, utils.NewError(err, utils.ErrorBadRequest)
 			}
 			payment.Amount = amount
+			startDate, err := getStartDate(request)
+			if err != nil {
+				startDate = payment.CreatedAt
+			}
+			payment.StartDate = startDate
 		} else {
 			payment.Amount = request.Amount
+			payment.StartDate = payment.CreatedAt
 		}
 		// use for sender update status from save as draft to sent
 		if payment.Status == storage.PaymentStatusCreated {
@@ -310,6 +346,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 					}
 					payment.Approvers = approvers
 				}
+				payment.Status = request.Status
 			}
 		}
 		//if sender edit payment request, force off status back to received (sent)
@@ -321,9 +358,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 			}
 			//Cancel any Approval status when sender edit payment (for all approvers)
 			if len(approverSettings) > 0 {
-				fmt.Println(payment.Approvers)
-				for i, approver := range payment.Approvers {
-					fmt.Println(approver.ApproverId)
+				for i, _ := range payment.Approvers {
 					payment.Approvers[i].IsApproved = false
 				}
 			}
@@ -331,6 +366,7 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		// if status is Draft, save show draft for recipient flag
 		if request.Status == storage.PaymentStatusCreated {
 			payment.ShowDraftRecipient = request.ShowDraftRecipient
+			payment.Status = request.Status
 		}
 	}
 
@@ -346,36 +382,41 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	}
 	var count int64
 	payments := make([]storage.Payment, 0)
-	offset := request.Page * request.Size
 	builder := s.db
 	buildCount := s.db.Model(&storage.Payment{})
 	if request.RequestType == storage.PaymentTypeRequest {
 		if request.HidePaid {
-			builder = builder.Where("sender_id = ? AND status <> ?", userId, storage.PaymentStatusPaid)
-			buildCount = buildCount.Where("sender_id = ? AND status <> ?", userId, storage.PaymentStatusPaid)
+			builder = builder.Where("sender_id = ? AND status <> ? AND (? = 0 OR receiver_id IN (?))", userId, storage.PaymentStatusPaid, len(request.UserIds), request.UserIds)
+			buildCount = buildCount.Where("sender_id = ? AND status <> ? AND (? = 0 OR receiver_id IN (?))", userId, storage.PaymentStatusPaid, len(request.UserIds), request.UserIds)
 		} else {
-			builder = builder.Where("sender_id = ?", userId)
-			buildCount = buildCount.Where("sender_id = ?", userId)
+			builder = builder.Where("sender_id = ? AND (? = 0 OR receiver_id IN (?))", userId, len(request.UserIds), request.UserIds)
+			buildCount = buildCount.Where("sender_id = ? AND (? = 0 OR receiver_id IN (?))", userId, len(request.UserIds), request.UserIds)
 		}
 	} else if request.RequestType == storage.PaymentTypeReminder {
 		if request.HidePaid {
-			builder = builder.Where("receiver_id = ? AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
-			buildCount = buildCount.Where("receiver_id = ? AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+			builder = builder.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+			buildCount = buildCount.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
 		} else {
-			builder = builder.Where("receiver_id = ? AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
-			buildCount = buildCount.Where("receiver_id = ? AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+			builder = builder.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+			buildCount = buildCount.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
 		}
 	} else if request.RequestType == storage.PaymentTypeApproval {
-		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]' LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, request.Size, offset)
 		countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]'`, storage.PaymentStatusSent, userId)
-		if err := s.db.Raw(query).Scan(&payments).Order(request.Sort.Order).Error; err != nil {
+		if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return payments, 0, nil
 			}
 			return nil, 0, err
 		}
 
-		if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
+		if request.Size == 0 {
+			request.Size = int(count)
+			request.Page = 1
+		}
+
+		offset := request.Page * request.Size
+		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]' LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, request.Size, offset)
+		if err := s.db.Raw(query).Scan(&payments).Order(request.Sort.Order).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return payments, 0, nil
 			}
@@ -393,6 +434,11 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		return nil, 0, err
 	}
 
+	if request.Size == 0 {
+		request.Size = int(count)
+		request.Page = 0
+	}
+	offset := request.Page * request.Size
 	if err := builder.Order(request.Sort.Order).Limit(request.Size).Offset(offset).Find(&payments).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return payments, 0, nil
@@ -401,6 +447,91 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	}
 
 	return payments, count, nil
+}
+
+func (s *Service) CheckHasReport(userId uint64) bool {
+	var count int64
+	err := s.db.Model(&storage.Payment{}).Where("status = ? AND receiver_id = ?", storage.PaymentStatusPaid, userId).Count(&count).Error
+	if err != nil || count < 1 {
+		return false
+	}
+	return true
+}
+
+func (s *Service) GetPaymentsForReport(userId uint64, request portal.ReportFilter) ([]storage.Payment, error) {
+	payments := make([]storage.Payment, 0)
+	var memberQuery = ""
+	var projectQuery = ""
+	if !utils.IsEmpty(request.MemberIds) {
+		memberQuery = fmt.Sprintf(`AND sender_id IN (%s)`, request.MemberIds)
+	}
+	if !utils.IsEmpty(request.ProjectIds) {
+		var orQuery = ""
+		var projectIdArr = strings.Split(request.ProjectIds, ",")
+		for index, projectId := range projectIdArr {
+			if index == 0 {
+				orQuery = fmt.Sprintf(`details @> '[{"projectId": %s}]'`, projectId)
+			} else {
+				orQuery = fmt.Sprint(orQuery, fmt.Sprintf(` OR details @> '[{"projectId": %s}]'`, projectId))
+			}
+		}
+		projectQuery = fmt.Sprintf(`AND (%s)`, orQuery)
+	}
+
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND (paid_at AT TIME ZONE 'UTC') < '%s' AND (paid_at AT TIME ZONE 'UTC') > '%s' AND receiver_id = %d %s %s ORDER BY paid_at DESC`,
+		storage.PaymentStatusPaid, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate), userId, memberQuery, projectQuery)
+	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, nil
+		}
+		return nil, err
+	}
+	return payments, nil
+}
+
+// get all payments exculed draft status
+func (s *Service) GetAllPayments(request storage.AdminReportFilter) ([]storage.Payment, error) {
+	payments := make([]storage.Payment, 0)
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE status <> %d AND status <> %d AND (sent_at AT TIME ZONE 'UTC') < '%s' AND (sent_at AT TIME ZONE 'UTC') > '%s' ORDER BY sent_at DESC`,
+		storage.PaymentStatusCreated, storage.PaymentStatusRejected, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate))
+	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, nil
+		}
+		return nil, err
+	}
+	return payments, nil
+}
+
+func (s *Service) GetForInvoiceReport(userId uint64, request portal.ReportFilter) ([]storage.Payment, error) {
+	payments := make([]storage.Payment, 0)
+	var memberQuery = ""
+	var projectQuery = ""
+	if !utils.IsEmpty(request.MemberIds) {
+		memberQuery = fmt.Sprintf(`AND sender_id IN (%s)`, request.MemberIds)
+	}
+	if !utils.IsEmpty(request.ProjectIds) {
+		var orQuery = ""
+		var projectIdArr = strings.Split(request.ProjectIds, ",")
+		for index, projectId := range projectIdArr {
+			if index == 0 {
+				orQuery = fmt.Sprintf(`details @> '[{"projectId": %s}]'`, projectId)
+			} else {
+				orQuery = fmt.Sprint(orQuery, fmt.Sprintf(` OR details @> '[{"projectId": %s}]'`, projectId))
+			}
+		}
+		projectQuery = fmt.Sprintf(`AND (%s)`, orQuery)
+	}
+
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND paid_at < '%s' AND paid_at > '%s' AND details @> '[{"price": 0}]' AND receiver_id = %d %s %s ORDER BY paid_at DESC`,
+		storage.PaymentStatusPaid, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate), userId, memberQuery, projectQuery)
+	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, nil
+		}
+		return nil, err
+	}
+	return payments, nil
 }
 
 func (s *Service) GetApprovalsCount(userId uint64) (int64, error) {
@@ -446,17 +577,32 @@ func (s *Service) BulkPaidBTC(userId uint64, txId string, bulkPays []portal.Bulk
 
 	// validate payment
 	for _, paym := range payments {
-		if paym.Status != storage.PaymentStatusConfirmed {
-			return fmt.Errorf("all payments need to be ready for payment")
+		if paym.Status != storage.PaymentStatusConfirmed && paym.Status != storage.PaymentStatusSent {
+			return fmt.Errorf("%s", "all payments need to be ready for payment")
 		}
 
 		if paym.ReceiverId != userId {
-			return fmt.Errorf("all payments must be yours")
+			return fmt.Errorf("%s", "all payments must be yours")
+		}
+		if len(paym.PaymentSettings) <= 0 {
+			return fmt.Errorf("%s", "Get payment method list failed")
 		}
 
-		if paym.PaymentMethod != utils.PaymentTypeBTC {
-			return fmt.Errorf("all payments needs the payment method to be BTC")
+		hasBTCMethod := false
+		btcAddress := ""
+		for _, paySetting := range paym.PaymentSettings {
+			if paySetting.Type == utils.PaymentTypeBTC {
+				hasBTCMethod = true
+				btcAddress = paySetting.Address
+				break
+			}
 		}
+		if !hasBTCMethod {
+			return fmt.Errorf("%s", "Payment is not set to pay for BTC")
+		}
+
+		paym.PaymentMethod = utils.PaymentTypeBTC
+		paym.PaymentAddress = btcAddress
 		paym.TxId = txId
 		paym.PaidAt = time.Now()
 		paym.Status = storage.PaymentStatusPaid
@@ -466,9 +612,7 @@ func (s *Service) BulkPaidBTC(userId uint64, txId string, bulkPays []portal.Bulk
 	for _, pay := range payments {
 		id := int(pay.Id)
 		pay.ConvertRate = bulkMap[id].Rate
-		pay.PaymentMethod = bulkMap[id].PaymentMethod
 		pay.ConvertTime = time.Unix(bulkMap[id].ConvertTime, 0)
-		pay.PaymentAddress = bulkMap[id].PaymentAddress
 		pay.TxId = txId
 	}
 
@@ -498,6 +642,48 @@ func calculateAmount(request portal.PaymentRequest) (float64, error) {
 		amount += detail.Cost
 	}
 	return amount, nil
+}
+
+func getStartDate(request portal.PaymentRequest) (time.Time, error) {
+	var start_date = time.Now().AddDate(1000, 0, 0)
+	hasStartDate := false
+	for _, detail := range request.Details {
+		fullFormatDate := GetFullFormatDate(detail.Date)
+		parse_date, err := time.Parse("2006/01/02", fullFormatDate)
+		if err == nil && parse_date.Before(start_date) {
+			start_date = parse_date
+			hasStartDate = true
+		}
+	}
+	if !hasStartDate {
+		return time.Now(), fmt.Errorf("%s", "Don't have start date on details")
+	}
+	return start_date, nil
+}
+
+func GetFullFormatDate(inputDate string) string {
+	if utils.IsEmpty(inputDate) {
+		return inputDate
+	}
+	dateArr := strings.Split(inputDate, "/")
+	if len(dateArr) < 3 {
+		return inputDate
+	}
+	year := dateArr[0]
+	month := dateArr[1]
+	day := dateArr[2]
+	if strings.HasPrefix(day, "0") {
+		return inputDate
+	}
+	dayNumber, intErr := strconv.ParseInt(day, 0, 32)
+	if intErr != nil || dayNumber == 0 {
+		return inputDate
+	}
+	if dayNumber >= 10 {
+		return inputDate
+	}
+	dayDisp := fmt.Sprintf("0%d", dayNumber)
+	return fmt.Sprintf("%s/%s/%s", year, month, dayDisp)
 }
 
 // Sync Payment data when user Display name was changed

@@ -13,25 +13,33 @@ type PaymentRequest struct {
 	ReceiverId uint64 `json:"receiverId"`
 
 	// ExternalEmail is the field to send the payment to the person who does not have an account yet
-	ExternalEmail      string                  `validate:"required_if=ContactMethod 1,omitempty,email" json:"externalEmail"`
-	ContactMethod      storage.PaymentContact  `json:"contactMethod"`
-	HourlyRate         float64                 `json:"hourlyRate"`
-	PaymentSettings    storage.PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
-	Amount             float64                 `json:"amount"`
-	Description        string                  `json:"description"`
-	Details            []storage.PaymentDetail `json:"details"`
-	PaymentMethod      utils.Method            `json:"paymentMethod"`
-	PaymentAddress     string                  `json:"paymentAddress"`
-	Status             storage.PaymentStatus   `json:"status"`
-	TxId               string                  `json:"txId"`
-	Token              string                  `json:"token"`
-	ShowDraftRecipient bool                    `json:"showDraftRecipient"`
+	ExternalEmail         string                  `validate:"required_if=ContactMethod 1,omitempty,email" json:"externalEmail"`
+	ContactMethod         storage.PaymentContact  `json:"contactMethod"`
+	HourlyRate            float64                 `json:"hourlyRate"`
+	PaymentSettings       storage.PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
+	Amount                float64                 `json:"amount"`
+	Description           string                  `json:"description"`
+	Details               []storage.PaymentDetail `json:"details"`
+	PaymentMethod         utils.Method            `json:"paymentMethod"`
+	PaymentAddress        string                  `json:"paymentAddress"`
+	Status                storage.PaymentStatus   `json:"status"`
+	TxId                  string                  `json:"txId"`
+	Token                 string                  `json:"token"`
+	ReceiptImg            string                  `json:"receiptImg"`
+	ShowDraftRecipient    bool                    `json:"showDraftRecipient"`
+	ShowDateOnInvoiceLine bool                    `json:"showDateOnInvoiceLine"`
+	ShowProjectOnInvoice  bool                    `json:"showProjectOnInvoice"`
+	ProjectId             uint64                  `json:"projectId"`
+	ProjectName           string                  `json:"projectName"`
 }
 
 type PaymentConfirm struct {
 	Id             uint64       `validate:"required" json:"id"`
 	TxId           string       `json:"txId"`
 	Token          string       `json:"token"`
+	ConvertRate    float64      `json:"convertRate"`
+	ConvertTime    time.Time    `json:"convertTime"`
+	ExpectedAmount float64      `json:"expectedAmount"`
 	PaymentMethod  utils.Method `validate:"required" json:"paymentMethod"`
 	PaymentAddress string       `validate:"required" json:"paymentAddress"`
 }
@@ -40,6 +48,11 @@ func (p *PaymentConfirm) Process(payment *storage.Payment) {
 	payment.TxId = p.TxId
 	payment.PaidAt = time.Now()
 	payment.Status = storage.PaymentStatusPaid
+	payment.ConvertRate = p.ConvertRate
+	payment.ConvertTime = p.ConvertTime
+	payment.ExpectedAmount = p.ExpectedAmount
+	payment.PaymentMethod = p.PaymentMethod
+	payment.PaymentAddress = p.PaymentAddress
 }
 
 type PaymentRequestRate struct {
@@ -47,6 +60,7 @@ type PaymentRequestRate struct {
 	Token          string       `json:"token"`
 	PaymentMethod  utils.Method `json:"paymentMethod"`
 	PaymentAddress string       `json:"paymentAddress"`
+	Exchange       string       `json:"exchange"`
 }
 
 type ListPaymentSettingRequest struct {
@@ -93,16 +107,58 @@ type GetRateResponse struct {
 	ConvertTime int64   `json:"convertTime"`
 }
 type PaymentSummary struct {
-	RequestReceived uint64  `json:"requestReceived`
-	RequestSent     uint64  `json:"requestSent`
-	RequestPaid     uint64  `json:"requestPaid`
-	TotalPaid       float64 `json:"totalPaid`
-	TotalReceived   float64 `json:"totalReceived`
+	RequestReceived uint64  `json:"requestReceived"`
+	RequestSent     uint64  `json:"requestSent"`
+	RequestPaid     uint64  `json:"requestPaid"`
+	TotalPaid       float64 `json:"totalPaid"`
+	TotalReceived   float64 `json:"totalReceived"`
 }
 
 type SummaryFilter struct {
-	Month uint64 `json:"month`
-	Ids   string `json:"ids`
+	Month uint64 `json:"month"`
+	Ids   string `json:"ids"`
+}
+
+type PaymentReport struct {
+	Month        string              `json:"month"`
+	PaymentUnits []PaymentReportUnit `json:"paymentUnits"`
+}
+
+type PaymentReportUnit struct {
+	DisplayName    string       `json:"displayName"`
+	Amount         float64      `json:"amount"`
+	ExpectedAmount float64      `json:"expectedAmount"`
+	PaymentMethod  utils.Method `json:"paymentMethod"`
+}
+
+type InvoiceReport struct {
+	Project      string              `json:"project"`
+	DisplayName  string              `json:"displayName"`
+	InvoiceUnits []InvoiceReportUnit `json:"invoiceUnits"`
+}
+
+type InvoiceReportUnit struct {
+	Date        string  `json:"date"`
+	Hours       float64 `json:"hours"`
+	Description string  `json:"description"`
+}
+type AddressReport struct {
+	PaymentMethod string              `json:"paymentMethod"`
+	DisplayName   string              `json:"displayName"`
+	AddressUnits  []AddressReportUnit `json:"addressUnits"`
+}
+
+type AddressReportUnit struct {
+	DateTime       string  `json:"dateTime"`
+	Amount         float64 `json:"amount"`
+	ExpectedAmount float64 `json:"expectedAmount"`
+}
+
+type ReportFilter struct {
+	StartDate  time.Time
+	EndDate    time.Time
+	MemberIds  string
+	ProjectIds string
 }
 
 type ProductForDelete struct {

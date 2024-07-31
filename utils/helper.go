@@ -8,10 +8,14 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
+	"strings"
+	"time"
+	"unicode/utf8"
 
 	"github.com/gorilla/schema"
 )
@@ -117,7 +121,7 @@ func ImageToBase64(img image.Image) (string, error) {
 	return imgBase64Str, nil
 }
 
-var imagePath = getBinPath() + "\\upload\\product-image"
+var imagePath = getBinPath() + "\\upload\\images"
 
 func getBinPath() string {
 	e, err := os.Executable()
@@ -126,6 +130,10 @@ func getBinPath() string {
 	}
 	path := path.Dir(e)
 	return path
+}
+
+func GetImagePath() string {
+	return imagePath
 }
 
 func ConvertImageToBase64(fileName string) string {
@@ -162,4 +170,37 @@ func ContainsUint64(inputArr []uint64, value uint64) bool {
 		}
 	}
 	return false
+}
+
+// convert time to string, format yyyy-mm-dd hh:MM:ss
+func TimeToStringWithoutTimeZone(date time.Time) string {
+	return date.Format("2006-01-02 15:04:05")
+}
+
+func GetUserDisplayName(userName string, displayName string) string {
+	if IsEmpty(displayName) {
+		return userName
+	}
+	return displayName
+}
+
+// handler date format (YYYY/MM/DD)
+func HandlerDateFormat(date string) string {
+	dateArr := strings.Split(date, "/")
+	if len(dateArr) < 3 {
+		return date
+	}
+
+	if utf8.RuneCountInString(dateArr[1]) == 1 {
+		dateArr[1] = fmt.Sprintf("0%s", dateArr[1])
+	}
+
+	if utf8.RuneCountInString(dateArr[2]) == 1 {
+		dateArr[2] = fmt.Sprintf("0%s", dateArr[2])
+	}
+	return strings.Join(dateArr, "/")
+}
+
+func GetSecondDurationFromStartEnd(startTime, endTime time.Time) uint64 {
+	return uint64(math.Floor(endTime.Sub(startTime).Seconds()))
 }
