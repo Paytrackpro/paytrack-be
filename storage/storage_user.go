@@ -57,6 +57,8 @@ type User struct {
 	Secret                string          `json:"-"`
 	Otp                   bool            `json:"otp"`
 	Locked                bool            `json:"locked"`
+	UseBTCPay             bool            `json:"useBtcPay"`
+	StoreId               string          `json:"storeId"`
 	ShowDraftForRecipient bool            `json:"showDraftForRecipient"`
 	ShowDateOnInvoiceLine bool            `json:"showDateOnInvoiceLine"`
 }

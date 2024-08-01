@@ -99,6 +99,11 @@ type UpdateUserRequest struct {
 	ShowDateOnInvoiceLine bool                     `json:"showDateOnInvoiceLine"`
 	HidePaid              bool                     `json:"hidePaid"`
 	Role                  utils.UserRole           `json:"role"`
+	StoreId               string                   `json:"storeId"`
+}
+
+type UseBTCPay struct {
+	UseBTCPay bool `json:"useBtcPay"`
 }
 
 type UserWithList struct {

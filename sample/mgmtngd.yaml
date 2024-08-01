@@ -16,6 +16,12 @@ webServer:
     exchange: "bittrex"
     allowexchanges: "binance,kucoin,mexc"
     coimarketcapKey: "change me"
+  btcpay:
+    # config to btcpay stores and client for checkout of shop
+    url: "https://mainnet.demo.btcpayserver.org"
+    username: "hudaecosystem@gmail.com"
+    password: "Khayvi2010@"
+    apikey: "fd4754e06082805b17142a8e2dba3ae5a3d05357"
 
 # Config log level: "trace", "debug", "info", "warn", "error", "off"
 logLevel: "debug"
