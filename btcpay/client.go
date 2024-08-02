@@ -26,12 +26,11 @@ func NewClient(url string, apiKey APIKey) *Client {
 	return client
 }
 
-func NewBasicClient(url, username, password string) *Client {
+func NewBasicClient(url string, apiKey string) *Client {
 	client := &Client{
-		URL:      url,
-		Username: username,
-		Password: password,
-		Http:     &http.Client{},
+		URL:    url,
+		APIKey: APIKey(apiKey),
+		Http:   &http.Client{},
 	}
 	client.Store = &Store{Client: client}
 	client.Invoice = &Invoice{Client: client, Store: client.Store}

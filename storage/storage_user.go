@@ -59,6 +59,7 @@ type User struct {
 	Locked                bool            `json:"locked"`
 	UseBTCPay             bool            `json:"useBtcPay"`
 	StoreId               string          `json:"storeId"`
+	BtcKey                string          `json:"btcKey"`
 	ShowDraftForRecipient bool            `json:"showDraftForRecipient"`
 	ShowDateOnInvoiceLine bool            `json:"showDateOnInvoiceLine"`
 }

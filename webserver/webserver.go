@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"code.cryptopower.dev/mgmt-ng/be/btcpay"
 	"code.cryptopower.dev/mgmt-ng/be/email"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
@@ -31,15 +30,14 @@ type Config struct {
 }
 
 type WebServer struct {
-	mux          *chi.Mux
-	conf         *Config
-	db           storage.Storage
-	validator    *validator.Validate
-	mail         *email.MailClient
-	crypto       *utils.Cryptography
-	service      *service.Service
-	socket       *socketio.Server
-	btcpayClient *btcpay.Client
+	mux       *chi.Mux
+	conf      *Config
+	db        storage.Storage
+	validator *validator.Validate
+	mail      *email.MailClient
+	crypto    *utils.Cryptography
+	service   *service.Service
+	socket    *socketio.Server
 }
 
 type key string
@@ -65,17 +63,15 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 
 	socket := NewSocketServer()
 	sv := service.NewService(c.Service, db.GetDB(), socket)
-	btcpayClient := btcpay.NewBasicClient(c.BtcPay.URL, c.BtcPay.Username, c.BtcPay.Password)
 	return &WebServer{
-		mux:          chi.NewRouter(),
-		conf:         &c,
-		db:           db,
-		validator:    validator.New(),
-		mail:         mailClient,
-		crypto:       crypto,
-		service:      sv,
-		socket:       socket,
-		btcpayClient: btcpayClient,
+		mux:       chi.NewRouter(),
+		conf:      &c,
+		db:        db,
+		validator: validator.New(),
+		mail:      mailClient,
+		crypto:    crypto,
+		service:   sv,
+		socket:    socket,
 	}, nil
 }
 

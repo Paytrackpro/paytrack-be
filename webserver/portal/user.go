@@ -100,10 +100,8 @@ type UpdateUserRequest struct {
 	HidePaid              bool                     `json:"hidePaid"`
 	Role                  utils.UserRole           `json:"role"`
 	StoreId               string                   `json:"storeId"`
-}
-
-type UseBTCPay struct {
-	UseBTCPay bool `json:"useBtcPay"`
+	UseBTCPay             bool                     `json:"useBtcPay"`
+	BtcKey                string                   `json:"btcKey"`
 }
 
 type UserWithList struct {

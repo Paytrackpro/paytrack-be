@@ -1,12 +1,9 @@
 package service
 
 import (
-	"context"
 	"fmt"
-	"net/http"
 	"strings"
 
-	"code.cryptopower.dev/mgmt-ng/be/btcpay"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
@@ -109,50 +106,16 @@ func (s *Service) GetRunningTimer(userId uint64) (*storage.UserTimer, error) {
 	return &userTimer, nil
 }
 
-func (s *Service) GetStoreIdFromUser(userId uint64) (string, error) {
+func (s *Service) GetStoreIdAndApikeyFromUser(userId uint64) (string, string, error) {
 	var user storage.User
-	if err := s.db.Where("id = ? AND use_btc_pay AND coalesce(store_id, '') <> ''", userId).First(&user).Error; err != nil {
+	if err := s.db.Where("id = ? AND use_btc_pay AND coalesce(store_id, '') <> '' AND coalesce(btc_key, '') <> ''", userId).First(&user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return "", utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
+			return "", "", utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
 		}
 		log.Error("GetStoreIdFromUser:get user fail with error: ", err)
-		return "", err
+		return "", "", err
 	}
-	return user.StoreId, nil
-}
-
-func (s *Service) UpdateBTCPay(id uint64, useBtcPay bool, btcpayClient *btcpay.Client) (storage.User, error) {
-	var user storage.User
-	if err := s.db.Where("id = ?", id).First(&user).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return user, utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
-		}
-		log.Error("UpdateUserInfo:get user fail with error: ", err)
-		return user, err
-	}
-	//check storeId and create new store
-	if useBtcPay && utils.IsEmpty(user.StoreId) {
-		//create store from btcpay server
-		ctx, _ := context.WithCancel(context.Background())
-		storeRes, statusCode, err := btcpayClient.CreateStore(ctx, &btcpay.StoreRequest{Name: user.UserName})
-		if err != nil || statusCode != http.StatusOK {
-			fmt.Println("Error: ", err)
-			return user, fmt.Errorf("Create store in btcpay failed")
-		}
-		user.StoreId = string(storeRes.ID)
-	}
-	utils.SetValue(&user.UseBTCPay, useBtcPay)
-	tx := s.db.Begin()
-
-	if err := tx.Save(&user).Error; err != nil {
-		tx.Rollback()
-		log.Error("UpdateUserInfo:save user fail with error: ", err)
-		return user, err
-	}
-
-	tx.Commit()
-
-	return user, nil
+	return user.StoreId, user.BtcKey, nil
 }
 
 func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, isAdmin bool) (storage.User, error) {
@@ -182,7 +145,11 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 	utils.SetValue(&user.ShowDateOnInvoiceLine, userInfo.ShowDateOnInvoiceLine)
 	utils.SetValue(&user.ShowDraftForRecipient, userInfo.ShowDraftForRecipient)
 	utils.SetValue(&user.HidePaid, userInfo.HidePaid)
-
+	utils.SetValue(&user.UseBTCPay, userInfo.UseBTCPay)
+	if userInfo.UseBTCPay {
+		utils.SetValue(&user.BtcKey, userInfo.BtcKey)
+		utils.SetValue(&user.StoreId, userInfo.StoreId)
+	}
 	if isAdmin {
 		user.Role = userInfo.Role
 	}

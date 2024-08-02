@@ -70,6 +70,13 @@ func (p *PaymentStatus) UnmarshalJSON(v []byte) error {
 	return p.UnmarshalText([]byte(val))
 }
 
+type PaidBy int
+
+const (
+	PaidByPaymentSettings PaidBy = iota
+	PaidByBTCPay
+)
+
 const (
 	PaymentStatusCreated PaymentStatus = iota
 	PaymentStatusSent
@@ -175,14 +182,16 @@ type Payment struct {
 	UpdatedAt             time.Time       `json:"updatedAt"`
 	SentAt                time.Time       `json:"sentAt"`
 	PaidAt                time.Time       `json:"paidAt"`
+	PaidBy                int             `json:"paidBy"`
 	ReceiptImg            string          `json:"receiptImg"`
 	ShowDraftRecipient    bool            `json:"showDraftRecipient"`
 	ShowDateOnInvoiceLine bool            `json:"showDateOnInvoiceLine"`
 	ShowProjectOnInvoice  bool            `json:"showProjectOnInvoice"`
 	ProjectId             uint64          `json:"projectId"`
 	ProjectName           string          `json:"projectName"`
-	BTCPayStoreId         string          `json:"bTCPayStoreId"`
-	BTCPayInvoiceId       string          `json:"bTCPayInvoiceId"`
+	BtcPayStoreId         string          `json:"btcPayStoreId"`
+	BtcPayInvoiceId       string          `json:"btcPayInvoiceId"`
+	CheckoutLink          string          `json:"checkoutLink"`
 	StartDate             time.Time       `json:"startDate"`
 }
 

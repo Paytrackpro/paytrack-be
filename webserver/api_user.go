@@ -109,24 +109,6 @@ func (a *apiUser) adminUpdateUser(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, user)
 }
 
-func (a *apiUser) updateBTCPay(w http.ResponseWriter, r *http.Request) {
-	claims, _ := a.credentialsInfo(r)
-	var useBTCPay portal.UseBTCPay
-	err := a.parseJSONAndValidate(r, &useBTCPay)
-	if err != nil {
-		utils.Response(w, http.StatusBadRequest, err, nil)
-		return
-	}
-
-	user, err := a.service.UpdateBTCPay(claims.Id, useBTCPay.UseBTCPay, a.btcpayClient)
-	if err != nil {
-		utils.Response(w, http.StatusInternalServerError, err, nil)
-		return
-	}
-
-	utils.ResponseOK(w, user)
-}
-
 func (a *apiUser) update(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
 

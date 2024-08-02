@@ -38,7 +38,6 @@ func (s *WebServer) Route() {
 			var userRouter = apiUser{WebServer: s}
 			r.Get("/info", userRouter.info)
 			r.Put("/info", userRouter.update)
-			r.Put("/use-btcpay", userRouter.updateBTCPay)
 			r.Put("/change-password", userRouter.changePassword)
 			r.Put("/hide-paid", userRouter.hidePaid)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
@@ -98,6 +97,7 @@ func (s *WebServer) Route() {
 			r.Use(s.loggedInMiddleware)
 			var apiRouter = apiBTCPay{WebServer: s}
 			r.Post("/create-invoice", apiRouter.createInvoice)
+			r.Post("/mark-payment-paid", apiRouter.markPaymentPaid)
 		})
 
 		r.Route("/order", func(r chi.Router) {

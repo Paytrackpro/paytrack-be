@@ -51,6 +51,7 @@ type PaymentConfirm struct {
 func (p *PaymentConfirm) Process(payment *storage.Payment) {
 	payment.TxId = p.TxId
 	payment.PaidAt = time.Now()
+	payment.PaidBy = int(storage.PaidByPaymentSettings)
 	payment.Status = storage.PaymentStatusPaid
 	payment.ConvertRate = p.ConvertRate
 	payment.ConvertTime = p.ConvertTime
