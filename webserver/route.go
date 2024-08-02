@@ -94,6 +94,12 @@ func (s *WebServer) Route() {
 			r.Delete("/delete", apiRouter.deleteCart)
 		})
 
+		r.Route("/btcpay", func(r chi.Router) {
+			r.Use(s.loggedInMiddleware)
+			var apiRouter = apiBTCPay{WebServer: s}
+			r.Post("/create-invoice", apiRouter.createInvoice)
+		})
+
 		r.Route("/order", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)
 			var apiRouter = apiOrder{WebServer: s}

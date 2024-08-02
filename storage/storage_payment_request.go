@@ -181,6 +181,8 @@ type Payment struct {
 	ShowProjectOnInvoice  bool            `json:"showProjectOnInvoice"`
 	ProjectId             uint64          `json:"projectId"`
 	ProjectName           string          `json:"projectName"`
+	BTCPayStoreId         string          `json:"bTCPayStoreId"`
+	BTCPayInvoiceId       string          `json:"bTCPayInvoiceId"`
 	StartDate             time.Time       `json:"startDate"`
 }
 

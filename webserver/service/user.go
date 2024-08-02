@@ -109,6 +109,18 @@ func (s *Service) GetRunningTimer(userId uint64) (*storage.UserTimer, error) {
 	return &userTimer, nil
 }
 
+func (s *Service) GetStoreIdFromUser(userId uint64) (string, error) {
+	var user storage.User
+	if err := s.db.Where("id = ? AND use_btc_pay AND coalesce(store_id, '') <> ''", userId).First(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return "", utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
+		}
+		log.Error("GetStoreIdFromUser:get user fail with error: ", err)
+		return "", err
+	}
+	return user.StoreId, nil
+}
+
 func (s *Service) UpdateBTCPay(id uint64, useBtcPay bool, btcpayClient *btcpay.Client) (storage.User, error) {
 	var user storage.User
 	if err := s.db.Where("id = ?", id).First(&user).Error; err != nil {

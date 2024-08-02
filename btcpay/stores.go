@@ -18,7 +18,6 @@ func (c *Client) GetStores(ctx context.Context) ([]*StoreResponse, int, error) {
 
 // create a new store
 func (c *Client) CreateStore(ctx context.Context, storeRequest *StoreRequest) (*StoreResponse, int, error) {
-	fmt.Println("c: ", c.URL)
 	endpoint := fmt.Sprintf("%s/api/v1/stores", c.URL)
 	var dataRes StoreResponse
 	statusCode, err := c.doRequest(ctx, endpoint, "POST", &dataRes, storeRequest)

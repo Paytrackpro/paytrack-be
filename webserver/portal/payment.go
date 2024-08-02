@@ -33,6 +33,10 @@ type PaymentRequest struct {
 	ProjectName           string                  `json:"projectName"`
 }
 
+type PaymentBTCPayInvoice struct {
+	Id uint64 `json:"id"`
+}
+
 type PaymentConfirm struct {
 	Id             uint64       `validate:"required" json:"id"`
 	TxId           string       `json:"txId"`
