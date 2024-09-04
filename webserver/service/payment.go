@@ -3,6 +3,7 @@ package service
 import (
 	"database/sql"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -183,20 +184,39 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 	if payment.Status == storage.PaymentStatusSent {
 		//if status is sent, set sentAt is now
 		payment.SentAt = time.Now()
-		approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
+		//get project ids on payment
+		projectIds := make([]string, 0)
+		if len(payment.Details) > 0 {
+			for _, detail := range payment.Details {
+				if detail.ProjectId < 1 {
+					continue
+				}
+				projectIdStr := fmt.Sprintf("%d", detail.ProjectId)
+				if !slices.Contains(projectIds, projectIdStr) {
+					projectIds = append(projectIds, projectIdStr)
+				}
+			}
+		}
+		//check approver on project
+		approversList, err := s.GetProjectApprovers(projectIds)
 		if err != nil {
 			return nil, err
 		}
 
-		if len(approverSettings) > 0 {
+		if len(approversList) > 0 {
 			approvers := storage.Approvers{}
-			for _, approver := range approverSettings {
-				approvers = append(approvers, storage.Approver{
-					ApproverId:   approver.ApproverId,
-					ApproverName: approver.ApproverName,
-					IsApproved:   false,
-					ShowCost:     approver.ShowCost,
-				})
+			for _, approver := range approversList {
+				tempApprover := storage.Approver{
+					ApproverId: approver.MemberId,
+					IsApproved: false,
+					ShowCost:   true,
+				}
+				if utils.IsEmpty(approver.DisplayName) {
+					tempApprover.ApproverName = approver.UserName
+				} else {
+					tempApprover.ApproverName = approver.DisplayName
+				}
+				approvers = append(approvers, tempApprover)
 			}
 			payment.Approvers = approvers
 		}
@@ -206,6 +226,38 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 		return nil, err
 	}
 	return &payment, nil
+}
+
+func (s *Service) GetProjectApprovers(projectIds []string) (storage.Members, error) {
+	if len(projectIds) < 1 {
+		return make(storage.Members, 0), nil
+	}
+	projectIdsStr := strings.Join(projectIds, ",")
+	projectIdsStr = fmt.Sprintf("(%s)", projectIdsStr)
+	var projects []storage.Project
+	var approvers []storage.Member
+	query := fmt.Sprintf(`SELECT * FROM projects WHERE project_id IN %s AND approvers IS NOT NULL`, projectIdsStr)
+	if err := s.db.Raw(query).Scan(&projects).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return make(storage.Members, 0), nil
+		}
+		return nil, err
+	}
+	for _, project := range projects {
+		for _, approver := range project.Approvers {
+			exist := false
+			for _, approveUser := range approvers {
+				if approveUser.MemberId == approver.MemberId {
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				approvers = append(approvers, approver)
+			}
+		}
+	}
+	return approvers, nil
 }
 
 func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest) (*storage.Payment, error) {
@@ -286,20 +338,39 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 			if payment.Status != request.Status || (request.ReceiverId != payment.ReceiverId && isReceiverIdNotEmpty) {
 				// update sentAt when status from draft to sent
 				payment.SentAt = time.Now()
-				approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
+				//get project ids on payment
+				projectIds := make([]string, 0)
+				if len(payment.Details) > 0 {
+					for _, detail := range payment.Details {
+						if detail.ProjectId < 1 {
+							continue
+						}
+						projectIdStr := fmt.Sprintf("%d", detail.ProjectId)
+						if !slices.Contains(projectIds, projectIdStr) {
+							projectIds = append(projectIds, projectIdStr)
+						}
+					}
+				}
+				//check approver on project
+				approversList, err := s.GetProjectApprovers(projectIds)
 				if err != nil {
 					return nil, err
 				}
 
-				if len(approverSettings) > 0 {
+				if len(approversList) > 0 {
 					approvers := storage.Approvers{}
-					for _, approver := range approverSettings {
-						approvers = append(approvers, storage.Approver{
-							ApproverId:   approver.ApproverId,
-							ApproverName: approver.ApproverName,
-							IsApproved:   false,
-							ShowCost:     approver.ShowCost,
-						})
+					for _, approver := range approversList {
+						tempApprover := storage.Approver{
+							ApproverId: approver.MemberId,
+							IsApproved: false,
+							ShowCost:   true,
+						}
+						if utils.IsEmpty(approver.DisplayName) {
+							tempApprover.ApproverName = approver.UserName
+						} else {
+							tempApprover.ApproverName = approver.DisplayName
+						}
+						approvers = append(approvers, tempApprover)
 					}
 					payment.Approvers = approvers
 				}
@@ -358,7 +429,26 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 			buildCount = buildCount.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
 		}
 	} else if request.RequestType == storage.PaymentTypeApproval {
-		countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]'`, storage.PaymentStatusSent, userId)
+		var projectIds []uint64
+		//Get project list whose approver is the logged in user
+		projectQuery := fmt.Sprintf(`SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]'`, userId)
+		if err := s.db.Raw(projectQuery).Scan(&projectIds).Error; err != nil {
+			projectIds = make([]uint64, 0)
+		}
+
+		detailQueryParts := make([]string, 0)
+
+		for _, projectId := range projectIds {
+			part := fmt.Sprintf(`details @> '[{"projectId": %d}]'`, projectId)
+			detailQueryParts = append(detailQueryParts, part)
+		}
+
+		detailPart := ""
+		if len(detailQueryParts) >= 1 {
+			detailPart = " OR "
+			detailPart = fmt.Sprintf("%s%s", detailPart, strings.Join(detailQueryParts, " OR "))
+		}
+		countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s)`, storage.PaymentStatusSent, userId, detailPart)
 		if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return payments, 0, nil
@@ -372,7 +462,7 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		}
 
 		offset := request.Page * request.Size
-		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]' LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, request.Size, offset)
+		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s) LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, detailPart, request.Size, offset)
 		if err := s.db.Raw(query).Scan(&payments).Order(request.Sort.Order).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return payments, 0, nil
@@ -492,8 +582,25 @@ func (s *Service) GetForInvoiceReport(userId uint64, request portal.ReportFilter
 }
 
 func (s *Service) GetApprovalsCount(userId uint64) (int64, error) {
+	var projectIds []uint64
+	//Get project list whose approver is the logged in user
+	projectQuery := fmt.Sprintf(`SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]'`, userId)
+	if err := s.db.Raw(projectQuery).Scan(&projectIds).Error; err != nil {
+		projectIds = make([]uint64, 0)
+	}
+	detailQueryParts := make([]string, 0)
+	for _, projectId := range projectIds {
+		part := fmt.Sprintf(`details @> '[{"projectId": %d}]'`, projectId)
+		detailQueryParts = append(detailQueryParts, part)
+	}
+
+	detailPart := ""
+	if len(detailQueryParts) >= 1 {
+		detailPart = " OR "
+		detailPart = fmt.Sprintf("%s%s", detailPart, strings.Join(detailQueryParts, " OR "))
+	}
 	var count int64
-	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d, "isApproved": false}]'`, storage.PaymentStatusSent, userId)
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s)`, storage.PaymentStatusSent, userId, detailPart)
 	if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return 0, nil
