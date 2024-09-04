@@ -197,10 +197,25 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 				}
 			}
 		}
-		//check approver on project
-		approversList, err := s.GetProjectApprovers(projectIds)
+
+		projects, err := s.GetPaymentProjects(projectIds)
 		if err != nil {
 			return nil, err
+		}
+		var approversList []storage.Member
+		for _, project := range projects {
+			for _, approver := range project.Approvers {
+				exist := false
+				for _, approveUser := range approversList {
+					if approveUser.MemberId == approver.MemberId {
+						exist = true
+						break
+					}
+				}
+				if !exist {
+					approversList = append(approversList, approver)
+				}
+			}
 		}
 
 		if len(approversList) > 0 {
@@ -220,6 +235,41 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 			}
 			payment.Approvers = approvers
 		}
+		tx := s.db.Begin()
+		//check receiver and project assign
+		for _, project := range projects {
+			receiverIsMember := false
+			for _, member := range project.Members {
+				if member.MemberId == payment.ReceiverId {
+					receiverIsMember = true
+					break
+				}
+			}
+			//if not is member, insert to member
+			if !receiverIsMember {
+				//get receiver user info
+				userInfo, err := s.GetUserInfo(payment.ReceiverId)
+				if err != nil {
+					userInfo = storage.User{
+						Id:          payment.ReceiverId,
+						UserName:    payment.ReceiverName,
+						DisplayName: payment.ReceiverDisplayName,
+						Role:        utils.UserRoleNone,
+					}
+				}
+				project.Members = append(project.Members, storage.Member{
+					MemberId:    userInfo.Id,
+					UserName:    userInfo.UserName,
+					DisplayName: userInfo.DisplayName,
+					Role:        int(userInfo.Role),
+				})
+				if err := tx.Save(&project).Error; err != nil {
+					tx.Rollback()
+					return nil, err
+				}
+			}
+		}
+		tx.Commit()
 	}
 
 	if err := s.db.Save(&payment).Error; err != nil {
@@ -228,21 +278,30 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 	return &payment, nil
 }
 
-func (s *Service) GetProjectApprovers(projectIds []string) (storage.Members, error) {
+func (s *Service) GetPaymentProjects(projectIds []string) ([]storage.Project, error) {
 	if len(projectIds) < 1 {
-		return make(storage.Members, 0), nil
+		return make([]storage.Project, 0), nil
 	}
 	projectIdsStr := strings.Join(projectIds, ",")
 	projectIdsStr = fmt.Sprintf("(%s)", projectIdsStr)
 	var projects []storage.Project
-	var approvers []storage.Member
 	query := fmt.Sprintf(`SELECT * FROM projects WHERE project_id IN %s AND approvers IS NOT NULL`, projectIdsStr)
 	if err := s.db.Raw(query).Scan(&projects).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return make(storage.Members, 0), nil
+			return make([]storage.Project, 0), nil
 		}
 		return nil, err
 	}
+
+	return projects, nil
+}
+
+func (s *Service) GetProjectApprovers(projectIds []string) (storage.Members, error) {
+	projects, err := s.GetPaymentProjects(projectIds)
+	if err != nil {
+		return make(storage.Members, 0), nil
+	}
+	var approvers []storage.Member
 	for _, project := range projects {
 		for _, approver := range project.Approvers {
 			exist := false
