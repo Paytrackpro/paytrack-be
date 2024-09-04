@@ -35,7 +35,7 @@ func (s *Service) CreateNewProject(userId uint64, projectRequest portal.ProjectR
 
 func (s *Service) GetMyProjects(userId uint64) ([]storage.Project, error) {
 	projects := make([]storage.Project, 0)
-	query := fmt.Sprintf(`SELECT * FROM projects WHERE status = %d AND members @> '[{"memberId": %d}]'`, storage.ProjectConfirmed, userId)
+	query := fmt.Sprintf(`SELECT * FROM projects WHERE status = %d AND (members @> '[{"memberId": %d}]' OR creator_id = %d)`, storage.ProjectConfirmed, userId, userId)
 	if err := s.db.Raw(query).Scan(&projects).Error; err != nil {
 		return nil, err
 	}
