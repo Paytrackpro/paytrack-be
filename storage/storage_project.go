@@ -16,6 +16,8 @@ type Project struct {
 	ProjectId   uint64        `gorm:"primarykey" json:"projectId"`
 	ProjectName string        `json:"projectName"`
 	Members     Members       `json:"members" gorm:"type:jsonb"`
+	Approvers   Members       `json:"approvers" gorm:"type:jsonb"`
+	Description string        `json:"description"`
 	CreatorId   uint64        `json:"creatorId"`
 	Status      ProjectStatus `json:"status"`
 	CreatedAt   time.Time     `json:"createdAt"`
