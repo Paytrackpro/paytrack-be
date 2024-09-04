@@ -133,6 +133,7 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 	utils.SetValue(&user.ShowDateOnInvoiceLine, userInfo.ShowDateOnInvoiceLine)
 	utils.SetValue(&user.ShowDraftForRecipient, userInfo.ShowDraftForRecipient)
 	utils.SetValue(&user.HidePaid, userInfo.HidePaid)
+	utils.SetValue(&user.ShowApproved, userInfo.ShowApproved)
 
 	if isAdmin {
 		user.Role = userInfo.Role
