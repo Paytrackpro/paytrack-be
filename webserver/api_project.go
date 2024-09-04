@@ -21,6 +21,20 @@ func (a *apiProject) createProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims, _ := a.credentialsInfo(r)
+	memberArr := make(storage.Members, 0)
+	memberArr = append(memberArr, storage.Member{
+		MemberId:    claims.Id,
+		UserName:    claims.UserName,
+		DisplayName: claims.DisplayName,
+		Role:        int(claims.UserRole),
+	})
+	for _, member := range body.Members {
+		if member.MemberId == claims.Id {
+			continue
+		}
+		memberArr = append(memberArr, member)
+	}
+	body.Members = memberArr
 	project, err := a.service.CreateNewProject(claims.Id, body)
 	if err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
@@ -68,6 +82,20 @@ func (a *apiProject) editProject(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
+	memberArr := make(storage.Members, 0)
+	memberArr = append(memberArr, storage.Member{
+		MemberId:    claims.Id,
+		UserName:    claims.UserName,
+		DisplayName: claims.DisplayName,
+		Role:        int(claims.UserRole),
+	})
+	for _, member := range body.Members {
+		if member.MemberId == claims.Id {
+			continue
+		}
+		memberArr = append(memberArr, member)
+	}
+	body.Members = memberArr
 	project, err := a.service.UpdateProject(claims.Id, body)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
