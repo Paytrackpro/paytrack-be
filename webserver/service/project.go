@@ -14,6 +14,8 @@ func (s *Service) CreateNewProject(userId uint64, projectRequest portal.ProjectR
 	newProject := storage.Project{
 		ProjectName: projectRequest.ProjectName,
 		Members:     projectRequest.Members,
+		Approvers:   projectRequest.Approvers,
+		Description: projectRequest.ProjectName,
 		CreatorId:   userId,
 		Status:      storage.ProjectConfirmed,
 		CreatedAt:   time.Now(),
@@ -53,6 +55,8 @@ func (s *Service) UpdateProject(userId uint64, projectRequest portal.ProjectRequ
 	project.ProjectName = projectRequest.ProjectName
 	project.Members = projectRequest.Members
 	project.UpdatedAt = time.Now()
+	project.Approvers = projectRequest.Approvers
+	project.Description = projectRequest.Description
 
 	tx := s.db.Begin()
 
