@@ -448,7 +448,11 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 			detailPart = " OR "
 			detailPart = fmt.Sprintf("%s%s", detailPart, strings.Join(detailQueryParts, " OR "))
 		}
-		countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s)`, storage.PaymentStatusSent, userId, detailPart)
+		isApprovedQuery := ""
+		if !request.ShowApproved {
+			isApprovedQuery = `, "isApproved": false`
+		}
+		countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d%s}]' AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s)`, storage.PaymentStatusSent, userId, isApprovedQuery, userId, detailPart)
 		if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return payments, 0, nil
@@ -462,7 +466,7 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		}
 
 		offset := request.Page * request.Size
-		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s) LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, detailPart, request.Size, offset)
+		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d%s}]' AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s) LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, isApprovedQuery, userId, detailPart, request.Size, offset)
 		if err := s.db.Raw(query).Scan(&payments).Order(request.Sort.Order).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return payments, 0, nil
