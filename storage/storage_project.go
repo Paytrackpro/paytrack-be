@@ -19,6 +19,7 @@ type Project struct {
 	Approvers   Members       `json:"approvers" gorm:"type:jsonb"`
 	Description string        `json:"description"`
 	CreatorId   uint64        `json:"creatorId"`
+	CreatorName string        `json:"creatorName"`
 	Status      ProjectStatus `json:"status"`
 	CreatedAt   time.Time     `json:"createdAt"`
 	UpdatedAt   time.Time     `json:"updatedAt"`

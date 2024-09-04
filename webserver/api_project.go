@@ -7,6 +7,7 @@ import (
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
 	"github.com/go-chi/chi/v5"
+	"gorm.io/gorm"
 )
 
 type apiProject struct {
@@ -35,7 +36,11 @@ func (a *apiProject) createProject(w http.ResponseWriter, r *http.Request) {
 		memberArr = append(memberArr, member)
 	}
 	body.Members = memberArr
-	project, err := a.service.CreateNewProject(claims.Id, body)
+	creatorName := claims.UserName
+	if !utils.IsEmpty(claims.DisplayName) {
+		creatorName = claims.DisplayName
+	}
+	project, err := a.service.CreateNewProject(claims.Id, creatorName, body)
 	if err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 	}
@@ -44,15 +49,11 @@ func (a *apiProject) createProject(w http.ResponseWriter, r *http.Request) {
 
 func (a *apiProject) getProjects(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
-	filter := storage.ProjectFilter{
-		CreatorId: claims.Id,
-	}
-	var projects []storage.Project
-	if err := a.db.GetList(&filter, &projects); err != nil {
+	projects, err := a.service.GetMyProjects(claims.Id)
+	if err != nil && err == gorm.ErrRecordNotFound {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-
 	utils.ResponseOK(w, projects)
 }
 

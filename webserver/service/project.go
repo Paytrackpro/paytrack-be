@@ -10,13 +10,14 @@ import (
 	"gorm.io/gorm"
 )
 
-func (s *Service) CreateNewProject(userId uint64, projectRequest portal.ProjectRequest) (*storage.Project, error) {
+func (s *Service) CreateNewProject(userId uint64, creatorName string, projectRequest portal.ProjectRequest) (*storage.Project, error) {
 	newProject := storage.Project{
 		ProjectName: projectRequest.ProjectName,
 		Members:     projectRequest.Members,
 		Approvers:   projectRequest.Approvers,
 		Description: projectRequest.ProjectName,
 		CreatorId:   userId,
+		CreatorName: creatorName,
 		Status:      storage.ProjectConfirmed,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
@@ -39,7 +40,26 @@ func (s *Service) GetMyProjects(userId uint64) ([]storage.Project, error) {
 	if err := s.db.Raw(query).Scan(&projects).Error; err != nil {
 		return nil, err
 	}
-	return projects, nil
+	tx := s.db.Begin()
+	result := make([]storage.Project, 0)
+	for _, project := range projects {
+		if project.CreatorId > 0 && utils.IsEmpty(project.CreatorName) {
+			creator, err := s.GetUserInfo(project.CreatorId)
+			if err == nil {
+				project.CreatorName = creator.UserName
+				if !utils.IsEmpty(creator.DisplayName) {
+					project.CreatorName = creator.DisplayName
+				}
+				if err := tx.Save(&project).Error; err != nil {
+					tx.Rollback()
+					return projects, err
+				}
+			}
+		}
+		result = append(result, project)
+	}
+	tx.Commit()
+	return result, nil
 }
 
 func (s *Service) UpdateProject(userId uint64, projectRequest portal.ProjectRequest) (storage.Project, error) {
@@ -57,7 +77,15 @@ func (s *Service) UpdateProject(userId uint64, projectRequest portal.ProjectRequ
 	project.UpdatedAt = time.Now()
 	project.Approvers = projectRequest.Approvers
 	project.Description = projectRequest.Description
-
+	if utils.IsEmpty(project.CreatorName) {
+		userInfo, err := s.GetUserInfo(project.CreatorId)
+		if err == nil {
+			project.CreatorName = userInfo.UserName
+			if !utils.IsEmpty(userInfo.DisplayName) {
+				project.CreatorName = userInfo.DisplayName
+			}
+		}
+	}
 	tx := s.db.Begin()
 
 	if err := tx.Save(&project).Error; err != nil {
