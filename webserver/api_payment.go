@@ -401,7 +401,7 @@ func (a *apiPayment) deleteDraft(w http.ResponseWriter, r *http.Request) {
 
 func (a *apiPayment) getInitializationCount(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.parseBearer(r)
-	approvalCount, err1 := a.service.GetApprovalsCount(claims.Id)
+	approvalCount, err1 := a.service.GetApprovalsCount(claims.Id, claims.ShowApproved)
 	if err1 != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err1, utils.ErrorInternalCode), nil)
 		return

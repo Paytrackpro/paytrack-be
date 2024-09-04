@@ -585,7 +585,7 @@ func (s *Service) GetForInvoiceReport(userId uint64, request portal.ReportFilter
 	return payments, nil
 }
 
-func (s *Service) GetApprovalsCount(userId uint64) (int64, error) {
+func (s *Service) GetApprovalsCount(userId uint64, showApproved bool) (int64, error) {
 	var projectIds []uint64
 	//Get project list whose approver is the logged in user
 	projectQuery := fmt.Sprintf(`SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]'`, userId)
@@ -603,8 +603,12 @@ func (s *Service) GetApprovalsCount(userId uint64) (int64, error) {
 		detailPart = " OR "
 		detailPart = fmt.Sprintf("%s%s", detailPart, strings.Join(detailQueryParts, " OR "))
 	}
+	isApprovedQuery := ""
+	if !showApproved {
+		isApprovedQuery = `, "isApproved": false`
+	}
 	var count int64
-	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s)`, storage.PaymentStatusSent, userId, detailPart)
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d%s}]' AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s)`, storage.PaymentStatusSent, userId, isApprovedQuery, userId, detailPart)
 	if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return 0, nil
