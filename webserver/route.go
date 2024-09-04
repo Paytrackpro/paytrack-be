@@ -40,6 +40,7 @@ func (s *WebServer) Route() {
 			r.Put("/info", userRouter.update)
 			r.Put("/change-password", userRouter.changePassword)
 			r.Put("/hide-paid", userRouter.hidePaid)
+			r.Put("/show-approved", userRouter.showApproved)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
 			r.Get("/get-user-list", userRouter.getUserSelectionList)
 			r.Get("/exists", userRouter.usersExist)

@@ -97,6 +97,7 @@ type UpdateUserRequest struct {
 	ShowDraftForRecipient bool                     `json:"showDraftForRecipient"`
 	ShowDateOnInvoiceLine bool                     `json:"showDateOnInvoiceLine"`
 	HidePaid              bool                     `json:"hidePaid"`
+	ShowApproved          bool                     `json:"showApproved"`
 	Role                  utils.UserRole           `json:"role"`
 }
 

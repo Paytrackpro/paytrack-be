@@ -30,6 +30,7 @@ type authClaims struct {
 	ShowDraftForRecipient bool
 	ShowDateOnInvoiceLine bool
 	HidePaid              bool
+	ShowApproved          bool
 }
 
 func (c authClaims) Valid() error {
@@ -137,6 +138,7 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		ShowDraftForRecipient: user.ShowDraftForRecipient,
 		ShowDateOnInvoiceLine: user.ShowDateOnInvoiceLine,
 		HidePaid:              user.HidePaid,
+		ShowApproved:          user.ShowApproved,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, authClaim)
 	tokenString, err := token.SignedString([]byte(a.conf.HmacSecretKey))
@@ -205,6 +207,7 @@ func (a *apiAuth) verifyOtp(w http.ResponseWriter, r *http.Request) {
 		ShowDraftForRecipient: user.ShowDraftForRecipient,
 		ShowDateOnInvoiceLine: user.ShowDateOnInvoiceLine,
 		HidePaid:              user.HidePaid,
+		ShowApproved:          user.ShowApproved,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, authClaim)
 	tokenString, err := token.SignedString([]byte(a.conf.HmacSecretKey))

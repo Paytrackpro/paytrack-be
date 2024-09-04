@@ -47,6 +47,22 @@ func (a *apiUser) hidePaid(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, Map{})
 }
 
+func (a *apiUser) showApproved(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	user, err := a.db.QueryUser(storage.UserFieldId, claims.Id)
+	if err != nil {
+		utils.Response(w, http.StatusNotFound, err, nil)
+		return
+	}
+	user.ShowApproved = !user.ShowApproved
+	err = a.db.UpdateUser(user)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	utils.ResponseOK(w, Map{})
+}
+
 func (a *apiUser) changePassword(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
 	user, err := a.db.QueryUser(storage.UserFieldId, claims.Id)
