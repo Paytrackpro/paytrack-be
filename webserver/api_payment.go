@@ -3,6 +3,7 @@ package webserver
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -256,13 +257,35 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 		}
 		return fmt.Errorf("you do not have access")
 	}
-
-	approver, err := a.service.GetApprovalSetting(payment.SenderId, payment.ReceiverId, claims.Id)
-	if err != nil {
-		return err
+	var validApprover = true
+	projectIds := make([]string, 0)
+	if len(payment.Details) > 0 {
+		for _, detail := range payment.Details {
+			if detail.ProjectId > 0 {
+				projectIdStr := fmt.Sprintf("%d", detail.ProjectId)
+				if !slices.Contains(projectIds, projectIdStr) {
+					projectIds = append(projectIds, projectIdStr)
+				}
+			}
+		}
 	}
-
-	if claims.Id == payment.SenderId || (claims.Id == payment.ReceiverId && (payment.Status != storage.PaymentStatusCreated || (payment.Status == storage.PaymentStatusCreated && payment.ShowDraftRecipient))) || approver != nil {
+	if len(projectIds) > 0 {
+		approvers, err := a.service.GetProjectApprovers(projectIds)
+		if err != nil {
+			return err
+		}
+		if len(approvers) > 0 {
+			isClaimExist := false
+			for _, apv := range approvers {
+				if apv.MemberId == claims.Id {
+					isClaimExist = true
+					break
+				}
+			}
+			validApprover = isClaimExist
+		}
+	}
+	if claims.Id == payment.SenderId || (claims.Id == payment.ReceiverId && (payment.Status != storage.PaymentStatusCreated || (payment.Status == storage.PaymentStatusCreated && payment.ShowDraftRecipient))) || validApprover {
 		return nil
 	}
 	return fmt.Errorf("you do not have access")
