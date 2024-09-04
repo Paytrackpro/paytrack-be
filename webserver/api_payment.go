@@ -421,7 +421,7 @@ func (a *apiPayment) getInitializationCount(w http.ResponseWriter, r *http.Reque
 		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
 		return
 	}
-	approvalCount, err1 := a.service.GetApprovalsCount(claims.Id)
+	approvalCount, err1 := a.service.GetApprovalsCount(claims.Id, claims.ShowApproved)
 	if err1 != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err1, utils.ErrorInternalCode), nil)
 		return
