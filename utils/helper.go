@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"io"
 	"math"
 	"net/http"
 	"net/url"
@@ -211,6 +212,30 @@ func CatchObject(from interface{}, to interface{}) error {
 		return err
 	}
 	err = json.Unmarshal(jsonBytes, &to)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func RequestBodyToString(body io.ReadCloser) string {
+	b, err := io.ReadAll(body)
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
+func ObjectToJsonString(obj interface{}) string {
+	b, err := json.Marshal(obj)
+	if err != nil {
+		return "{}"
+	}
+	return string(b)
+}
+
+func JsonStringToObject(jsonString string, to interface{}) error {
+	err := json.Unmarshal([]byte(jsonString), &to)
 	if err != nil {
 		return err
 	}

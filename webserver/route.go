@@ -28,6 +28,7 @@ func (s *WebServer) Route() {
 			r.Get("/auth-method", authRouter.getAuthMethod)
 			r.Post("/register", authRouter.register)
 			r.Post("/login", authRouter.login)
+
 			r.Post("/assertion-options", authRouter.AssertionOptions)
 			r.Post("/assertion-result", authRouter.AssertionResult)
 			r.Get("/username-checking", authRouter.CheckingUsernameExist)

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"code.cryptopower.dev/mgmt-ng/be/authpb"
 	"code.cryptopower.dev/mgmt-ng/be/email"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
@@ -24,8 +25,6 @@ type Config struct {
 	HmacSecretKey     string         `yaml:"hmacSecretKey"`
 	AesSecretKey      string         `yaml:"aesSecretKey"`
 	AliveSessionHours int            `yaml:"aliveSessionHours"`
-	AuthType          int            `yaml:"authType"`
-	AuthHost          string         `yaml:"authHost"`
 	ClientAddr        string         `yaml:"clientAddr"`
 	Service           service.Config `yaml:"service"`
 }
@@ -139,7 +138,7 @@ func (s *WebServer) parseJSONAndValidate(r *http.Request, data interface{}) erro
 func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		var bearer = r.Header.Get("Authorization")
-		if s.conf.AuthType == int(storage.AuthMicroservicePasskey) {
+		if s.service.Conf.AuthType == int(storage.AuthMicroservicePasskey) {
 			exClaims, isLogin := s.checkMicroServiceLoginMiddleware(r, bearer)
 			if !isLogin {
 				utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
@@ -147,7 +146,7 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 			}
 			user, err := s.service.GetUserInfo(uint64(exClaims.Id))
 			if err != nil {
-				utils.Response(w, http.StatusBadRequest, fmt.Errorf("Get user info in local DB failed"), nil)
+				utils.Response(w, http.StatusBadRequest, fmt.Errorf("get user info in local DB failed"), nil)
 				return
 			}
 			s.service.SetLastSeen(int(exClaims.Id))
@@ -189,30 +188,19 @@ func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 }
 
 func (s *WebServer) checkMicroServiceLoginMiddleware(r *http.Request, bearer string) (*storage.AuthClaims, bool) {
-	var response utils.ResponseData
-	req := &service.ReqConfig{
-		Method:  http.MethodGet,
-		HttpUrl: fmt.Sprintf("%s%s", s.conf.AuthHost, "/is-logging"),
-		Payload: map[string]string{},
-		Header: map[string]string{
-			"Authorization": bearer,
-		},
-	}
-	err := service.HttpRequest(req, &response)
-	if err != nil || response.IsError {
-		return nil, false
-	}
+	response, err := s.service.GetAuthClaimsLogin(r.Context(), &authpb.CommonRequest{
+		AuthToken: bearer,
+	})
 
-	bytes, err := json.Marshal(response.Data)
+	if err != nil || response.Error {
+		return nil, false
+	}
+	var authClaim storage.AuthClaims
+	err = utils.JsonStringToObject(response.Data, &authClaim)
 	if err != nil {
 		return nil, false
 	}
-	var authRes storage.AuthClaims
-	err = json.Unmarshal(bytes, &authRes)
-	if err != nil {
-		return nil, false
-	}
-	return &authRes, true
+	return &authClaim, true
 }
 
 func (s *WebServer) adminMiddleware(next http.Handler) http.Handler {
