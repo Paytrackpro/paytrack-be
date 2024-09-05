@@ -51,6 +51,7 @@ func (s *WebServer) Route() {
 			r.Put("/hide-paid", userRouter.hidePaid)
 			r.Put("/show-approved", userRouter.showApproved)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
+			r.Get("/member-exist-checking", userRouter.checkingProjectMemberExist)
 			r.Get("/get-user-list", userRouter.getUserSelectionList)
 			r.Get("/exists", userRouter.usersExist)
 			r.Get("/member-exist", userRouter.membersExist)
