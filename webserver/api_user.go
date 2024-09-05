@@ -796,6 +796,28 @@ func (a *apiUser) checkingUserExist(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *apiUser) checkingProjectMemberExist(w http.ResponseWriter, r *http.Request) {
+	userName := r.FormValue("userName")
+	user, err := a.db.QueryUser(storage.UserFieldUName, userName)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.ResponseOK(w, Map{
+				"found":   false,
+				"message": "user not found",
+			})
+		} else {
+			utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		}
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"found":           true,
+		"id":              user.Id,
+		"userName":        user.UserName,
+		"paymentSettings": user.PaymentSettings,
+	})
+}
+
 func (a *apiUser) usersExist(w http.ResponseWriter, r *http.Request) {
 	userName := r.FormValue("userNames")
 	claims, _ := a.credentialsInfo(r)
