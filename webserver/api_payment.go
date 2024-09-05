@@ -613,6 +613,28 @@ func (a *apiPayment) invoiceReport(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, reportMap)
 }
 
+func (a *apiPayment) getPaymentUsers(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.parseBearer(r)
+	if claims.Id < 1 {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("authentication failed"), nil)
+		return
+	}
+	paymentUsers, err := a.service.GetPaymentUserList(claims.Id)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	var userSelection []portal.UserSelection
+	for _, user := range paymentUsers {
+		userSelection = append(userSelection, portal.UserSelection{
+			Id:          user.Id,
+			UserName:    user.UserName,
+			DisplayName: user.DisplayName,
+		})
+	}
+	utils.ResponseOK(w, userSelection)
+}
+
 func (a *apiPayment) getExchangeList(w http.ResponseWriter, r *http.Request) {
 	exchanges := a.service.ExchangeList
 	if utils.IsEmpty(exchanges) {
