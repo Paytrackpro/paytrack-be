@@ -2,6 +2,8 @@ package service
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
@@ -105,10 +107,33 @@ func (s *Service) UpdateProject(userId uint64, projectRequest portal.ProjectRequ
 		log.Error("UpdateProject:save project fail with error: ", err)
 		return project, err
 	}
+	mergeIds := make([]uint64, 0)
+	//if is merge project, delete other project
+	if !utils.IsEmpty(projectRequest.TargetMergeIds) {
+		targetMergeIds := strings.Split(projectRequest.TargetMergeIds, ",")
+		for _, targetId := range targetMergeIds {
+			if utils.IsEmpty(targetId) {
+				continue
+			}
+			mergeId, err := strconv.ParseInt(targetId, 0, 32)
+			if err == nil && mergeId != int64(project.ProjectId) {
+				mergeIds = append(mergeIds, uint64(mergeId))
+			}
+		}
+		//delete other merged project
+		if len(mergeIds) > 0 {
+			for _, id := range mergeIds {
+				if id > 0 {
+					s.db.Where("project_id = ?", id).Delete(&storage.Project{})
+				}
+			}
+		}
+	}
 
 	// update all related data
 	payments := make([]*storage.Payment, 0)
-	if err := s.db.Where("project_id = ?", projectRequest.ProjectId).Find(&payments).Error; err != nil {
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE project_id = %d OR details @> '[{"projectId": %d}]'`, projectRequest.ProjectId, projectRequest.ProjectId)
+	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return project, nil
 		}
@@ -117,7 +142,9 @@ func (s *Service) UpdateProject(userId uint64, projectRequest portal.ProjectRequ
 
 	// validate payment
 	for _, paym := range payments {
-		paym.ProjectName = projectRequest.ProjectName
+		if paym.ProjectId == projectRequest.ProjectId {
+			paym.ProjectName = projectRequest.ProjectName
+		}
 		if paym.Details != nil {
 			details := make([]storage.PaymentDetail, 0)
 			for _, detail := range paym.Details {
@@ -139,6 +166,50 @@ func (s *Service) UpdateProject(userId uint64, projectRequest portal.ProjectRequ
 	}
 
 	tx.Commit()
-
+	//sync payment data
+	for _, syncId := range mergeIds {
+		s.SyncNewProjectId(syncId, project.ProjectId, project.ProjectName)
+	}
 	return project, nil
+}
+
+func (s *Service) SyncNewProjectId(oldProjectId, newProjectId uint64, newProjectName string) error {
+	// update all related data
+	payments := make([]*storage.Payment, 0)
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE project_id = %d OR details @> '[{"projectId": %d}]'`, oldProjectId, oldProjectId)
+	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil
+		}
+		return err
+	}
+
+	// validate payment
+	for _, paym := range payments {
+		if paym.ProjectId == oldProjectId {
+			paym.ProjectName = newProjectName
+			paym.ProjectId = newProjectId
+		}
+		if paym.Details != nil {
+			details := make([]storage.PaymentDetail, 0)
+			for _, detail := range paym.Details {
+				if detail.ProjectId == oldProjectId {
+					detail.ProjectName = newProjectName
+					detail.ProjectId = newProjectId
+				}
+				details = append(details, detail)
+			}
+			paym.Details = details
+		}
+	}
+	tx := s.db.Begin()
+	if len(payments) > 0 {
+		if err := s.db.Save(&payments).Error; err != nil {
+			tx.Rollback()
+			log.Error("UpdateProject:update payment info fail with error: ", err)
+			return err
+		}
+	}
+	tx.Commit()
+	return nil
 }
