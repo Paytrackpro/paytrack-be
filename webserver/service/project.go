@@ -86,6 +86,18 @@ func (s *Service) UpdateProject(userId uint64, projectRequest portal.ProjectRequ
 			}
 		}
 	}
+	//check change owner
+	if projectRequest.TargetOwnerId > 0 {
+		newOwnerInfo, err := s.GetUserInfo(projectRequest.TargetOwnerId)
+		if err != nil {
+			return project, err
+		}
+		project.CreatorId = newOwnerInfo.Id
+		project.CreatorName = newOwnerInfo.UserName
+		if !utils.IsEmpty(newOwnerInfo.DisplayName) {
+			project.CreatorName = newOwnerInfo.DisplayName
+		}
+	}
 	tx := s.db.Begin()
 
 	if err := tx.Save(&project).Error; err != nil {
