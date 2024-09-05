@@ -568,6 +568,18 @@ func (s *Service) CheckHasReport(userId uint64) bool {
 	return true
 }
 
+func (s *Service) GetPaymentUserList(userId uint64) ([]storage.User, error) {
+	var result []storage.User
+	query := fmt.Sprintf(`SELECT * FROM public.users WHERE id IN (SELECT receiver_id FROM payments WHERE sender_id = %d) OR id IN (SELECT sender_id FROM payments WHERE receiver_id = %d)`, userId, userId)
+	if err := s.db.Raw(query).Scan(&result).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return make([]storage.User, 0), nil
+		}
+		return nil, err
+	}
+	return result, nil
+}
+
 func (s *Service) GetPaymentsForReport(userId uint64, request portal.ReportFilter) ([]storage.Payment, error) {
 	payments := make([]storage.Payment, 0)
 	var memberQuery = ""

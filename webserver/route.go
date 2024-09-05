@@ -102,6 +102,7 @@ func (s *WebServer) Route() {
 			r.Get("/invoice-report", paymentRouter.invoiceReport)
 			r.Get("/address-report", paymentRouter.addressReport)
 			r.Get("/exchange-list", paymentRouter.getExchangeList)
+			r.Get("/get-payment-users", paymentRouter.getPaymentUsers)
 		})
 		r.Route("/project", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)
