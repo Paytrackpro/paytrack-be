@@ -221,9 +221,13 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 		if len(approversList) > 0 {
 			approvers := storage.Approvers{}
 			for _, approver := range approversList {
+				isApproved := false
+				if approver.MemberId == payment.ReceiverId || approver.MemberId == payment.SenderId {
+					isApproved = true
+				}
 				tempApprover := storage.Approver{
 					ApproverId: approver.MemberId,
-					IsApproved: false,
+					IsApproved: isApproved,
 					ShowCost:   true,
 				}
 				if utils.IsEmpty(approver.DisplayName) {
@@ -419,9 +423,13 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 				if len(approversList) > 0 {
 					approvers := storage.Approvers{}
 					for _, approver := range approversList {
+						isApproved := false
+						if approver.MemberId == payment.ReceiverId || approver.MemberId == payment.SenderId {
+							isApproved = true
+						}
 						tempApprover := storage.Approver{
 							ApproverId: approver.MemberId,
-							IsApproved: false,
+							IsApproved: isApproved,
 							ShowCost:   true,
 						}
 						if utils.IsEmpty(approver.DisplayName) {
@@ -439,14 +447,31 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 		//if sender edit payment request, force off status back to received (sent)
 		if payment.Status != storage.PaymentStatusCreated && payment.Status != storage.PaymentStatusPaid {
 			payment.Status = storage.PaymentStatusSent
-			approverSettings, err := s.GetApproverForPayment(userId, payment.ReceiverId)
+			projectIds := make([]string, 0)
+			if len(payment.Details) > 0 {
+				for _, detail := range payment.Details {
+					if detail.ProjectId < 1 {
+						continue
+					}
+					projectIdStr := fmt.Sprintf("%d", detail.ProjectId)
+					if !slices.Contains(projectIds, projectIdStr) {
+						projectIds = append(projectIds, projectIdStr)
+					}
+				}
+			}
+			//check approver on project
+			approversList, err := s.GetProjectApprovers(projectIds)
 			if err != nil {
 				return nil, err
 			}
 			//Cancel any Approval status when sender edit payment (for all approvers)
-			if len(approverSettings) > 0 {
-				for i, _ := range payment.Approvers {
-					payment.Approvers[i].IsApproved = false
+			if len(approversList) > 0 {
+				for i, approver := range payment.Approvers {
+					isApproved := false
+					if approver.ApproverId == payment.ReceiverId || approver.ApproverId == payment.SenderId {
+						isApproved = true
+					}
+					payment.Approvers[i].IsApproved = isApproved
 				}
 			}
 		}
