@@ -138,18 +138,25 @@ func (s *WebServer) parseJSONAndValidate(r *http.Request, data interface{}) erro
 func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		var bearer = r.Header.Get("Authorization")
-		if s.service.Conf.AuthType == int(storage.AuthMicroservicePasskey) {
+		var loginTypeStr = r.Header.Get("Logintype")
+		var loginType int
+		if loginTypeStr == "1" {
+			loginType = 1
+		} else {
+			loginType = 0
+		}
+		if s.service.Conf.AuthType == int(storage.AuthMicroservicePasskey) && loginType == 1 {
 			exClaims, isLogin := s.checkMicroServiceLoginMiddleware(r, bearer)
 			if !isLogin {
 				utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
 				return
 			}
-			user, err := s.service.GetUserInfo(uint64(exClaims.Id))
+			user, err := s.service.GetUserByUsername(exClaims.Username)
 			if err != nil {
 				utils.Response(w, http.StatusBadRequest, fmt.Errorf("get user info in local DB failed"), nil)
 				return
 			}
-			s.service.SetLastSeen(int(exClaims.Id))
+			s.service.SetLastSeen(int(user.Id))
 			localAuthClaims := authClaims{
 				Id:                    user.Id,
 				UserRole:              user.Role,

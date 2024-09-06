@@ -9,12 +9,12 @@ import (
 )
 
 func InitAuthClient(authUrl string) *authpb.AuthServiceClient {
-	fmt.Println("API Gateway :  InitAuthClient")
+	log.Infof("API Gateway :  InitAuthClient")
 	//	using WithInsecure() because no SSL running
 	cc, err := grpc.Dial(authUrl, grpc.WithInsecure())
 
 	if err != nil {
-		fmt.Println("Could not connect to auth service:", err)
+		log.Infof("Could not connect to auth service:", err)
 		return nil
 	}
 	client := authpb.NewAuthServiceClient(cc)
@@ -212,36 +212,12 @@ func (s *Service) GetUserInfoByUsernameHandler(ctx context.Context, req *authpb.
 	return res, nil
 }
 
-func (s *Service) GetAdminUserInfoHandler(ctx context.Context, req *authpb.WithUserIdRequest) (*authpb.ResponseData, error) {
-	err := s.CheckAndInitAuthClient()
-	if err != nil {
-		return nil, err
-	}
-	res, err := (*s.AuthClient).GetAdminUserInfo(ctx, req)
-	if err != nil {
-		return res, err
-	}
-	return res, nil
-}
-
 func (s *Service) GetExcludeLoginUserNameListHandler(ctx context.Context, req *authpb.CommonRequest) (*authpb.ResponseData, error) {
 	err := s.CheckAndInitAuthClient()
 	if err != nil {
 		return nil, err
 	}
 	res, err := (*s.AuthClient).GetExcludeLoginUserNameList(ctx, req)
-	if err != nil {
-		return res, err
-	}
-	return res, nil
-}
-
-func (s *Service) ChangeUserStatusHandler(ctx context.Context, req *authpb.ChangeUserStatusRequest) (*authpb.ResponseData, error) {
-	err := s.CheckAndInitAuthClient()
-	if err != nil {
-		return nil, err
-	}
-	res, err := (*s.AuthClient).ChangeUserStatus(ctx, req)
 	if err != nil {
 		return res, err
 	}

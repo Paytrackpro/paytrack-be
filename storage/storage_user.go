@@ -64,6 +64,7 @@ type User struct {
 	Otp                   bool            `json:"otp"`
 	Locked                bool            `json:"locked"`
 	ShowDraftForRecipient bool            `json:"showDraftForRecipient"`
+	AuthType              int             `json:"authType"`
 	ShowDateOnInvoiceLine bool            `json:"showDateOnInvoiceLine"`
 }
 

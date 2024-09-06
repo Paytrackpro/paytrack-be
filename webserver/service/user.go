@@ -23,6 +23,18 @@ func (s *Service) GetUserInfo(id uint64) (storage.User, error) {
 	return user, nil
 }
 
+func (s *Service) GetUserByUsername(username string) (*storage.User, error) {
+	var user storage.User
+	if err := s.db.Where("user_name = ?", username).Find(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
+		}
+		log.Error("GetUserInfo:get user info fail with error: ", err)
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (s *Service) GetUserTimer(timerId uint64) (storage.UserTimer, error) {
 	var userTimer storage.UserTimer
 	if err := s.db.Where("id = ?", timerId).Find(&userTimer).Error; err != nil {

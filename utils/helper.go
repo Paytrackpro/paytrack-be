@@ -9,6 +9,7 @@ import (
 	"image"
 	"image/jpeg"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -141,7 +142,7 @@ func ConvertImageToBase64(fileName string) string {
 	imgFile, err := os.Open(imagePath + "\\" + fileName) //Image file
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return ""
 	}
 
