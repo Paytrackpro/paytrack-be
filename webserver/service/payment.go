@@ -605,6 +605,38 @@ func (s *Service) GetPaymentUserList(userId uint64) ([]storage.User, error) {
 	return result, nil
 }
 
+func (s *Service) GetProjectRelatedMembers(userId uint64) ([]storage.User, error) {
+	var projects []storage.Project
+	query := fmt.Sprintf(`SELECT * FROM public.projects WHERE creator_id = %d`, userId)
+	if err := s.db.Raw(query).Scan(&projects).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return make([]storage.User, 0), nil
+		}
+		return nil, err
+	}
+	result := make([]storage.User, 0)
+	for _, project := range projects {
+		members := project.Members
+		members = append(members, project.Approvers...)
+		for _, member := range members {
+			exist := false
+			for _, user := range result {
+				if user.Id == member.MemberId {
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				user, err := s.GetUserInfo(member.MemberId)
+				if err == nil {
+					result = append(result, user)
+				}
+			}
+		}
+	}
+	return result, nil
+}
+
 func (s *Service) GetPaymentsForReport(userId uint64, request portal.ReportFilter) ([]storage.Payment, error) {
 	payments := make([]storage.Payment, 0)
 	var memberQuery = ""

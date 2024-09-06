@@ -584,6 +584,22 @@ func (a *apiPayment) getPaymentUsers(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, err, nil)
 		return
 	}
+
+	projectsRelatedUsers, err := a.service.GetProjectRelatedMembers(claims.Id)
+	if err == nil {
+		for _, projectUser := range projectsRelatedUsers {
+			exist := false
+			for _, existUser := range paymentUsers {
+				if existUser.Id == projectUser.Id {
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				paymentUsers = append(paymentUsers, projectUser)
+			}
+		}
+	}
 	var userSelection []portal.UserSelection
 	for _, user := range paymentUsers {
 		userSelection = append(userSelection, portal.UserSelection{
