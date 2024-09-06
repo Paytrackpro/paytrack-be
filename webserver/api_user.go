@@ -814,6 +814,7 @@ func (a *apiUser) checkingProjectMemberExist(w http.ResponseWriter, r *http.Requ
 		"found":           true,
 		"id":              user.Id,
 		"userName":        user.UserName,
+		"displayName":     user.DisplayName,
 		"paymentSettings": user.PaymentSettings,
 	})
 }
