@@ -466,13 +466,38 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 			}
 			//Cancel any Approval status when sender edit payment (for all approvers)
 			if len(approversList) > 0 {
-				for i, approver := range payment.Approvers {
-					isApproved := false
-					if approver.ApproverId == payment.ReceiverId || approver.ApproverId == payment.SenderId {
-						isApproved = true
+				approvers := storage.Approvers{}
+				for _, currentApprover := range approversList {
+					oldDataExist := false
+					var oldData storage.Approver
+					for _, approver := range payment.Approvers {
+						if approver.ApproverId == currentApprover.MemberId {
+							oldDataExist = true
+							oldData = approver
+							break
+						}
 					}
-					payment.Approvers[i].IsApproved = isApproved
+					if oldDataExist {
+						isApproved := false
+						if oldData.ApproverId == payment.ReceiverId || oldData.ApproverId == payment.SenderId {
+							isApproved = true
+						}
+						oldData.IsApproved = isApproved
+						approvers = append(approvers, oldData)
+					} else {
+						displayName := currentApprover.UserName
+						if !utils.IsEmpty(currentApprover.DisplayName) {
+							displayName = currentApprover.DisplayName
+						}
+						approvers = append(approvers, storage.Approver{
+							ApproverId:   currentApprover.MemberId,
+							ApproverName: displayName,
+							ShowCost:     true,
+							IsApproved:   false,
+						})
+					}
 				}
+				payment.Approvers = approvers
 			}
 		}
 		// if status is Draft, save show draft for recipient flag
