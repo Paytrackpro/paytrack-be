@@ -17,7 +17,7 @@ func (s *Service) CreateNewProject(userId uint64, creatorName string, projectReq
 		ProjectName: projectRequest.ProjectName,
 		Members:     projectRequest.Members,
 		Approvers:   projectRequest.Approvers,
-		Description: projectRequest.ProjectName,
+		Description: projectRequest.Description,
 		CreatorId:   userId,
 		CreatorName: creatorName,
 		Status:      storage.ProjectConfirmed,
