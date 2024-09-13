@@ -120,6 +120,7 @@ func (s *WebServer) Route() {
 			var projectRouter = apiProject{WebServer: s}
 			r.Post("/create", projectRouter.createProject)
 			r.Get("/get-list", projectRouter.getProjects)
+			r.Get("/get-all-list", projectRouter.getAllProjects)
 			r.Get("/get-my-project", projectRouter.getMyProjects)
 			r.Put("/edit", projectRouter.editProject)
 			r.Delete("/delete/{id:[0-9]+}", projectRouter.deleteProject)

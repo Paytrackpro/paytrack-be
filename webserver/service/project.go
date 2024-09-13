@@ -36,14 +36,57 @@ func (s *Service) CreateNewProject(userId uint64, creatorName string, projectReq
 	return &newProject, nil
 }
 
-func (s *Service) GetMyProjects(userId uint64) ([]storage.Project, error) {
+func (s *Service) CountProjectPayments(projectId uint64) ([]*storage.Payment, bool, error) {
+	payments := make([]*storage.Payment, 0)
+	query := fmt.Sprintf(`SELECT * FROM payments WHERE project_id = %d OR details @> '[{"projectId": %d}]'`, projectId, projectId)
+	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return nil, false, err
+		}
+		return payments, true, nil
+	}
+	cannotArchived := false
+	for _, payment := range payments {
+		if payment.Status != storage.PaymentStatusPaid && payment.Status != storage.PaymentStatusRejected {
+			cannotArchived = true
+			break
+		}
+	}
+	return payments, cannotArchived, nil
+}
+
+func (s *Service) GetProjectsToSetInvoice(userId uint64) ([]storage.Project, error) {
+	projects := make([]storage.Project, 0)
+	query := fmt.Sprintf(`SELECT * FROM projects WHERE status = %d AND (members @> '[{"memberId": %d}]' OR creator_id = %d)`, storage.ProjectConfirmed, userId, userId)
+	if err := s.db.Raw(query).Scan(&projects).Error; err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return nil, err
+		}
+		return projects, nil
+	}
+	return projects, nil
+}
+
+func (s *Service) GetAllProjects(userId uint64) ([]storage.Project, error) {
+	projects := make([]storage.Project, 0)
+	query := fmt.Sprintf(`SELECT * FROM projects WHERE members @> '[{"memberId": %d}]' OR creator_id = %d`, userId, userId)
+	if err := s.db.Raw(query).Scan(&projects).Error; err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return nil, err
+		}
+		return projects, nil
+	}
+	return projects, nil
+}
+
+func (s *Service) GetMyProjects(userId uint64) ([]storage.ProjectResponse, error) {
 	projects := make([]storage.Project, 0)
 	query := fmt.Sprintf(`SELECT * FROM projects WHERE status = %d AND (members @> '[{"memberId": %d}]' OR creator_id = %d)`, storage.ProjectConfirmed, userId, userId)
 	if err := s.db.Raw(query).Scan(&projects).Error; err != nil {
 		return nil, err
 	}
 	tx := s.db.Begin()
-	result := make([]storage.Project, 0)
+	result := make([]storage.ProjectResponse, 0)
 	for _, project := range projects {
 		if project.CreatorId > 0 && utils.IsEmpty(project.CreatorName) {
 			creator, err := s.GetUserInfo(project.CreatorId)
@@ -54,14 +97,42 @@ func (s *Service) GetMyProjects(userId uint64) ([]storage.Project, error) {
 				}
 				if err := tx.Save(&project).Error; err != nil {
 					tx.Rollback()
-					return projects, err
+					return make([]storage.ProjectResponse, 0), err
 				}
 			}
 		}
-		result = append(result, project)
+		res := storage.ProjectResponse{
+			Project: project,
+		}
+		payments, cannotArchived, err := s.CountProjectPayments(project.ProjectId)
+		if err != nil {
+			res.LinkedProjectNum = 0
+			res.CannotArchived = true
+		} else {
+			res.LinkedProjectNum = len(payments)
+			res.CannotArchived = cannotArchived
+		}
+		result = append(result, res)
 	}
 	tx.Commit()
 	return result, nil
+}
+
+func (s *Service) ArchivedProject(creatorId uint64, projectId uint64) error {
+	var project storage.Project
+	if err := s.db.Where("project_id = ?", projectId).First(&project).Error; err != nil {
+		log.Error("ArchivedProject:Archived project failed: ", err)
+		return err
+	}
+	project.Status = storage.ProjectCanceled
+	tx := s.db.Begin()
+	if err := tx.Save(&project).Error; err != nil {
+		tx.Rollback()
+		log.Error("UpdateProject:save project fail with error: ", err)
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
 func (s *Service) UpdateProject(userId uint64, projectRequest portal.ProjectRequest) (storage.Project, error) {
