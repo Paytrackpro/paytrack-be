@@ -2,6 +2,7 @@ package webserver
 
 import (
 	"net/http"
+	"strconv"
 
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
@@ -50,7 +51,17 @@ func (a *apiProject) createProject(w http.ResponseWriter, r *http.Request) {
 func (a *apiProject) getProjects(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
 	projects, err := a.service.GetMyProjects(claims.Id)
-	if err != nil && err == gorm.ErrRecordNotFound {
+	if err != nil && err != gorm.ErrRecordNotFound {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	utils.ResponseOK(w, projects)
+}
+
+func (a *apiProject) getAllProjects(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	projects, err := a.service.GetAllProjects(claims.Id)
+	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
@@ -60,7 +71,7 @@ func (a *apiProject) getProjects(w http.ResponseWriter, r *http.Request) {
 func (a *apiProject) getMyProjects(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
 
-	projects, err := a.service.GetMyProjects(claims.Id)
+	projects, err := a.service.GetProjectsToSetInvoice(claims.Id)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
@@ -107,7 +118,17 @@ func (a *apiProject) editProject(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiProject) deleteProject(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	a.db.GetDB().Where("project_id = ?", id).Delete(&storage.Project{})
+	claims, _ := a.credentialsInfo(r)
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 0, 32)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	err = a.service.ArchivedProject(claims.Id, uint64(id))
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
 	utils.ResponseOK(w, nil)
 }

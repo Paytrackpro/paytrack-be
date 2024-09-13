@@ -34,6 +34,12 @@ type Member struct {
 	Role        int    `json:"role"`
 }
 
+type ProjectResponse struct {
+	Project
+	LinkedProjectNum int  `json:"linkedProjectNum"`
+	CannotArchived   bool `json:"cannotArchived"`
+}
+
 // Value Marshal
 func (a Members) Value() (driver.Value, error) {
 	return json.Marshal(a)
