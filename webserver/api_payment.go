@@ -614,8 +614,8 @@ func (a *apiPayment) invoiceReport(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiPayment) getPaymentUsers(w http.ResponseWriter, r *http.Request) {
-	claims, _ := a.parseBearer(r)
-	if claims.Id < 1 {
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk || claims.Id < 1 {
 		utils.Response(w, http.StatusBadRequest, fmt.Errorf("authentication failed"), nil)
 		return
 	}
