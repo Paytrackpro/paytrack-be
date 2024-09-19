@@ -4,13 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"time"
 
+	"code.cryptopower.dev/mgmt-ng/be/authpb"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
-	"code.cryptopower.dev/mgmt-ng/be/webserver/service"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pquerna/otp/totp"
@@ -82,77 +81,88 @@ func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiAuth) CancelPasskeyRegister(w http.ResponseWriter, r *http.Request) {
-	sessionKey := r.FormValue("sessionKey")
-	var response utils.ResponseData
-	if err := service.HttpPost(fmt.Sprintf("%s%s", a.conf.AuthHost, "/passkey/cancelRegister"), url.Values{"sessionKey": {sessionKey}}, &response); err != nil {
+	res, err := a.service.CancelRegisterHandler(r.Context(), &authpb.CancelRegisterRequest{
+		SessionKey: r.FormValue("sessionKey"),
+	})
+	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-	if response.IsError {
-		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(response.Msg), nil)
+	if res.Error {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(res.Msg), nil)
 		return
 	}
-	utils.ResponseOK(w, response.Data)
+	utils.ResponseOK(w, res.Data)
 }
 
 func (a *apiAuth) StartPasskeyRegister(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
-	var response utils.ResponseData
-	if err := service.HttpPost(fmt.Sprintf("%s%s", a.conf.AuthHost, "/passkey/registerStart"), url.Values{"username": {username}}, &response); err != nil {
+	resData, err := a.service.BeginRegistrationHandler(r.Context(), &authpb.WithUsernameRequest{
+		Username: username,
+	})
+	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-	if response.IsError {
-		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(response.Msg), nil)
+
+	if resData.Error {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(resData.Msg), nil)
 		return
 	}
-	utils.ResponseOK(w, response.Data)
+	utils.ResponseOK(w, resData.Data)
 }
 
 func (a *apiAuth) UpdatePasskeyStart(w http.ResponseWriter, r *http.Request) {
-	var response utils.ResponseData
-	var bearer = r.Header.Get("Authorization")
-	if err := service.HttpPost(fmt.Sprintf("%s%s", a.conf.AuthHost, "/passkey/updateStart"), url.Values{"authorization": {bearer}}, &response); err != nil {
+	//Get login sesssion token string
+	loginToken := r.Header.Get("Authorization")
+	if utils.IsEmpty(loginToken) {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("get login token failed"), nil)
+		return
+	}
+	res, err := a.service.BeginUpdatePasskeyHandler(r.Context(), &authpb.CommonRequest{
+		AuthToken: loginToken,
+	})
+	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-	if response.IsError {
-		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(response.Msg), nil)
+	if res.Error {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(res.Msg), nil)
 		return
 	}
-	utils.ResponseOK(w, response.Data)
+	utils.ResponseOK(w, res.Data)
 }
 
 func (a *apiAuth) UpdatePasskeyFinish(w http.ResponseWriter, r *http.Request) {
-	reqUrl := fmt.Sprintf("%s%s", a.conf.AuthHost, "/passkey/updateFinish")
-	Headers := map[string]string{
-		"Content-Type":  "application/json",
-		"Session-Key":   r.FormValue("sessionKey"),
-		"Is-Reset-Key":  r.FormValue("isReset"),
-		"Authorization": r.Header.Get("Authorization"),
-	}
+	res, err := a.service.FinishUpdatePasskeyHandler(r.Context(), &authpb.FinishUpdatePasskeyRequest{
+		Common: &authpb.CommonRequest{
+			AuthToken: r.Header.Get("Authorization"),
+		},
+		Request: &authpb.HttpRequest{
+			BodyJson: utils.RequestBodyToString(r.Body),
+		},
+		SessionKey: r.FormValue("sessionKey"),
+		IsReset:    r.FormValue("isReset") == "true",
+	})
 
-	var response utils.ResponseData
-	if err := service.HttpFullPost(reqUrl, r.Body, Headers, &response); err != nil {
+	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-	if response.IsError {
-		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(response.Msg), nil)
+	if res.Error {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(res.Msg), nil)
 		return
 	}
-	data, isOk := response.Data.(map[string]any)
-	tokenString := ""
+	var data map[string]any
+	err = utils.JsonStringToObject(res.Data, &data)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+	}
 	var authClaim storage.AuthClaims
-	if isOk {
-		tokenString, _ = data["token"].(string)
-		err := utils.CatchObject(data["user"], &authClaim)
-		if err != nil {
-			utils.Response(w, http.StatusInternalServerError, err, nil)
-			return
-		}
-	} else {
-		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("No data returned"), nil)
+	tokenString := data["token"].(string)
+	err = utils.CatchObject(data["user"], &authClaim)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
 	//Get user info
@@ -172,48 +182,114 @@ func (a *apiAuth) UpdatePasskeyFinish(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *apiAuth) FinishPasskeyRegister(w http.ResponseWriter, r *http.Request) {
-	reqUrl := fmt.Sprintf("%s%s", a.conf.AuthHost, "/passkey/registerFinish")
-	Headers := map[string]string{
-		"Content-Type": "application/json",
-		"Session-Key":  r.FormValue("sessionKey"),
-	}
-	var response utils.ResponseData
-	if err := service.HttpFullPost(reqUrl, r.Body, Headers, &response); err != nil {
+func (a *apiAuth) FinishPasskeyTransferRegister(w http.ResponseWriter, r *http.Request) {
+	sessionKey := r.FormValue("sessionKey")
+	res, err := a.service.FinishRegistrationHandler(r.Context(), &authpb.SessionKeyAndHttpRequest{
+		SessionKey: sessionKey,
+		Request: &authpb.HttpRequest{
+			BodyJson: utils.RequestBodyToString(r.Body),
+		},
+	})
+	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-	if response.IsError {
-		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(response.Msg), nil)
+	if res.Error {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(res.Msg), nil)
+		return
+	}
+
+	var data map[string]any
+	err = utils.JsonStringToObject(res.Data, &data)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	var authClaim storage.AuthClaims
+	userClaims, userExist := data["user"]
+	token, tokenExist := data["token"]
+	if !userExist || !tokenExist {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("get login token failed"), nil)
+		return
+	}
+	tokenString := token.(string)
+	err = utils.CatchObject(userClaims, &authClaim)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	//get user on local db
+	user, err := a.service.GetUserByUsername(authClaim.Username)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	user.AuthType = int(storage.AuthMicroservicePasskey)
+
+	//update user
+	err = a.db.UpdateUser(user)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	//handler login imediately
+	utils.ResponseOK(w, Map{
+		"token":     tokenString,
+		"loginType": int(storage.AuthMicroservicePasskey),
+		"userInfo":  user,
+	})
+}
+
+func (a *apiAuth) FinishPasskeyRegister(w http.ResponseWriter, r *http.Request) {
+	sessionKey := r.FormValue("sessionKey")
+	res, err := a.service.FinishRegistrationHandler(r.Context(), &authpb.SessionKeyAndHttpRequest{
+		SessionKey: sessionKey,
+		Request: &authpb.HttpRequest{
+			BodyJson: utils.RequestBodyToString(r.Body),
+		},
+	})
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	if res.Error {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(res.Msg), nil)
 		return
 	}
 	//get display name
 	displayName := r.FormValue("dispName")
 	email := r.FormValue("email")
-	data, isOk := response.Data.(map[string]any)
-	tokenString := ""
-	var authClaim storage.AuthClaims
-	if isOk {
-		tokenString, _ = data["token"].(string)
-		err := utils.CatchObject(data["user"], &authClaim)
-		if err != nil {
-			utils.Response(w, http.StatusInternalServerError, err, nil)
-			return
-		}
-	} else {
-		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("No data returned"), nil)
+
+	var data map[string]any
+	err = utils.JsonStringToObject(res.Data, &data)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-
+	var authClaim storage.AuthClaims
+	userClaims, userExist := data["user"]
+	token, tokenExist := data["token"]
+	if !userExist || !tokenExist {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("get login token failed"), nil)
+		return
+	}
+	tokenString := token.(string)
+	err = utils.CatchObject(userClaims, &authClaim)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
 	//insert to user settings in local db
 	var user = storage.User{
-		Id:                    uint64(authClaim.Id),
 		UserName:              authClaim.Username,
 		DisplayName:           displayName,
 		Email:                 email,
 		ShowDraftForRecipient: true,
 		ShowDateOnInvoiceLine: true,
 		LastSeen:              time.Now(),
+		AuthType:              int(storage.AuthMicroservicePasskey),
 	}
 	if err := a.db.CreateUser(&user); err != nil {
 		// 23505 is  duplicate key value error for postgresql
@@ -230,8 +306,30 @@ func (a *apiAuth) FinishPasskeyRegister(w http.ResponseWriter, r *http.Request) 
 	}
 	//handler login imediately
 	utils.ResponseOK(w, Map{
-		"token":    tokenString,
-		"userInfo": user,
+		"token":     tokenString,
+		"loginType": int(storage.AuthMicroservicePasskey),
+		"userInfo":  user,
+	})
+}
+
+func (a *apiAuth) CheckAuthUsername(w http.ResponseWriter, r *http.Request) {
+	username := r.FormValue("userName")
+	res, err := a.service.CheckUserHandler(r.Context(), &authpb.WithUsernameRequest{
+		Username: username,
+	})
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	var resData map[string]bool
+	err = utils.JsonStringToObject(res.Data, &resData)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	exist := resData["exist"]
+	utils.ResponseOK(w, Map{
+		"found": exist,
 	})
 }
 
@@ -257,32 +355,30 @@ func (a *apiAuth) CheckingUsernameExist(w http.ResponseWriter, r *http.Request) 
 }
 
 func (a *apiAuth) AssertionResult(w http.ResponseWriter, r *http.Request) {
-	var response utils.ResponseData
-	reqUrl := fmt.Sprintf("%s%s", a.conf.AuthHost, "/assertion/result")
-	Headers := map[string]string{
-		"Content-Type": "application/json",
-		"Session-Key":  r.FormValue("sessionKey"),
-	}
-	if err := service.HttpFullPost(reqUrl, r.Body, Headers, &response); err != nil {
+	sessionKey := r.FormValue("sessionKey")
+	res, err := a.service.AssertionResultHandler(r.Context(), &authpb.SessionKeyAndHttpRequest{
+		SessionKey: sessionKey,
+		Request: &authpb.HttpRequest{
+			BodyJson: utils.RequestBodyToString(r.Body),
+		},
+	})
+	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-	if response.IsError {
-		utils.Response(w, http.StatusInternalServerError, fmt.Errorf(response.Msg), nil)
+
+	var data map[string]any
+	err = utils.JsonStringToObject(res.Data, &data)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("parse res data failed"), nil)
 		return
 	}
-	data, isOk := response.Data.(map[string]any)
 	tokenString := ""
 	var authClaim storage.AuthClaims
-	if isOk {
-		tokenString, _ = data["token"].(string)
-		err := utils.CatchObject(data["user"], &authClaim)
-		if err != nil {
-			utils.Response(w, http.StatusInternalServerError, err, nil)
-			return
-		}
-	} else {
-		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("No data returned"), nil)
+	tokenString, _ = data["token"].(string)
+	err = utils.CatchObject(data["user"], &authClaim)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
 	//Get user settings from local DB
@@ -304,22 +400,23 @@ func (a *apiAuth) AssertionResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.ResponseOK(w, Map{
-		"token":    tokenString,
-		"userInfo": user,
+		"token":     tokenString,
+		"loginType": int(storage.AuthMicroservicePasskey),
+		"userInfo":  user,
 	})
 }
 
 func (a *apiAuth) AssertionOptions(w http.ResponseWriter, r *http.Request) {
-	var response utils.ResponseData
-	if err := service.HttpPost(fmt.Sprintf("%s%s", a.conf.AuthHost, "/assertion/options"), url.Values{}, &response); err != nil {
+	responseData, err := a.service.AssertionOptionsHandler(r.Context())
+	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-	utils.ResponseOK(w, response)
+	utils.ResponseOK(w, responseData)
 }
 
 func (a *apiAuth) getAuthMethod(w http.ResponseWriter, r *http.Request) {
-	authType := a.conf.AuthType
+	authType := a.service.Conf.AuthType
 	if authType != int(storage.AuthLocalUsernamePassword) && authType != int(storage.AuthMicroservicePasskey) {
 		authType = int(storage.AuthLocalUsernamePassword)
 	}
@@ -396,8 +493,9 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 	//update last seen for User
 	a.service.SetLastSeen(int(user.Id))
 	utils.ResponseOK(w, Map{
-		"token":    tokenString,
-		"userInfo": user,
+		"token":     tokenString,
+		"loginType": f.LoginType,
+		"userInfo":  user,
 	})
 }
 

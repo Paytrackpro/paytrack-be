@@ -17,10 +17,11 @@ type RegisterForm struct {
 }
 
 type LoginForm struct {
-	UserName string `validate:"required,alphanum,gte=4,lte=32"`
-	Password string `validate:"required"`
-	IsOtp    bool   `validate:"required"`
-	Otp      string
+	UserName  string `validate:"required,alphanum,gte=4,lte=32"`
+	Password  string `validate:"required"`
+	LoginType int    `validate:"required"`
+	IsOtp     bool   `validate:"required"`
+	Otp       string
 }
 
 type PasskeyRegisterInfo struct {

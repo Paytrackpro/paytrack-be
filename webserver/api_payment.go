@@ -187,12 +187,12 @@ func (a *apiPayment) sortPaymentDetails(payment storage.Payment) {
 		for j := i + 1; j < len(payment.Details); j++ {
 			date1, err := time.Parse("2006/01/02", utils.HandlerDateFormat(payment.Details[i].Date))
 			if err != nil {
-				fmt.Println(err)
+				log.Info(err)
 				continue
 			}
 			date2, err := time.Parse("2006/01/02", utils.HandlerDateFormat(payment.Details[j].Date))
 			if err != nil {
-				fmt.Println(err)
+				log.Info(err)
 				continue
 			}
 			beforeUnix := date1.Unix()

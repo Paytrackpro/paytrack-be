@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 
+	"code.cryptopower.dev/mgmt-ng/be/authpb"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
@@ -14,25 +15,35 @@ type Config struct {
 	Exchange        string `yaml:"exchange"`
 	ExchangeList    string `yaml:"allowexchanges"`
 	CoimarketcapKey string `yaml:"coimarketcapKey"`
+	AuthType        int    `yaml:"authType"`
+	AuthHost        string `yaml:"authHost"`
 }
 
 type Service struct {
 	db              *gorm.DB
+	Conf            Config
 	exchange        string
 	ExchangeList    string
 	coinMaketCapKey string
 	timeState       *actionTimeState
 	socket          *socketio.Server
+	AuthClient      *authpb.AuthServiceClient
 }
 
 func NewService(conf Config, db *gorm.DB, socket *socketio.Server) *Service {
+	var authClient *authpb.AuthServiceClient
+	if conf.AuthType == int(storage.AuthMicroservicePasskey) {
+		authClient = InitAuthClient(conf.AuthHost)
+	}
 	return &Service{
 		db:              db,
+		Conf:            conf,
 		exchange:        conf.Exchange,
 		coinMaketCapKey: conf.CoimarketcapKey,
 		ExchangeList:    conf.ExchangeList,
 		timeState:       NewActionTime(),
 		socket:          socket,
+		AuthClient:      authClient,
 	}
 }
 

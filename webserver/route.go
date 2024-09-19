@@ -12,7 +12,7 @@ func (s *WebServer) Route() {
 	s.mux.Use(middleware.Recoverer, cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Logintype", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
@@ -28,12 +28,15 @@ func (s *WebServer) Route() {
 			r.Get("/auth-method", authRouter.getAuthMethod)
 			r.Post("/register", authRouter.register)
 			r.Post("/login", authRouter.login)
+
 			r.Post("/assertion-options", authRouter.AssertionOptions)
 			r.Post("/assertion-result", authRouter.AssertionResult)
 			r.Get("/username-checking", authRouter.CheckingUsernameExist)
+			r.Get("/check-auth-username", authRouter.CheckAuthUsername)
 			r.Post("/cancel-register", authRouter.CancelPasskeyRegister)
 			r.Post("/register-start", authRouter.StartPasskeyRegister)
 			r.Post("/register-finish", authRouter.FinishPasskeyRegister)
+			r.Post("/register-transfer-finish", authRouter.FinishPasskeyTransferRegister)
 			r.Post("/update-passkey-start", authRouter.UpdatePasskeyStart)
 			r.Post("/update-passkey-finish", authRouter.UpdatePasskeyFinish)
 
