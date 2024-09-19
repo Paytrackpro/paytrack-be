@@ -19,6 +19,8 @@ webServer:
     exchange: "bittrex"
     allowexchanges: "binance,kucoin,mexc"
     coimarketcapKey: "change me"
+    authType: 1
+    authHost: "localhost:50051"
 
 # Config log level: "trace", "debug", "info", "warn", "error", "off"
 logLevel: "debug"
