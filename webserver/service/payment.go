@@ -440,6 +440,8 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 						approvers = append(approvers, tempApprover)
 					}
 					payment.Approvers = approvers
+				} else {
+					payment.Approvers = make(storage.Approvers, 0)
 				}
 				payment.Status = request.Status
 			}
@@ -498,6 +500,8 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 					}
 				}
 				payment.Approvers = approvers
+			} else {
+				payment.Approvers = make(storage.Approvers, 0)
 			}
 		}
 		// if status is Draft, save show draft for recipient flag
