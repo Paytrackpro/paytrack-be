@@ -12,7 +12,7 @@ func (s *WebServer) Route() {
 	s.mux.Use(middleware.Recoverer, cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Logintype", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
@@ -25,8 +25,20 @@ func (s *WebServer) Route() {
 	s.mux.Route("/api", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
 			var authRouter = apiAuth{WebServer: s}
+			r.Get("/auth-method", authRouter.getAuthMethod)
 			r.Post("/register", authRouter.register)
 			r.Post("/login", authRouter.login)
+
+			r.Post("/assertion-options", authRouter.AssertionOptions)
+			r.Post("/assertion-result", authRouter.AssertionResult)
+			r.Get("/username-checking", authRouter.CheckingUsernameExist)
+			r.Get("/check-auth-username", authRouter.CheckAuthUsername)
+			r.Post("/cancel-register", authRouter.CancelPasskeyRegister)
+			r.Post("/register-start", authRouter.StartPasskeyRegister)
+			r.Post("/register-finish", authRouter.FinishPasskeyRegister)
+			r.Post("/register-transfer-finish", authRouter.FinishPasskeyTransferRegister)
+			r.Post("/update-passkey-start", authRouter.UpdatePasskeyStart)
+			r.Post("/update-passkey-finish", authRouter.UpdatePasskeyFinish)
 
 			r.Group(func(r chi.Router) {
 				r.Use(s.loggedInMiddleware)
@@ -40,7 +52,9 @@ func (s *WebServer) Route() {
 			r.Put("/info", userRouter.update)
 			r.Put("/change-password", userRouter.changePassword)
 			r.Put("/hide-paid", userRouter.hidePaid)
+			r.Put("/show-approved", userRouter.showApproved)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
+			r.Get("/member-exist-checking", userRouter.checkingProjectMemberExist)
 			r.Get("/get-user-list", userRouter.getUserSelectionList)
 			r.Get("/exists", userRouter.usersExist)
 			r.Get("/member-exist", userRouter.membersExist)
@@ -81,8 +95,9 @@ func (s *WebServer) Route() {
 			r.Get("/report-summary", userRouter.getAdminReportSummary)
 		})
 		r.Route("/payment", func(r chi.Router) {
+			r.Use(s.loggedInMiddleware)
 			var paymentRouter = apiPayment{WebServer: s}
-			r.With(s.loggedInMiddleware).Post("/", paymentRouter.createPayment)
+			r.Post("/", paymentRouter.createPayment)
 			r.Get("/{id:[0-9]+}", paymentRouter.getPayment)
 			r.Post("/{id:[0-9]+}", paymentRouter.updatePayment)
 			r.Post("/request-rate", paymentRouter.requestRate)
@@ -90,7 +105,7 @@ func (s *WebServer) Route() {
 			r.Post("/approve", paymentRouter.approveRequest)
 			r.Post("/reject", paymentRouter.rejectPayment)
 			r.Post("/bulk-paid-btc", paymentRouter.bulkPaidBTC)
-			r.With(s.loggedInMiddleware).Get("/list", paymentRouter.listPayments)
+			r.Get("/list", paymentRouter.listPayments)
 			r.Get("/btc-bulk-rate", paymentRouter.getBtcBulkRate)
 			r.Delete("/delete/{id:[0-9]+}", paymentRouter.deleteDraft)
 			r.Get("/monthly-summary", paymentRouter.getMonthlySummary)
@@ -101,12 +116,14 @@ func (s *WebServer) Route() {
 			r.Get("/invoice-report", paymentRouter.invoiceReport)
 			r.Get("/address-report", paymentRouter.addressReport)
 			r.Get("/exchange-list", paymentRouter.getExchangeList)
+			r.Get("/get-payment-users", paymentRouter.getPaymentUsers)
 		})
 		r.Route("/project", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)
 			var projectRouter = apiProject{WebServer: s}
 			r.Post("/create", projectRouter.createProject)
 			r.Get("/get-list", projectRouter.getProjects)
+			r.Get("/get-all-list", projectRouter.getAllProjects)
 			r.Get("/get-my-project", projectRouter.getMyProjects)
 			r.Put("/edit", projectRouter.editProject)
 			r.Delete("/delete/{id:[0-9]+}", projectRouter.deleteProject)

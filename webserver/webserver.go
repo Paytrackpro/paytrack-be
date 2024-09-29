@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"code.cryptopower.dev/mgmt-ng/be/authpb"
 	"code.cryptopower.dev/mgmt-ng/be/email"
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
@@ -137,25 +138,76 @@ func (s *WebServer) parseJSONAndValidate(r *http.Request, data interface{}) erro
 func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		var bearer = r.Header.Get("Authorization")
-		// Should be a bearer token
-		if len(bearer) > 6 && strings.ToUpper(bearer[0:7]) == "BEARER " {
-			var tokenStr = bearer[7:]
-			var claim authClaims
-			token, err := jwt.ParseWithClaims(tokenStr, &claim, func(token *jwt.Token) (interface{}, error) {
-				return []byte(s.conf.HmacSecretKey), nil
-			})
-			if err != nil {
-				utils.Response(w, http.StatusUnauthorized, utils.NewError(err, utils.ErrorUnauthorized), nil)
+		var loginTypeStr = r.Header.Get("Logintype")
+		var loginType int
+		if loginTypeStr == "1" {
+			loginType = 1
+		} else {
+			loginType = 0
+		}
+		if s.service.Conf.AuthType == int(storage.AuthMicroservicePasskey) && loginType == 1 {
+			exClaims, isLogin := s.checkMicroServiceLoginMiddleware(r, bearer)
+			if !isLogin {
+				utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
 				return
 			}
-			s.service.SetLastSeen(int(claim.Id))
-			ctx := context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)
+			user, err := s.service.GetUserByUsername(exClaims.Username)
+			if err != nil {
+				utils.Response(w, http.StatusBadRequest, fmt.Errorf("get user info in local DB failed"), nil)
+				return
+			}
+			s.service.SetLastSeen(int(user.Id))
+			localAuthClaims := authClaims{
+				Id:                    user.Id,
+				UserRole:              user.Role,
+				Expire:                exClaims.Expire,
+				UserName:              exClaims.Username,
+				DisplayName:           user.DisplayName,
+				Otp:                   user.Otp,
+				ShowDraftForRecipient: user.ShowDraftForRecipient,
+				ShowDateOnInvoiceLine: user.ShowDateOnInvoiceLine,
+				HidePaid:              user.HidePaid,
+			}
+			ctx := context.WithValue(r.Context(), authClaimsCtxKey, &localAuthClaims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
+		} else {
+			// Should be a bearer token
+			if len(bearer) > 6 && strings.ToUpper(bearer[0:7]) == "BEARER " {
+				var tokenStr = bearer[7:]
+				var claim authClaims
+				token, err := jwt.ParseWithClaims(tokenStr, &claim, func(token *jwt.Token) (interface{}, error) {
+					return []byte(s.conf.HmacSecretKey), nil
+				})
+				if err != nil {
+					utils.Response(w, http.StatusUnauthorized, utils.NewError(err, utils.ErrorUnauthorized), nil)
+					return
+				}
+				s.service.SetLastSeen(int(claim.Id))
+				ctx := context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+			utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
 		}
-		utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
 	}
 	return http.HandlerFunc(fn)
+}
+
+func (s *WebServer) checkMicroServiceLoginMiddleware(r *http.Request, bearer string) (*storage.AuthClaims, bool) {
+	response, err := s.service.GetAuthClaimsLogin(r.Context(), &authpb.CommonRequest{
+		AuthToken: bearer,
+	})
+
+	if err != nil || response.Error {
+		return nil, false
+	}
+	var authClaim storage.AuthClaims
+	err = utils.JsonStringToObject(response.Data, &authClaim)
+	if err != nil {
+		return nil, false
+	}
+	return &authClaim, true
 }
 
 func (s *WebServer) adminMiddleware(next http.Handler) http.Handler {

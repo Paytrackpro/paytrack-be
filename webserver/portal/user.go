@@ -17,10 +17,17 @@ type RegisterForm struct {
 }
 
 type LoginForm struct {
-	UserName string `validate:"required,alphanum,gte=4,lte=32"`
-	Password string `validate:"required"`
-	IsOtp    bool   `validate:"required"`
-	Otp      string
+	UserName  string `validate:"required,alphanum,gte=4,lte=32"`
+	Password  string `validate:"required"`
+	LoginType int    `validate:"required"`
+	IsOtp     bool   `validate:"required"`
+	Otp       string
+}
+
+type PasskeyRegisterInfo struct {
+	DisplayName string `json:"displayName"`
+	Email       string `json:"email"`
+	SessionKey  string `json:"sessionKey"`
 }
 
 type OtpForm struct {
@@ -97,6 +104,7 @@ type UpdateUserRequest struct {
 	ShowDraftForRecipient bool                     `json:"showDraftForRecipient"`
 	ShowDateOnInvoiceLine bool                     `json:"showDateOnInvoiceLine"`
 	HidePaid              bool                     `json:"hidePaid"`
+	ShowApproved          bool                     `json:"showApproved"`
 	Role                  utils.UserRole           `json:"role"`
 }
 

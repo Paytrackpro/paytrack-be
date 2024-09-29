@@ -23,6 +23,18 @@ func (s *Service) GetUserInfo(id uint64) (storage.User, error) {
 	return user, nil
 }
 
+func (s *Service) GetUserByUsername(username string) (*storage.User, error) {
+	var user storage.User
+	if err := s.db.Where("user_name = ?", username).Find(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, utils.NewError(fmt.Errorf("user not found"), utils.ErrorNotFound)
+		}
+		log.Error("GetUserInfo:get user info fail with error: ", err)
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (s *Service) GetUserTimer(timerId uint64) (storage.UserTimer, error) {
 	var userTimer storage.UserTimer
 	if err := s.db.Where("id = ?", timerId).Find(&userTimer).Error; err != nil {
@@ -86,7 +98,7 @@ func (s *Service) GetLogTimeList(userId uint64, request storage.AdminReportFilte
 
 func (s *Service) CountLogTimer(userId uint64, request storage.AdminReportFilter) (int64, error) {
 	var count int64
-	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM user_timer WHERE user_id = %d AND (start AT TIME ZONE 'UTC') < '%s' AND (start AT TIME ZONE 'UTC') > '%s'`, 
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM user_timer WHERE user_id = %d AND (start AT TIME ZONE 'UTC') < '%s' AND (start AT TIME ZONE 'UTC') > '%s'`,
 		userId, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate))
 
 	if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
@@ -133,6 +145,7 @@ func (s *Service) UpdateUserInfo(id uint64, userInfo portal.UpdateUserRequest, i
 	utils.SetValue(&user.ShowDateOnInvoiceLine, userInfo.ShowDateOnInvoiceLine)
 	utils.SetValue(&user.ShowDraftForRecipient, userInfo.ShowDraftForRecipient)
 	utils.SetValue(&user.HidePaid, userInfo.HidePaid)
+	utils.SetValue(&user.ShowApproved, userInfo.ShowApproved)
 
 	if isAdmin {
 		user.Role = userInfo.Role

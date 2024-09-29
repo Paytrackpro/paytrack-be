@@ -16,6 +16,13 @@ const UserFieldUName = "user_name"
 const UserFieldId = "id"
 const RecipientId = "recipient_id"
 
+type AuthType int
+
+const (
+	AuthLocalUsernamePassword AuthType = iota
+	AuthMicroservicePasskey
+)
+
 type UserStorage interface {
 	CheckDuplicate(user *User) error
 	CreateUser(user *User) error
@@ -53,11 +60,22 @@ type User struct {
 	UpdatedAt             time.Time       `json:"updatedAt"`
 	LastSeen              time.Time       `json:"lastSeen" gorm:"default:current_timestamp"`
 	HidePaid              bool            `json:"hidePaid"`
+	ShowApproved          bool            `json:"showApproved"`
 	Secret                string          `json:"-"`
 	Otp                   bool            `json:"otp"`
 	Locked                bool            `json:"locked"`
 	ShowDraftForRecipient bool            `json:"showDraftForRecipient"`
+	AuthType              int             `json:"authType"`
 	ShowDateOnInvoiceLine bool            `json:"showDateOnInvoiceLine"`
+}
+
+type AuthClaims struct {
+	Id          int64  `json:"id"`
+	Username    string `json:"username"`
+	Expire      int64  `json:"expire"`
+	Role        int    `json:"role"`
+	Createdt    int64  `json:"createdt"`
+	LastLogindt int64  `json:"lastLogindt"`
 }
 
 type UserWorkingDisplay struct {

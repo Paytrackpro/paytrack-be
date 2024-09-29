@@ -3,6 +3,7 @@ package webserver
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -21,7 +22,11 @@ type apiPayment struct {
 // Use for sender and receiver
 func (a *apiPayment) updatePayment(w http.ResponseWriter, r *http.Request) {
 	var body portal.PaymentRequest
-	claims, _ := a.parseBearer(r)
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
+		return
+	}
 	var strId = chi.URLParam(r, "id")
 	paymentId := utils.Uint64(strId)
 	err := a.parseJSONAndValidate(r, &body)
@@ -182,12 +187,12 @@ func (a *apiPayment) sortPaymentDetails(payment storage.Payment) {
 		for j := i + 1; j < len(payment.Details); j++ {
 			date1, err := time.Parse("2006/01/02", utils.HandlerDateFormat(payment.Details[i].Date))
 			if err != nil {
-				fmt.Println(err)
+				log.Info(err)
 				continue
 			}
 			date2, err := time.Parse("2006/01/02", utils.HandlerDateFormat(payment.Details[j].Date))
 			if err != nil {
-				fmt.Println(err)
+				log.Info(err)
 				continue
 			}
 			beforeUnix := date1.Unix()
@@ -207,7 +212,11 @@ func (a *apiPayment) getMonthlySummary(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
-	claims, _ := a.parseBearer(r)
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk {
+		utils.Response(w, http.StatusForbidden, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorForbidden), nil)
+		return
+	}
 	paymentSummary, err := a.service.GetRequestSummary(claims.Id, query)
 	if err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
@@ -231,7 +240,10 @@ func (a *apiPayment) verifyTokenPayment(token string, paymentId uint64) error {
 
 // verifyAccessPayment checking if the user is the requested user
 func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, r *http.Request) error {
-	claims, _ := a.parseBearer(r)
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk {
+		return fmt.Errorf("Get credentials info failed")
+	}
 	if claims == nil {
 		if payment.ContactMethod == storage.PaymentTypeEmail {
 			var plainText, err = a.crypto.Decrypt(token)
@@ -245,13 +257,35 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 		}
 		return fmt.Errorf("you do not have access")
 	}
-
-	approver, err := a.service.GetApprovalSetting(payment.SenderId, payment.ReceiverId, claims.Id)
-	if err != nil {
-		return err
+	var validApprover = true
+	projectIds := make([]string, 0)
+	if len(payment.Details) > 0 {
+		for _, detail := range payment.Details {
+			if detail.ProjectId > 0 {
+				projectIdStr := fmt.Sprintf("%d", detail.ProjectId)
+				if !slices.Contains(projectIds, projectIdStr) {
+					projectIds = append(projectIds, projectIdStr)
+				}
+			}
+		}
 	}
-
-	if claims.Id == payment.SenderId || (claims.Id == payment.ReceiverId && (payment.Status != storage.PaymentStatusCreated || (payment.Status == storage.PaymentStatusCreated && payment.ShowDraftRecipient))) || approver != nil {
+	if len(projectIds) > 0 {
+		approvers, err := a.service.GetProjectApprovers(projectIds)
+		if err != nil {
+			return err
+		}
+		if len(approvers) > 0 {
+			isClaimExist := false
+			for _, apv := range approvers {
+				if apv.MemberId == claims.Id {
+					isClaimExist = true
+					break
+				}
+			}
+			validApprover = isClaimExist
+		}
+	}
+	if claims.Id == payment.SenderId || (claims.Id == payment.ReceiverId && (payment.Status != storage.PaymentStatusCreated || (payment.Status == storage.PaymentStatusCreated && payment.ShowDraftRecipient))) || validApprover {
 		return nil
 	}
 	return fmt.Errorf("you do not have access")
@@ -345,7 +379,12 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if payment.ContactMethod == storage.PaymentTypeInternal {
-		if claims, _ := a.parseBearer(r); !(claims != nil && claims.Id == payment.ReceiverId) {
+		claims, isOk := a.credentialsInfo(r)
+		if !isOk {
+			utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
+			return
+		}
+		if !(claims != nil && claims.Id == payment.ReceiverId) {
 			utils.Response(w, http.StatusForbidden,
 				utils.NewError(fmt.Errorf("you do not have access right"), utils.ErrorForbidden), nil)
 			return
@@ -377,8 +416,12 @@ func (a *apiPayment) deleteDraft(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiPayment) getInitializationCount(w http.ResponseWriter, r *http.Request) {
-	claims, _ := a.parseBearer(r)
-	approvalCount, err1 := a.service.GetApprovalsCount(claims.Id)
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
+		return
+	}
+	approvalCount, err1 := a.service.GetApprovalsCount(claims.Id, claims.ShowApproved)
 	if err1 != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err1, utils.ErrorInternalCode), nil)
 		return
@@ -402,7 +445,11 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
-	claims, _ := a.parseBearer(r)
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
+		return
+	}
 	//default sortable is createdAt desc (newest before)
 	if utils.IsEmpty(query.Sort.Order) {
 		query.Sort.Order = "updated_at desc"
@@ -442,7 +489,11 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiPayment) countBulkPayBTC(w http.ResponseWriter, r *http.Request) {
-	claims, _ := a.parseBearer(r)
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
+		return
+	}
 	count, err := a.service.CountBulkPaymentBTC(claims.Id)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
@@ -453,7 +504,11 @@ func (a *apiPayment) countBulkPayBTC(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiPayment) hasReport(w http.ResponseWriter, r *http.Request) {
-	claims, _ := a.parseBearer(r)
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
+		return
+	}
 	if claims.Id < 1 {
 		utils.ResponseOK(w, false)
 		return
@@ -469,7 +524,11 @@ func (a *apiPayment) paymentReport(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
-	claims, _ := a.parseBearer(r)
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
+		return
+	}
 	if claims.Id < 1 {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
@@ -511,7 +570,11 @@ func (a *apiPayment) invoiceReport(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
-	claims, _ := a.parseBearer(r)
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
+		return
+	}
 	if claims.Id < 1 {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
@@ -550,6 +613,44 @@ func (a *apiPayment) invoiceReport(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseOK(w, reportMap)
 }
 
+func (a *apiPayment) getPaymentUsers(w http.ResponseWriter, r *http.Request) {
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk || claims.Id < 1 {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("authentication failed"), nil)
+		return
+	}
+	paymentUsers, err := a.service.GetPaymentUserList(claims.Id)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+
+	projectsRelatedUsers, err := a.service.GetProjectRelatedMembers(claims.Id)
+	if err == nil {
+		for _, projectUser := range projectsRelatedUsers {
+			exist := false
+			for _, existUser := range paymentUsers {
+				if existUser.Id == projectUser.Id {
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				paymentUsers = append(paymentUsers, projectUser)
+			}
+		}
+	}
+	var userSelection []portal.UserSelection
+	for _, user := range paymentUsers {
+		userSelection = append(userSelection, portal.UserSelection{
+			Id:          user.Id,
+			UserName:    user.UserName,
+			DisplayName: user.DisplayName,
+		})
+	}
+	utils.ResponseOK(w, userSelection)
+}
+
 func (a *apiPayment) getExchangeList(w http.ResponseWriter, r *http.Request) {
 	exchanges := a.service.ExchangeList
 	if utils.IsEmpty(exchanges) {
@@ -574,7 +675,11 @@ func (a *apiPayment) addressReport(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
 	}
-	claims, _ := a.parseBearer(r)
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
+		return
+	}
 	if claims.Id < 1 {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
 		return
@@ -609,7 +714,11 @@ func (a *apiPayment) addressReport(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiPayment) approveRequest(w http.ResponseWriter, r *http.Request) {
-	claims, _ := a.parseBearer(r)
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
+		return
+	}
 	var f portal.ApprovalRequest
 	err := a.parseJSON(r, &f)
 	if err != nil {
@@ -648,7 +757,12 @@ func (a *apiPayment) rejectPayment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if payment.ContactMethod == storage.PaymentTypeInternal {
-		if claims, _ := a.parseBearer(r); !(claims != nil && claims.Id == payment.ReceiverId) {
+		claims, isOk := a.credentialsInfo(r)
+		if !isOk {
+			utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
+			return
+		}
+		if !(claims != nil && claims.Id == payment.ReceiverId) {
 			utils.Response(w, http.StatusForbidden,
 				utils.NewError(fmt.Errorf("you do not have access right"), utils.ErrorForbidden), nil)
 			return
@@ -683,8 +797,11 @@ func (a *apiPayment) bulkPaidBTC(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("list payment id can't be empty or nil"), utils.ErrorBadRequest), nil)
 		return
 	}
-
-	claims, _ := a.parseBearer(r)
+	claims, isOk := a.credentialsInfo(r)
+	if !isOk {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("Get credentials info failed"), utils.ErrorBadRequest), nil)
+		return
+	}
 	if err := a.service.BulkPaidBTC(claims.Id, body.TxId, body.PaymentList); err != nil {
 		utils.Response(w, http.StatusForbidden, utils.InternalError.With(err), nil)
 		return

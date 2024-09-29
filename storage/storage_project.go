@@ -16,7 +16,10 @@ type Project struct {
 	ProjectId   uint64        `gorm:"primarykey" json:"projectId"`
 	ProjectName string        `json:"projectName"`
 	Members     Members       `json:"members" gorm:"type:jsonb"`
+	Approvers   Members       `json:"approvers" gorm:"type:jsonb"`
+	Description string        `json:"description"`
 	CreatorId   uint64        `json:"creatorId"`
+	CreatorName string        `json:"creatorName"`
 	Status      ProjectStatus `json:"status"`
 	CreatedAt   time.Time     `json:"createdAt"`
 	UpdatedAt   time.Time     `json:"updatedAt"`
@@ -29,6 +32,12 @@ type Member struct {
 	UserName    string `json:"userName"`
 	DisplayName string `json:"displayName"`
 	Role        int    `json:"role"`
+}
+
+type ProjectResponse struct {
+	Project
+	LinkedProjectNum int  `json:"linkedProjectNum"`
+	CannotArchived   bool `json:"cannotArchived"`
 }
 
 // Value Marshal
