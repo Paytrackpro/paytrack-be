@@ -85,6 +85,28 @@ func (p *psql) GetList(f Filter, obj interface{}) error {
 	return err
 }
 
+// func (p *psql) GetList(f Filter, obj interface{}) error {
+// 	userFilter, ok := f.(*UserFilter)
+// 	if !ok {
+// 		return errors.New("invalid filter type")
+// 	}
+
+// 	var query *gorm.DB
+// 	query = f.BindQuery(p.db)
+
+// 	// Xác định ngày ngưỡng dựa trên LastSeenFrom
+// 	if userFilter.LastSeenFrom > 0 {
+// 		dateThreshold := time.Now().AddDate(0, 0, -userFilter.LastSeenFrom) // Tính toán ngày 90 ngày trước
+// 		query = query.Where("last_seen >= ?", dateThreshold)                // Thêm điều kiện lọc vào truy vấn
+// 	}
+
+// 	err := query.Find(obj).Error
+// 	if err == gorm.ErrRecordNotFound {
+// 		return nil
+// 	}
+// 	return err
+// }
+
 func (p *psql) Delete(d DeleteFilter, obj interface{}) error {
 	return d.BindQueryDelete(p.db).Delete(obj).Error
 }
