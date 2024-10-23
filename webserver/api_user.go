@@ -707,6 +707,7 @@ func (a *apiUser) getListUsers(w http.ResponseWriter, r *http.Request) {
 	if utils.IsEmpty(f.Sort.Order) {
 		f.Sort.Order = "lastSeen desc"
 	}
+
 	count, _ := a.db.Count(&f, &storage.User{})
 	if f.Size == 0 {
 		f.Size = int(count)

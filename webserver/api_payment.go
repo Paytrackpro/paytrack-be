@@ -452,7 +452,7 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	}
 	//default sortable is createdAt desc (newest before)
 	if utils.IsEmpty(query.Sort.Order) {
-		query.Sort.Order = "updated_at desc"
+		query.Sort.Order = "created_at desc"
 	}
 	if strings.Contains(query.Sort.Order, "updatedAt") {
 		query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "updatedAt", "updated_at")
@@ -477,14 +477,24 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payments, count, err := a.service.GetListPayments(claims.Id, claims.UserRole, query)
+	payments, count, totalAmountUnpaid, err := a.service.GetListPayments(claims.Id, claims.UserRole, query)
+	//payments, count, err := a.service.GetListPayments(claims.Id, claims.UserRole, query)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
+
+	totalUnpaid := int64(0)
+	for _, payment := range payments {
+		if payment.Status == 0 {
+			totalUnpaid += int64(payment.Amount * 100)
+		}
+	}
+	// finalTotalUnpaid := float64(totalUnpaid) / 100
 	utils.ResponseOK(w, Map{
-		"payments": payments,
-		"count":    count,
+		"payments":    payments,
+		"count":       count,
+		"totalUnpaid": totalAmountUnpaid,
 	})
 }
 

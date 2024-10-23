@@ -517,14 +517,17 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 	return &payment, nil
 }
 
-func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request storage.PaymentFilter) ([]storage.Payment, int64, error) {
+func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request storage.PaymentFilter) ([]storage.Payment, int64, float64, error) {
 	if request.Page != 0 {
 		request.Page = request.Page - 1
 	}
 	var count int64
+	var totalAmountUnpaid sql.NullFloat64
+	// var totalReceived sql.NullFloat64
 	payments := make([]storage.Payment, 0)
 	builder := s.db
 	buildCount := s.db.Model(&storage.Payment{})
+	buildUnpaid := s.db.Model(&storage.Payment{})
 	if request.RequestType == storage.PaymentTypeRequest {
 		if request.HidePaid {
 			builder = builder.Where("sender_id = ? AND status <> ? AND (? = 0 OR receiver_id IN (?))", userId, storage.PaymentStatusPaid, len(request.UserIds), request.UserIds)
@@ -533,6 +536,11 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 			builder = builder.Where("sender_id = ? AND (? = 0 OR receiver_id IN (?))", userId, len(request.UserIds), request.UserIds)
 			buildCount = buildCount.Where("sender_id = ? AND (? = 0 OR receiver_id IN (?))", userId, len(request.UserIds), request.UserIds)
 		}
+		builderUnpaid := buildUnpaid.Select("SUM(amount)").Where("status <> ?", storage.PaymentStatusPaid)
+		if err := builderUnpaid.Scan(&totalAmountUnpaid).Error; err != nil {
+			return nil, 0, 0, err
+		}
+
 	} else if request.RequestType == storage.PaymentTypeReminder {
 		if request.HidePaid {
 			builder = builder.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
@@ -540,6 +548,10 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		} else {
 			builder = builder.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
 			buildCount = buildCount.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+		}
+		builderUnpaid := buildUnpaid.Select("SUM(amount) as total").Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+		if err := builderUnpaid.Scan(&totalAmountUnpaid).Error; err != nil {
+			return nil, 0, 0, err
 		}
 	} else if request.RequestType == storage.PaymentTypeApproval {
 		var projectIds []uint64
@@ -568,9 +580,9 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d%s}]' AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s)`, storage.PaymentStatusSent, userId, isApprovedQuery, userId, detailPart)
 		if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				return payments, 0, nil
+				return payments, 0, 0, nil
 			}
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
 
 		if request.Size == 0 {
@@ -582,11 +594,11 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d%s}]' AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s) LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, isApprovedQuery, userId, detailPart, request.Size, offset)
 		if err := s.db.Raw(query).Scan(&payments).Order(request.Sort.Order).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				return payments, 0, nil
+				return payments, 0, 0, nil
 			}
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
-		return payments, count, nil
+		return payments, count, 0, nil
 	} else {
 		if role != utils.UserRoleAdmin {
 			builder = builder.Where("receiver_id = ? OR sender_id = ?", userId, userId)
@@ -595,7 +607,7 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	}
 
 	if err := buildCount.Count(&count).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 
 	if request.Size == 0 {
@@ -605,12 +617,12 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	offset := request.Page * request.Size
 	if err := builder.Order(request.Sort.Order).Limit(request.Size).Offset(offset).Find(&payments).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return payments, 0, nil
+			return payments, 0, 0, nil
 		}
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 
-	return payments, count, nil
+	return payments, count, totalAmountUnpaid.Float64, nil
 }
 
 func (s *Service) CheckHasReport(userId uint64) bool {
