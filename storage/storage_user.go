@@ -182,6 +182,7 @@ type UserFilter struct {
 	Sort
 	KeySearch string
 	Email     string
+	LastSeen  string
 }
 
 type AdminReportFilter struct {
@@ -199,6 +200,10 @@ func (f *UserFilter) BindCount(db *gorm.DB) *gorm.DB {
 	if !utils.IsEmpty(f.KeySearch) {
 		keySearch := fmt.Sprintf("%%%s%%", strings.TrimSpace(f.KeySearch))
 		db = db.Where("user_name LIKE ?", keySearch)
+	}
+	if !utils.IsEmpty(f.LastSeen) && f.LastSeen == "3MOTH" {
+		threeMonthsAgo := time.Now().AddDate(0, -3, 0)
+		db = db.Where("last_seen >= ?", threeMonthsAgo)
 	}
 	return db
 }
