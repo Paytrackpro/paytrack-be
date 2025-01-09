@@ -257,7 +257,7 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 		}
 		return fmt.Errorf("you do not have access")
 	}
-	var validApprover = true
+	var validApprover = false
 	projectIds := make([]string, 0)
 	if len(payment.Details) > 0 {
 		for _, detail := range payment.Details {
