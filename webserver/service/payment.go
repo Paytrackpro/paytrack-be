@@ -710,7 +710,7 @@ func (s *Service) GetPaymentsForReport(userId uint64, request portal.ReportFilte
 }
 
 // get all payments exculed draft status
-func (s *Service) GetAllPayments(request storage.AdminReportFilter) ([]storage.Payment, error) {
+func (s *Service) GetAllPaymentsBanGoc(request storage.AdminReportFilter) ([]storage.Payment, error) {
 	payments := make([]storage.Payment, 0)
 	query := fmt.Sprintf(`SELECT * FROM payments WHERE status <> %d AND status <> %d AND (sent_at AT TIME ZONE 'UTC') < '%s' AND (sent_at AT TIME ZONE 'UTC') > '%s' ORDER BY sent_at DESC`,
 		storage.PaymentStatusCreated, storage.PaymentStatusRejected, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate))
@@ -720,6 +720,91 @@ func (s *Service) GetAllPayments(request storage.AdminReportFilter) ([]storage.P
 		}
 		return nil, err
 	}
+	return payments, nil
+}
+
+// DungPA: Task3
+func (s *Service) GetAllPayments(request storage.AdminReportFilter) ([]storage.Payment, error) {
+	payments := make([]storage.Payment, 0)
+
+	usernameCondition := ""
+	if request.UserName != "" {
+		usernameCondition = fmt.Sprintf("AND (sender_name LIKE '%s%%' OR receiver_name LIKE '%s%%') ", request.UserName, request.UserName)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT * 
+		FROM payments 
+		WHERE status <> %d 
+		  AND status <> %d 
+		  AND (sent_at AT TIME ZONE 'UTC') < '%s' 
+		  AND (sent_at AT TIME ZONE 'UTC') > '%s' 
+		  %s
+		ORDER BY sent_at DESC`,
+		storage.PaymentStatusCreated,
+		storage.PaymentStatusRejected,
+		utils.TimeToStringWithoutTimeZone(request.EndDate),
+		utils.TimeToStringWithoutTimeZone(request.StartDate),
+		usernameCondition)
+
+	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, nil
+		}
+		return nil, err
+	}
+	return payments, nil
+}
+
+func (s *Service) GetAllPaymentsForReportUserDetail(request storage.AdminReportFilterUserDetail) ([]storage.Payment, error) {
+	payments := make([]storage.Payment, 0)
+	condition := ""
+	var params []interface{}
+
+	if request.Sent && !request.Received && request.UserName != "" {
+		condition = fmt.Sprintf("AND (sender_name = '%s') ", request.UserName)
+	} else if request.Received && !request.Sent && request.UserName != "" {
+		condition = fmt.Sprintf("AND (receiver_name = '%s') ", request.UserName)
+	} else {
+		condition = fmt.Sprintf("AND (sender_name = '%s' OR receiver_name = '%s') ", request.UserName, request.UserName)
+	}
+
+	if request.Paid {
+		if condition != "" {
+			condition += "AND status = ? "
+		} else {
+			condition = "AND status = ? "
+		}
+		params = append(params, storage.PaymentStatusPaid)
+	}
+
+	if request.HasBeenPaid {
+		if condition != "" {
+			condition += "AND status = ? "
+		} else {
+			condition = "AND status = ? "
+		}
+		params = append(params, storage.PaymentStatusPaid)
+	}
+
+	query := fmt.Sprintf(`
+        SELECT * 
+        FROM payments 
+        WHERE status <> %d 
+          AND status <> %d 
+          %s
+        ORDER BY sent_at DESC`,
+		storage.PaymentStatusCreated,
+		storage.PaymentStatusRejected,
+		condition)
+
+	if err := s.db.Raw(query, params...).Scan(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, nil
+		}
+		return nil, err
+	}
+
 	return payments, nil
 }
 
