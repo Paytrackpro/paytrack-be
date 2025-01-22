@@ -189,6 +189,16 @@ type AdminReportFilter struct {
 	Sort
 	StartDate time.Time
 	EndDate   time.Time
+	UserName  string // DungPA: Task3
+}
+
+type AdminReportFilterUserDetail struct {
+	Sort
+	Sent        bool
+	Received    bool
+	Paid        bool
+	HasBeenPaid bool
+	UserName    string
 }
 
 func (f *UserFilter) BindQuery(db *gorm.DB) *gorm.DB {

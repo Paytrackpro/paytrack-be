@@ -512,6 +512,218 @@ func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) 
 	usersSummaryMap := make(map[uint64]*portal.UserUsageSummary)
 	userIds := make([]uint64, 0)
 	for _, payment := range payments {
+		if strings.Contains(payment.SenderName, rf.UserName) {
+			if !CheckExistOnIntArray(userIds, payment.SenderId) {
+				userIds = append(userIds, payment.SenderId)
+			}
+		}
+		if strings.Contains(payment.ReceiverName, rf.UserName) {
+			if !CheckExistOnIntArray(userIds, payment.ReceiverId) {
+				userIds = append(userIds, payment.ReceiverId)
+			}
+		}
+		totalAmount += payment.Amount
+		switch payment.Status {
+		case storage.PaymentStatusConfirmed:
+			pendingInfo.InvoiceNum++
+			pendingInfo.Amount += payment.Amount
+		case storage.PaymentStatusPaid:
+			paidInfo.InvoiceNum++
+			paidInfo.Amount += payment.Amount
+		default:
+			sentInfo.InvoiceNum++
+			sentInfo.Amount += payment.Amount
+		}
+		senderId := payment.SenderId
+		receiverId := payment.ReceiverId
+		var senderInMap *portal.UserUsageSummary
+		var receiverInMap *portal.UserUsageSummary
+		senderInMap = usersSummaryMap[senderId]
+		receiverInMap = usersSummaryMap[receiverId]
+		if senderInMap != nil {
+			senderInMap.SendNum++
+			senderInMap.SentUsd += payment.Amount
+		} else {
+			senderInMap = &portal.UserUsageSummary{
+				Username: payment.SenderName,
+				SendNum:  1,
+				SentUsd:  payment.Amount,
+			}
+		}
+		if receiverInMap != nil {
+			receiverInMap.ReceiveNum++
+			receiverInMap.ReceiveUsd += payment.Amount
+		} else {
+			receiverInMap = &portal.UserUsageSummary{
+				Username:   payment.ReceiverName,
+				ReceiveNum: 1,
+				ReceiveUsd: payment.Amount,
+				PaidNum:    0,
+				PaidUsd:    0,
+			}
+		}
+		if payment.Status == storage.PaymentStatusPaid {
+			if rf.UserName == "" {
+				senderInMap.GotPaidNum++
+				senderInMap.GotPaidUsd += payment.Amount
+				receiverInMap.PaidNum++
+				receiverInMap.PaidUsd += payment.Amount
+			} else {
+				isReceiverSearched := strings.Contains(payment.ReceiverName, rf.UserName)
+				if isReceiverSearched {
+					receiverInMap.PaidNum++
+					receiverInMap.PaidUsd += payment.Amount
+					senderInMap.GotPaidNum++
+					senderInMap.GotPaidUsd += payment.Amount
+				} else {
+					receiverInMap.PaidNum++
+					receiverInMap.PaidUsd += payment.Amount
+					senderInMap.GotPaidNum++
+					senderInMap.GotPaidUsd += payment.Amount
+				}
+			}
+		}
+		usersSummaryMap[senderId] = senderInMap
+		usersSummaryMap[receiverId] = receiverInMap
+	}
+	userUsageArr := make([]portal.UserUsageSummary, 0)
+	var pageNum, numPerpage, startIndex, endIndex int
+	if rf.Sort.Size == 0 {
+		pageNum = 1
+		numPerpage = len(userIds)
+		startIndex = 0
+		endIndex = len(userIds) - 1
+	} else {
+		pageNum = rf.Sort.Page
+		numPerpage = rf.Sort.Size
+		startIndex = (pageNum - 1) * numPerpage
+		endIndex = int(0)
+	}
+
+	reportSummary.TotalAmount = totalAmount
+	reportSummary.PaidInvoices = paidInfo
+	reportSummary.PayableInvoices = pendingInfo
+	reportSummary.SentInvoices = sentInfo
+
+	if startIndex > len(userIds)-1 {
+		reportSummary.UserUsageSummary = userUsageArr
+		utils.ResponseOK(w, Map{
+			"report": reportSummary,
+			"count":  len(userIds),
+		})
+		return
+	}
+	if startIndex+numPerpage >= len(userIds) {
+		endIndex = len(userIds) - 1
+	} else {
+		endIndex = startIndex + numPerpage - 1
+	}
+
+	for i := startIndex; i <= endIndex; i++ {
+		userId := userIds[i]
+		userUsage := usersSummaryMap[userId]
+		if userUsage == nil || userUsage.Username == "" {
+			continue
+		}
+		userUsageArr = append(userUsageArr, *userUsage)
+	}
+
+	if strings.Contains(rf.Sort.Order, "username") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].Username > userUsageArr[b].Username
+			} else {
+				return userUsageArr[a].Username < userUsageArr[b].Username
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "send") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].SendNum > userUsageArr[b].SendNum
+			} else {
+				return userUsageArr[a].SendNum < userUsageArr[b].SendNum
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "sendusd") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].SentUsd > userUsageArr[b].SentUsd
+			} else {
+				return userUsageArr[a].SentUsd < userUsageArr[b].SentUsd
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "receiveusd") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].ReceiveUsd > userUsageArr[b].ReceiveUsd
+			} else {
+				return userUsageArr[a].ReceiveUsd < userUsageArr[b].ReceiveUsd
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "receive") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].ReceiveNum > userUsageArr[b].ReceiveNum
+			} else {
+				return userUsageArr[a].ReceiveNum < userUsageArr[b].ReceiveNum
+			}
+		})
+	}
+	if strings.Contains(rf.Sort.Order, "paidusd") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].PaidUsd > userUsageArr[b].PaidUsd
+			} else {
+				return userUsageArr[a].PaidUsd < userUsageArr[b].PaidUsd
+			}
+		})
+	}
+
+	if strings.Contains(rf.Sort.Order, "paid") {
+		sort.Slice(userUsageArr, func(a, b int) bool {
+			if strings.Contains(rf.Sort.Order, "desc") {
+				return userUsageArr[a].PaidNum > userUsageArr[b].PaidNum
+			} else {
+				return userUsageArr[a].PaidNum < userUsageArr[b].PaidNum
+			}
+		})
+	}
+	reportSummary.UserUsageSummary = userUsageArr
+	utils.ResponseOK(w, Map{
+		"report": reportSummary,
+		"count":  len(userIds),
+	})
+}
+
+func (a *apiUser) getAdminReportSummaryBanGoc(w http.ResponseWriter, r *http.Request) {
+	var rf storage.AdminReportFilter
+	if err := a.parseQueryAndValidate(r, &rf); err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	payments, err := a.service.GetAllPaymentsBanGoc(rf)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	reportSummary := portal.AdminSummaryReport{
+		TotalInvoices: len(payments),
+	}
+	totalAmount := float64(0)
+	sentInfo := portal.PaymentStatusSummary{}
+	pendingInfo := portal.PaymentStatusSummary{}
+	paidInfo := portal.PaymentStatusSummary{}
+	usersSummaryMap := make(map[uint64]*portal.UserUsageSummary)
+	userIds := make([]uint64, 0)
+	for _, payment := range payments {
 		if !CheckExistOnIntArray(userIds, payment.SenderId) {
 			userIds = append(userIds, payment.SenderId)
 		}
@@ -681,6 +893,124 @@ func (a *apiUser) getAdminReportSummary(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+func (a *apiUser) getAdminReportSummaryUserDetail(w http.ResponseWriter, r *http.Request) {
+	var rf storage.AdminReportFilterUserDetail
+	if err := a.parseQueryAndValidate(r, &rf); err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+
+	payments, err := a.service.GetAllPaymentsForReportUserDetail(rf)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+
+	reportSummary := portal.AdminSummaryReportDetailUser{
+		TotalInvoices: len(payments),
+	}
+
+	totalAmount := float64(0)
+	sentInfo := portal.PaymentStatusSummary{}
+	pendingInfo := portal.PaymentStatusSummary{}
+	paidInfo := portal.PaymentStatusSummary{}
+	userDetailUsageArr := make([]portal.UserDetailUsageSummary, 0)
+
+	for _, payment := range payments {
+		totalAmount += payment.Amount
+		switch payment.Status {
+		case storage.PaymentStatusConfirmed:
+			pendingInfo.InvoiceNum++
+			pendingInfo.Amount += payment.Amount
+		case storage.PaymentStatusPaid:
+			paidInfo.InvoiceNum++
+			paidInfo.Amount += payment.Amount
+		default:
+			sentInfo.InvoiceNum++
+			sentInfo.Amount += payment.Amount
+		}
+
+		detail := portal.UserDetailUsageSummary{
+			Sender:       payment.SenderName,
+			Receiver:     payment.ReceiverName,
+			Status:       int(payment.Status),
+			Amount:       payment.Amount,
+			AcceptedCoin: payment.PaymentMethod.String(),
+			StartDate:    payment.StartDate,
+			LastEdited:   payment.UpdatedAt,
+		}
+		userDetailUsageArr = append(userDetailUsageArr, detail)
+	}
+
+	sortOrder := strings.TrimSpace(strings.ToLower(rf.Sort.Order))
+	if sortOrder != "" {
+		parts := strings.Fields(sortOrder)
+		sortField := ""
+		sortDesc := false
+
+		if len(parts) >= 1 {
+			sortField = parts[0]
+		}
+		if len(parts) >= 2 {
+			sortDesc = parts[1] == "desc"
+		}
+
+		sort.Slice(userDetailUsageArr, func(i, j int) bool {
+			var result bool
+			switch sortField {
+			case "sender":
+				result = strings.ToLower(userDetailUsageArr[i].Sender) < strings.ToLower(userDetailUsageArr[j].Sender)
+			case "receiver":
+				result = strings.ToLower(userDetailUsageArr[i].Receiver) < strings.ToLower(userDetailUsageArr[j].Receiver)
+			case "amount":
+				result = userDetailUsageArr[i].Amount < userDetailUsageArr[j].Amount
+			case "startdate":
+				result = userDetailUsageArr[i].StartDate.Before(userDetailUsageArr[j].StartDate)
+			case "lastedited":
+				result = userDetailUsageArr[i].LastEdited.Before(userDetailUsageArr[j].LastEdited)
+			default:
+				result = userDetailUsageArr[i].StartDate.Before(userDetailUsageArr[j].StartDate)
+			}
+			if sortDesc {
+				return !result
+			}
+			return result
+		})
+	}
+
+	totalItems := len(userDetailUsageArr)
+	pageNum := 1
+	numPerPage := totalItems
+
+	if rf.Sort.Size > 0 {
+		pageNum = rf.Sort.Page
+		numPerPage = rf.Sort.Size
+	}
+
+	startIndex := (pageNum - 1) * numPerPage
+	endIndex := startIndex + numPerPage
+
+	if startIndex >= totalItems {
+		userDetailUsageArr = []portal.UserDetailUsageSummary{}
+	} else {
+		if endIndex > totalItems {
+			endIndex = totalItems
+		}
+		userDetailUsageArr = userDetailUsageArr[startIndex:endIndex]
+	}
+
+	reportSummary.TotalAmount = totalAmount
+	reportSummary.PaidInvoices = paidInfo
+	reportSummary.PayableInvoices = pendingInfo
+	reportSummary.SentInvoices = sentInfo
+	reportSummary.UserDetailUsageSummary = userDetailUsageArr
+
+	utils.ResponseOK(w, Map{
+		"report": reportSummary,
+		"count":  totalItems,
+	})
+}
+
 func CheckExistOnIntArray(intArr []uint64, checkInt uint64) bool {
 	for _, num := range intArr {
 		if num == checkInt {
@@ -764,6 +1094,53 @@ func (a *apiUser) getUserSelectionList(w http.ResponseWriter, r *http.Request) {
 			DisplayName: user.DisplayName,
 		})
 	}
+	utils.ResponseOK(w, userSelection)
+}
+
+// DungPA: Task1
+func (a *apiUser) getUserSenderPaid(w http.ResponseWriter, r *http.Request) {
+	claims, _ := a.credentialsInfo(r)
+	userCurrent, err := a.service.GetUserInfo(claims.Id)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		return
+	}
+	var f storage.UserFilter
+	if err := a.parseQueryAndValidate(r, &f); err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+
+	var payments []storage.Payment
+	if err := a.db.GetUserSender(&f, &payments); err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+		return
+	}
+
+	uniqueSenders := make(map[uint64]portal.UserSelection)
+	for _, p := range payments {
+		if _, exists := uniqueSenders[p.SenderId]; exists {
+			continue
+		}
+		if p.ReceiverId == userCurrent.Id {
+			user, err := a.service.GetUserInfo(p.SenderId)
+			if err != nil {
+				utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
+				return
+			}
+			uniqueSenders[p.SenderId] = portal.UserSelection{
+				Id:          user.Id,
+				UserName:    user.UserName,
+				DisplayName: user.DisplayName,
+			}
+		}
+	}
+
+	var userSelection []portal.UserSelection
+	for _, user := range uniqueSenders {
+		userSelection = append(userSelection, user)
+	}
+
 	utils.ResponseOK(w, userSelection)
 }
 

@@ -55,7 +55,8 @@ func (s *WebServer) Route() {
 			r.Put("/show-approved", userRouter.showApproved)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
 			r.Get("/member-exist-checking", userRouter.checkingProjectMemberExist)
-			r.Get("/get-user-list", userRouter.getUserSelectionList)
+			// DungPA: Task1
+			r.Get("/get-user-list", userRouter.getUserSenderPaid)
 			r.Get("/exists", userRouter.usersExist)
 			r.Get("/member-exist", userRouter.membersExist)
 			r.Post("/generate-otp", userRouter.generateQr)
@@ -93,6 +94,7 @@ func (s *WebServer) Route() {
 				r.Get("/list", userRouter.getListUsers)
 			})
 			r.Get("/report-summary", userRouter.getAdminReportSummary)
+			r.Get("/report-summary-user", userRouter.getAdminReportSummaryUserDetail)
 		})
 		r.Route("/payment", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)

@@ -15,6 +15,7 @@ type Storage interface {
 	Save(obj interface{}) error
 	GetById(id interface{}, obj interface{}) error
 	GetList(f Filter, obj interface{}) error
+	GetUserSender(f Filter, obj interface{}) error
 	First(f Filter, obj interface{}) error
 	Count(f Filter, obj interface{}) (int64, error)
 	Delete(d DeleteFilter, obj interface{}) error
@@ -78,6 +79,15 @@ func (p *psql) GetById(id interface{}, obj interface{}) error {
 }
 
 func (p *psql) GetList(f Filter, obj interface{}) error {
+	err := f.BindQuery(p.db).Find(obj).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil
+	}
+	return err
+}
+
+// DungPA: Task1
+func (p *psql) GetUserSender(f Filter, obj interface{}) error {
 	err := f.BindQuery(p.db).Find(obj).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil
