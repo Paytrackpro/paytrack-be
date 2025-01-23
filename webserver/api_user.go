@@ -1096,8 +1096,6 @@ func (a *apiUser) getUserSelectionList(w http.ResponseWriter, r *http.Request) {
 	}
 	utils.ResponseOK(w, userSelection)
 }
-
-// DungPA: Task1
 func (a *apiUser) getUserSenderPaid(w http.ResponseWriter, r *http.Request) {
 	claims, _ := a.credentialsInfo(r)
 	userCurrent, err := a.service.GetUserInfo(claims.Id)
