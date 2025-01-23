@@ -86,7 +86,6 @@ func (p *psql) GetList(f Filter, obj interface{}) error {
 	return err
 }
 
-// DungPA: Task1
 func (p *psql) GetUserSender(f Filter, obj interface{}) error {
 	err := f.BindQuery(p.db).Find(obj).Error
 	if err == gorm.ErrRecordNotFound {

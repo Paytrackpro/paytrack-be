@@ -55,7 +55,6 @@ func (s *WebServer) Route() {
 			r.Put("/show-approved", userRouter.showApproved)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
 			r.Get("/member-exist-checking", userRouter.checkingProjectMemberExist)
-			// DungPA: Task1
 			r.Get("/get-user-list", userRouter.getUserSenderPaid)
 			r.Get("/exists", userRouter.usersExist)
 			r.Get("/member-exist", userRouter.membersExist)

@@ -189,7 +189,7 @@ type AdminReportFilter struct {
 	Sort
 	StartDate time.Time
 	EndDate   time.Time
-	UserName  string // DungPA: Task3
+	UserName  string
 }
 
 type AdminReportFilterUserDetail struct {

@@ -722,8 +722,6 @@ func (s *Service) GetAllPaymentsBanGoc(request storage.AdminReportFilter) ([]sto
 	}
 	return payments, nil
 }
-
-// DungPA: Task3
 func (s *Service) GetAllPayments(request storage.AdminReportFilter) ([]storage.Payment, error) {
 	payments := make([]storage.Payment, 0)
 
