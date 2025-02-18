@@ -17,6 +17,7 @@ type Config struct {
 	CoimarketcapKey string `yaml:"coimarketcapKey"`
 	AuthType        int    `yaml:"authType"`
 	AuthHost        string `yaml:"authHost"`
+	BaseUrl         string `yaml:"baseUrl"`
 }
 
 type Service struct {

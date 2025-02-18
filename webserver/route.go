@@ -99,6 +99,7 @@ func (s *WebServer) Route() {
 			r.Use(s.loggedInMiddleware)
 			var paymentRouter = apiPayment{WebServer: s}
 			r.Post("/", paymentRouter.createPayment)
+			r.Post("/create-url", paymentRouter.createPaymentUrl)
 			r.Get("/{id:[0-9]+}", paymentRouter.getPayment)
 			r.Post("/{id:[0-9]+}", paymentRouter.updatePayment)
 			r.Post("/request-rate", paymentRouter.requestRate)
@@ -118,6 +119,13 @@ func (s *WebServer) Route() {
 			r.Get("/address-report", paymentRouter.addressReport)
 			r.Get("/exchange-list", paymentRouter.getExchangeList)
 			r.Get("/get-payment-users", paymentRouter.getPaymentUsers)
+		})
+		r.Route("/payment-url", func(r chi.Router) {
+			var paymentRouter = apiPayment{WebServer: s}
+			r.Post("/request-rate", paymentRouter.requestRateForPayUrl)
+			r.Get("/exchange-list", paymentRouter.getExchangeList)
+			r.Get("/pay/{id:[0-9]+}/{code}", paymentRouter.getPaymentUrl)
+			r.Post("/process", paymentRouter.processPaymentUrl)
 		})
 		r.Route("/project", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)

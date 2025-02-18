@@ -5,12 +5,18 @@ import (
 )
 
 type Method int
+type Type int
 
 const (
 	PaymentTypeNotSet Method = iota
 	PaymentTypeBTC
 	PaymentTypeLTC
 	PaymentTypeDCR
+)
+
+const (
+	PaymentSystem Type = iota
+	PaymentUrl
 )
 
 func (m Method) String() string {

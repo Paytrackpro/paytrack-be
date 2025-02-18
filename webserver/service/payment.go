@@ -134,6 +134,8 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 		ShowDraftRecipient:    showDraftForRecipient,
 		ShowDateOnInvoiceLine: request.ShowDateOnInvoiceLine,
 		ShowProjectOnInvoice:  request.ShowProjectOnInvoice,
+		PaymentType:           request.PaymentType,
+		PaymentCode:           request.PaymentCode,
 	}
 
 	if payment.ShowProjectOnInvoice {
@@ -1036,4 +1038,13 @@ func (s *Service) SyncPaymentUser(db *gorm.DB, uID int, displayName, userName st
 		}
 	}
 	return nil
+}
+
+func (s *Service) GetPaymentPayUrl(id int64, paymentCode string) (storage.Payment, error) {
+	var payment storage.Payment
+	err := s.db.Where("id = ? AND payment_code = ?", id, paymentCode).First(&payment).Error
+	if err != nil {
+		return storage.Payment{}, err
+	}
+	return payment, nil
 }
