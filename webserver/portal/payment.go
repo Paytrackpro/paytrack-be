@@ -31,6 +31,8 @@ type PaymentRequest struct {
 	ShowProjectOnInvoice  bool                    `json:"showProjectOnInvoice"`
 	ProjectId             uint64                  `json:"projectId"`
 	ProjectName           string                  `json:"projectName"`
+	PaymentType           utils.Type              `json:"-"`
+	PaymentCode           string                  `json:"-"`
 }
 
 type PaymentConfirm struct {
@@ -44,7 +46,29 @@ type PaymentConfirm struct {
 	PaymentAddress string       `validate:"required" json:"paymentAddress"`
 }
 
+type PaymentUrlConfirm struct {
+	Id             uint64       `validate:"required" json:"id"`
+	TxId           string       `json:"txId"`
+	Token          string       `json:"token"`
+	PayerId        uint64       `json:"payerId"`
+	ConvertRate    float64      `json:"convertRate"`
+	ConvertTime    time.Time    `json:"convertTime"`
+	ExpectedAmount float64      `json:"expectedAmount"`
+	PaymentMethod  utils.Method `validate:"required" json:"paymentMethod"`
+	PaymentAddress string       `validate:"required" json:"paymentAddress"`
+}
+
 func (p *PaymentConfirm) Process(payment *storage.Payment) {
+	payment.TxId = p.TxId
+	payment.PaidAt = time.Now()
+	payment.Status = storage.PaymentStatusPaid
+	payment.ConvertRate = p.ConvertRate
+	payment.ConvertTime = p.ConvertTime
+	payment.ExpectedAmount = p.ExpectedAmount
+	payment.PaymentMethod = p.PaymentMethod
+	payment.PaymentAddress = p.PaymentAddress
+}
+func (p *PaymentUrlConfirm) ProcessPayUrl(payment *storage.Payment) {
 	payment.TxId = p.TxId
 	payment.PaidAt = time.Now()
 	payment.Status = storage.PaymentStatusPaid

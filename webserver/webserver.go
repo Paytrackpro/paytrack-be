@@ -63,7 +63,6 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 
 	socket := NewSocketServer()
 	sv := service.NewService(c.Service, db.GetDB(), socket)
-
 	return &WebServer{
 		mux:       chi.NewRouter(),
 		conf:      &c,
