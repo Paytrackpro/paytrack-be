@@ -103,7 +103,7 @@ func (s *Service) RunMigrations() error {
 }
 
 func (s *Service) GeneratePaymentURL(paymentID int, paymentCode string) string {
-	return fmt.Sprintf("%s/%d/%s", s.Conf.BaseUrl, paymentID, paymentCode)
+	return fmt.Sprintf("/url-pay/%d/%s", paymentID, paymentCode)
 }
 
 func (s *Service) GenerateRandomCode() string {
