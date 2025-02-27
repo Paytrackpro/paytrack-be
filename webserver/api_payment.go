@@ -237,6 +237,10 @@ func (a *apiPayment) getPaymentUrl(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
 		return
 	}
+	if payment.Status == storage.PaymentStatusCreated {
+		utils.Response(w, http.StatusBadRequest, utils.ForbiddenError, nil)
+		return
+	}
 	a.sortPaymentDetails(payment)
 	if payment.PaymentType == utils.PaymentUrl {
 		payment.PaymentUrl = a.service.GeneratePaymentURL(int(payment.Id), payment.PaymentCode)

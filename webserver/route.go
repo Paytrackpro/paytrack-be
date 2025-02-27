@@ -101,6 +101,7 @@ func (s *WebServer) Route() {
 			r.Post("/", paymentRouter.createPayment)
 			r.Post("/create-url", paymentRouter.createPaymentUrl)
 			r.Get("/{id:[0-9]+}", paymentRouter.getPayment)
+			r.Post("/create-url/{id:[0-9]+}", paymentRouter.updatePayment)
 			r.Post("/{id:[0-9]+}", paymentRouter.updatePayment)
 			r.Post("/request-rate", paymentRouter.requestRate)
 			r.Post("/process", paymentRouter.processPayment)
