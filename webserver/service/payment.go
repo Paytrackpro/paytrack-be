@@ -134,6 +134,8 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 		ShowDraftRecipient:    showDraftForRecipient,
 		ShowDateOnInvoiceLine: request.ShowDateOnInvoiceLine,
 		ShowProjectOnInvoice:  request.ShowProjectOnInvoice,
+		PaymentType:           request.PaymentType,
+		PaymentCode:           request.PaymentCode,
 	}
 
 	if payment.ShowProjectOnInvoice {
@@ -517,14 +519,17 @@ func (s *Service) UpdatePayment(id, userId uint64, request portal.PaymentRequest
 	return &payment, nil
 }
 
-func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request storage.PaymentFilter) ([]storage.Payment, int64, error) {
+func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request storage.PaymentFilter) ([]storage.Payment, int64, float64, error) {
 	if request.Page != 0 {
 		request.Page = request.Page - 1
 	}
 	var count int64
+	var totalAmountUnpaid sql.NullFloat64
+	// var totalReceived sql.NullFloat64
 	payments := make([]storage.Payment, 0)
 	builder := s.db
 	buildCount := s.db.Model(&storage.Payment{})
+	buildUnpaid := s.db.Model(&storage.Payment{})
 	if request.RequestType == storage.PaymentTypeRequest {
 		if request.HidePaid {
 			builder = builder.Where("sender_id = ? AND status <> ? AND (? = 0 OR receiver_id IN (?))", userId, storage.PaymentStatusPaid, len(request.UserIds), request.UserIds)
@@ -533,6 +538,11 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 			builder = builder.Where("sender_id = ? AND (? = 0 OR receiver_id IN (?))", userId, len(request.UserIds), request.UserIds)
 			buildCount = buildCount.Where("sender_id = ? AND (? = 0 OR receiver_id IN (?))", userId, len(request.UserIds), request.UserIds)
 		}
+		builderUnpaid := buildUnpaid.Select("SUM(amount)").Where("status <> ?", storage.PaymentStatusPaid)
+		if err := builderUnpaid.Scan(&totalAmountUnpaid).Error; err != nil {
+			return nil, 0, 0, err
+		}
+
 	} else if request.RequestType == storage.PaymentTypeReminder {
 		if request.HidePaid {
 			builder = builder.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
@@ -540,6 +550,10 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		} else {
 			builder = builder.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
 			buildCount = buildCount.Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND (status <> ? OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+		}
+		builderUnpaid := buildUnpaid.Select("SUM(amount) as total").Where("receiver_id = ? AND (? = 0 OR sender_id IN (?)) AND ((status <> ? AND status <> ?) OR (status = ? AND show_draft_recipient = ?))", userId, len(request.UserIds), request.UserIds, storage.PaymentStatusPaid, storage.PaymentStatusCreated, storage.PaymentStatusCreated, true)
+		if err := builderUnpaid.Scan(&totalAmountUnpaid).Error; err != nil {
+			return nil, 0, 0, err
 		}
 	} else if request.RequestType == storage.PaymentTypeApproval {
 		var projectIds []uint64
@@ -568,9 +582,9 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d%s}]' AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s)`, storage.PaymentStatusSent, userId, isApprovedQuery, userId, detailPart)
 		if err := s.db.Raw(countQuery).Scan(&count).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				return payments, 0, nil
+				return payments, 0, 0, nil
 			}
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
 
 		if request.Size == 0 {
@@ -582,11 +596,11 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 		query := fmt.Sprintf(`SELECT * FROM payments WHERE status = %d AND approvers @> '[{"approverId": %d%s}]' AND (project_id IN (SELECT project_id FROM projects WHERE approvers @> '[{"memberId": %d}]') %s) LIMIT %d OFFSET %d`, storage.PaymentStatusSent, userId, isApprovedQuery, userId, detailPart, request.Size, offset)
 		if err := s.db.Raw(query).Scan(&payments).Order(request.Sort.Order).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				return payments, 0, nil
+				return payments, 0, 0, nil
 			}
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
-		return payments, count, nil
+		return payments, count, 0, nil
 	} else {
 		if role != utils.UserRoleAdmin {
 			builder = builder.Where("receiver_id = ? OR sender_id = ?", userId, userId)
@@ -595,7 +609,7 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	}
 
 	if err := buildCount.Count(&count).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 
 	if request.Size == 0 {
@@ -605,12 +619,12 @@ func (s *Service) GetListPayments(userId uint64, role utils.UserRole, request st
 	offset := request.Page * request.Size
 	if err := builder.Order(request.Sort.Order).Limit(request.Size).Offset(offset).Find(&payments).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return payments, 0, nil
+			return payments, 0, 0, nil
 		}
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 
-	return payments, count, nil
+	return payments, count, totalAmountUnpaid.Float64, nil
 }
 
 func (s *Service) CheckHasReport(userId uint64) bool {
@@ -698,7 +712,7 @@ func (s *Service) GetPaymentsForReport(userId uint64, request portal.ReportFilte
 }
 
 // get all payments exculed draft status
-func (s *Service) GetAllPayments(request storage.AdminReportFilter) ([]storage.Payment, error) {
+func (s *Service) GetAllPaymentsBanGoc(request storage.AdminReportFilter) ([]storage.Payment, error) {
 	payments := make([]storage.Payment, 0)
 	query := fmt.Sprintf(`SELECT * FROM payments WHERE status <> %d AND status <> %d AND (sent_at AT TIME ZONE 'UTC') < '%s' AND (sent_at AT TIME ZONE 'UTC') > '%s' ORDER BY sent_at DESC`,
 		storage.PaymentStatusCreated, storage.PaymentStatusRejected, utils.TimeToStringWithoutTimeZone(request.EndDate), utils.TimeToStringWithoutTimeZone(request.StartDate))
@@ -708,6 +722,89 @@ func (s *Service) GetAllPayments(request storage.AdminReportFilter) ([]storage.P
 		}
 		return nil, err
 	}
+	return payments, nil
+}
+func (s *Service) GetAllPayments(request storage.AdminReportFilter) ([]storage.Payment, error) {
+	payments := make([]storage.Payment, 0)
+
+	usernameCondition := ""
+	if request.UserName != "" {
+		usernameCondition = fmt.Sprintf("AND (sender_name LIKE '%s%%' OR receiver_name LIKE '%s%%') ", request.UserName, request.UserName)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT * 
+		FROM payments 
+		WHERE status <> %d 
+		  AND status <> %d 
+		  AND (sent_at AT TIME ZONE 'UTC') < '%s' 
+		  AND (sent_at AT TIME ZONE 'UTC') > '%s' 
+		  %s
+		ORDER BY sent_at DESC`,
+		storage.PaymentStatusCreated,
+		storage.PaymentStatusRejected,
+		utils.TimeToStringWithoutTimeZone(request.EndDate),
+		utils.TimeToStringWithoutTimeZone(request.StartDate),
+		usernameCondition)
+
+	if err := s.db.Raw(query).Scan(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, nil
+		}
+		return nil, err
+	}
+	return payments, nil
+}
+
+func (s *Service) GetAllPaymentsForReportUserDetail(request storage.AdminReportFilterUserDetail) ([]storage.Payment, error) {
+	payments := make([]storage.Payment, 0)
+	condition := ""
+	var params []interface{}
+
+	if request.Sent && !request.Received && request.UserName != "" {
+		condition = fmt.Sprintf("AND (sender_name = '%s') ", request.UserName)
+	} else if request.Received && !request.Sent && request.UserName != "" {
+		condition = fmt.Sprintf("AND (receiver_name = '%s') ", request.UserName)
+	} else {
+		condition = fmt.Sprintf("AND (sender_name = '%s' OR receiver_name = '%s') ", request.UserName, request.UserName)
+	}
+
+	if request.Paid {
+		if condition != "" {
+			condition += "AND status = ? "
+		} else {
+			condition = "AND status = ? "
+		}
+		params = append(params, storage.PaymentStatusPaid)
+	}
+
+	if request.HasBeenPaid {
+		if condition != "" {
+			condition += "AND status = ? "
+		} else {
+			condition = "AND status = ? "
+		}
+		params = append(params, storage.PaymentStatusPaid)
+	}
+
+	query := fmt.Sprintf(`
+        SELECT * 
+        FROM payments 
+        WHERE status <> %d 
+          AND status <> %d 
+          %s
+        ORDER BY sent_at DESC`,
+		storage.PaymentStatusCreated,
+		storage.PaymentStatusRejected,
+		condition)
+
+	if err := s.db.Raw(query, params...).Scan(&payments).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return payments, nil
+		}
+		return nil, err
+	}
+
 	return payments, nil
 }
 
@@ -941,4 +1038,13 @@ func (s *Service) SyncPaymentUser(db *gorm.DB, uID int, displayName, userName st
 		}
 	}
 	return nil
+}
+
+func (s *Service) GetPaymentPayUrl(id int64, paymentCode string) (storage.Payment, error) {
+	var payment storage.Payment
+	err := s.db.Where("id = ? AND payment_code = ?", id, paymentCode).First(&payment).Error
+	if err != nil {
+		return storage.Payment{}, err
+	}
+	return payment, nil
 }

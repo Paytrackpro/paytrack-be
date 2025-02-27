@@ -1,6 +1,8 @@
 package portal
 
 import (
+	"time"
+
 	"code.cryptopower.dev/mgmt-ng/be/storage"
 	"code.cryptopower.dev/mgmt-ng/be/utils"
 	"golang.org/x/crypto/bcrypt"
@@ -55,6 +57,15 @@ type AdminSummaryReport struct {
 	UserUsageSummary []UserUsageSummary   `json:"userUsageSummary"`
 }
 
+type AdminSummaryReportDetailUser struct {
+	TotalInvoices          int                      `json:"totalInvoices"`
+	TotalAmount            float64                  `json:"totalAmount"`
+	SentInvoices           PaymentStatusSummary     `json:"sentInvoices"`
+	PayableInvoices        PaymentStatusSummary     `json:"payableInvoices"`
+	PaidInvoices           PaymentStatusSummary     `json:"paidInvoices"`
+	UserDetailUsageSummary []UserDetailUsageSummary `json:"userDetailUsageSummary"`
+}
+
 type UserUsageSummary struct {
 	Username   string  `json:"userName"`
 	SendNum    uint64  `json:"sendNum"`
@@ -63,6 +74,18 @@ type UserUsageSummary struct {
 	ReceiveUsd float64 `json:"receiveUsd"`
 	PaidNum    uint64  `json:"paidNum"`
 	PaidUsd    float64 `json:"paidUsd"`
+	GotPaidNum uint64  `json:"gotPaidNum"`
+	GotPaidUsd float64 `json:"gotPaidUsd"`
+}
+
+type UserDetailUsageSummary struct {
+	Sender       string    `json:"sender"`
+	Receiver     string    `json:"receiver"`
+	Status       int       `json:"status"`
+	Amount       float64   `json:"amount"`
+	AcceptedCoin string    `json:"acceptedCoin"`
+	StartDate    time.Time `json:"startDate"`
+	LastEdited   time.Time `json:"lastEdited"`
 }
 
 type PaymentStatusSummary struct {

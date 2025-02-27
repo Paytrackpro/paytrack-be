@@ -55,7 +55,7 @@ func (s *WebServer) Route() {
 			r.Put("/show-approved", userRouter.showApproved)
 			r.Get("/exist-checking", userRouter.checkingUserExist)
 			r.Get("/member-exist-checking", userRouter.checkingProjectMemberExist)
-			r.Get("/get-user-list", userRouter.getUserSelectionList)
+			r.Get("/get-user-list", userRouter.getUserSenderPaid)
 			r.Get("/exists", userRouter.usersExist)
 			r.Get("/member-exist", userRouter.membersExist)
 			r.Post("/generate-otp", userRouter.generateQr)
@@ -93,12 +93,15 @@ func (s *WebServer) Route() {
 				r.Get("/list", userRouter.getListUsers)
 			})
 			r.Get("/report-summary", userRouter.getAdminReportSummary)
+			r.Get("/report-summary-user", userRouter.getAdminReportSummaryUserDetail)
 		})
 		r.Route("/payment", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)
 			var paymentRouter = apiPayment{WebServer: s}
 			r.Post("/", paymentRouter.createPayment)
+			r.Post("/create-url", paymentRouter.createPaymentUrl)
 			r.Get("/{id:[0-9]+}", paymentRouter.getPayment)
+			r.Post("/create-url/{id:[0-9]+}", paymentRouter.updatePayment)
 			r.Post("/{id:[0-9]+}", paymentRouter.updatePayment)
 			r.Post("/request-rate", paymentRouter.requestRate)
 			r.Post("/process", paymentRouter.processPayment)
@@ -117,6 +120,13 @@ func (s *WebServer) Route() {
 			r.Get("/address-report", paymentRouter.addressReport)
 			r.Get("/exchange-list", paymentRouter.getExchangeList)
 			r.Get("/get-payment-users", paymentRouter.getPaymentUsers)
+		})
+		r.Route("/payment-url", func(r chi.Router) {
+			var paymentRouter = apiPayment{WebServer: s}
+			r.Post("/request-rate", paymentRouter.requestRateForPayUrl)
+			r.Get("/exchange-list", paymentRouter.getExchangeList)
+			r.Get("/pay/{id:[0-9]+}/{code}", paymentRouter.getPaymentUrl)
+			r.Post("/process", paymentRouter.processPaymentUrl)
 		})
 		r.Route("/project", func(r chi.Router) {
 			r.Use(s.loggedInMiddleware)
