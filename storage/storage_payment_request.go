@@ -156,6 +156,8 @@ type Payment struct {
 	ExternalEmail         string          `json:"externalEmail"`
 	Amount                float64         `json:"amount"`
 	Description           string          `json:"description"`
+	PaymentType           utils.Type      `json:"paymentType"`
+	PaymentCode           string          `json:"paymentCode"`
 	HourlyRate            float64         `json:"hourlyRate"`
 	PaymentSettings       PaymentSettings `json:"paymentSettings" gorm:"type:jsonb"`
 	Approvers             Approvers       `json:"approvers" gorm:"type:jsonb"`
@@ -180,6 +182,7 @@ type Payment struct {
 	ProjectId             uint64          `json:"projectId"`
 	ProjectName           string          `json:"projectName"`
 	StartDate             time.Time       `json:"startDate"`
+	PaymentUrl            string          `json:"paymentUrl" gorm:"-"`
 }
 
 type PaymentFilter struct {
@@ -193,6 +196,7 @@ type PaymentFilter struct {
 	Statuses       []PaymentStatus  `schema:"statuses"`
 	ContactMethods []PaymentContact `schema:"contactMethods"`
 	UserIds        []uint64         `schema:"userIds"`
+	PaymentCode    string           `schema:"paymentCode"`
 	Approvers      []ApproverSettings
 }
 

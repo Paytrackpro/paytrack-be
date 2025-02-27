@@ -1,6 +1,9 @@
 package service
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"sync"
 	"time"
 
@@ -97,4 +100,17 @@ func (s *Service) RunMigrations() error {
 		return err
 	}
 	return nil
+}
+
+func (s *Service) GeneratePaymentURL(paymentID int, paymentCode string) string {
+	return fmt.Sprintf("/url-pay/%d/%s", paymentID, paymentCode)
+}
+
+func (s *Service) GenerateRandomCode() string {
+	bytes := make([]byte, 16/2)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return ""
+	}
+	return hex.EncodeToString(bytes)
 }

@@ -138,7 +138,9 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusBadRequest, fmt.Errorf("you only save it as draft or sent it to receiver"), nil)
 		return
 	}
-
+	// set payment type and code
+	body.PaymentType = utils.PaymentSystem
+	body.PaymentCode = ""
 	payment, err := a.service.CreatePayment(userInfo.Id, userInfo.UserName, userInfo.DisplayName,
 		userInfo.ShowDraftForRecipient, body)
 	if err != nil {
@@ -157,7 +159,51 @@ func (a *apiPayment) createPayment(w http.ResponseWriter, r *http.Request) {
 	} else {
 		utils.ResponseOK(w, res, nil)
 	}
+}
 
+func (a *apiPayment) createPaymentUrl(w http.ResponseWriter, r *http.Request) {
+	var body portal.PaymentRequest
+	err := a.parseJSONAndValidate(r, &body)
+	if err != nil {
+		log.Error(err)
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	userInfo, _ := a.credentialsInfo(r)
+
+	//validate body
+	if body.SenderId != userInfo.Id {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("the sender must be you"), nil)
+		return
+	}
+
+	// sender only save payment as draft or sent to receiver
+	if body.Status != storage.PaymentStatusCreated && body.Status != storage.PaymentStatusSent {
+		utils.Response(w, http.StatusBadRequest, fmt.Errorf("you only save it as draft or sent it to receiver"), nil)
+		return
+	}
+
+	// set payment type and code
+	body.PaymentType = utils.PaymentUrl
+	body.PaymentCode = a.service.GenerateRandomCode()
+	payment, err := a.service.CreatePayment(userInfo.Id, userInfo.UserName, userInfo.DisplayName,
+		userInfo.ShowDraftForRecipient, body)
+	if err != nil {
+		log.Error(err)
+		utils.Response(w, http.StatusOK, err, nil)
+		return
+	}
+	res := Map{
+		"payment": payment,
+	}
+	a.reloadList([]string{fmt.Sprint(payment.ReceiverId)}, "")
+	if body.ContactMethod == storage.PaymentTypeEmail {
+		token, customErr := a.sendNotification(storage.PaymentStatusCreated, *payment, userInfo)
+		res["token"] = token
+		utils.ResponseOK(w, res, customErr)
+	} else {
+		utils.ResponseOK(w, res, nil)
+	}
 }
 
 func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
@@ -175,6 +221,29 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 	if err := a.verifyAccessPayment(token, payment, r); err != nil {
 		utils.Response(w, http.StatusForbidden, utils.NewError(err, utils.ErrorForbidden), nil)
 		return
+	}
+	if payment.PaymentType == utils.PaymentUrl {
+		payment.PaymentUrl = a.service.GeneratePaymentURL(int(payment.Id), payment.PaymentCode)
+	}
+	utils.ResponseOK(w, payment)
+}
+
+func (a *apiPayment) getPaymentUrl(w http.ResponseWriter, r *http.Request) {
+	id := utils.Uint64(chi.URLParam(r, "id"))
+	code := chi.URLParam(r, "code")
+
+	payment, err := a.service.GetPaymentPayUrl(int64(id), code)
+	if err != nil {
+		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
+		return
+	}
+	if payment.Status == storage.PaymentStatusCreated {
+		utils.Response(w, http.StatusBadRequest, utils.ForbiddenError, nil)
+		return
+	}
+	a.sortPaymentDetails(payment)
+	if payment.PaymentType == utils.PaymentUrl {
+		payment.PaymentUrl = a.service.GeneratePaymentURL(int(payment.Id), payment.PaymentCode)
 	}
 	utils.ResponseOK(w, payment)
 }
@@ -257,7 +326,7 @@ func (a *apiPayment) verifyAccessPayment(token string, payment storage.Payment, 
 		}
 		return fmt.Errorf("you do not have access")
 	}
-	var validApprover = true
+	var validApprover = false
 	projectIds := make([]string, 0)
 	if len(payment.Details) > 0 {
 		for _, detail := range payment.Details {
@@ -354,6 +423,48 @@ func (a *apiPayment) requestRate(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// requestRateForPayUrl is used for the user to request the crypto rate to USDT. For any user with the url.
+func (a *apiPayment) requestRateForPayUrl(w http.ResponseWriter, r *http.Request) {
+	var f portal.PaymentRequestRate
+	err := a.parseJSONAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	var p storage.Payment
+	var filter = storage.PaymentFilter{
+		Ids: []uint64{f.Id},
+	}
+	if err := a.db.First(&filter, &p); err != nil {
+		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
+		return
+	}
+	if p.Status == storage.PaymentStatusPaid {
+		utils.ResponseOK(w, Map{
+			"rate":           float64(0),
+			"convertTime":    time.Now(),
+			"expectedAmount": float64(0),
+			"isPaid":         true,
+		})
+		return
+	}
+	if utils.IsEmpty(f.Exchange) {
+		f.Exchange = service.Binance
+	}
+	handlerExchange := strings.ToLower(f.Exchange)
+	rate, err := a.service.GetExchangeRate(handlerExchange, f.PaymentMethod)
+	if err != nil {
+		log.Error(err)
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"rate":           rate,
+		"convertTime":    time.Now(),
+		"expectedAmount": utils.BtcRoundFloat(p.Amount / rate),
+	})
+}
+
 func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 	var f portal.PaymentConfirm
 	err := a.parseJSONAndValidate(r, &f)
@@ -397,7 +508,45 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	f.Process(&payment)
-	if err = a.db.Save(&payment); err != nil {
+	if err = a.db.GetDB().Model(&payment).Omit("UpdatedAt").Updates(payment).Error; err != nil {
+		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
+		return
+	}
+	a.reloadList([]string{fmt.Sprint(payment.ReceiverId)}, "")
+	utils.ResponseOK(w, payment)
+}
+func (a *apiPayment) processPaymentUrl(w http.ResponseWriter, r *http.Request) {
+	var f portal.PaymentUrlConfirm
+	err := a.parseJSONAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		return
+	}
+	var payment storage.Payment
+	var filter = storage.PaymentFilter{
+		Ids: []uint64{f.Id},
+	}
+	if err := a.db.First(&filter, &payment); err != nil {
+		utils.Response(w, http.StatusNotFound, utils.NotFoundError, nil)
+		return
+	}
+	if payment.Status == storage.PaymentStatusPaid {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("the payment was marked as paid"), utils.ErrorBadRequest), nil)
+		return
+	}
+
+	payerUser, err := a.service.GetUserInfo(uint64(f.PayerId))
+
+	payment.ReceiverId = payerUser.Id
+	payment.ReceiverName = payerUser.UserName
+	payment.ReceiverDisplayName = payerUser.DisplayName
+
+	if payment.SenderId == payerUser.Id {
+		utils.Response(w, http.StatusBadRequest, utils.NewError(fmt.Errorf("you cannot pay your own payment"), utils.ErrorBadRequest), nil)
+		return
+	}
+	f.ProcessPayUrl(&payment)
+	if err = a.db.GetDB().Model(&payment).Omit("UpdatedAt").Updates(payment).Error; err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
 	}
@@ -452,7 +601,7 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 	}
 	//default sortable is createdAt desc (newest before)
 	if utils.IsEmpty(query.Sort.Order) {
-		query.Sort.Order = "updated_at desc"
+		query.Sort.Order = "created_at desc"
 	}
 	if strings.Contains(query.Sort.Order, "updatedAt") {
 		query.Sort.Order = strings.ReplaceAll(query.Sort.Order, "updatedAt", "updated_at")
@@ -477,14 +626,24 @@ func (a *apiPayment) listPayments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payments, count, err := a.service.GetListPayments(claims.Id, claims.UserRole, query)
+	payments, count, totalAmountUnpaid, err := a.service.GetListPayments(claims.Id, claims.UserRole, query)
+	//payments, count, err := a.service.GetListPayments(claims.Id, claims.UserRole, query)
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.NewError(err, utils.ErrorInternalCode), nil)
 		return
 	}
+
+	totalUnpaid := int64(0)
+	for _, payment := range payments {
+		if payment.Status == 0 {
+			totalUnpaid += int64(payment.Amount * 100)
+		}
+	}
+	// finalTotalUnpaid := float64(totalUnpaid) / 100
 	utils.ResponseOK(w, Map{
-		"payments": payments,
-		"count":    count,
+		"payments":    payments,
+		"count":       count,
+		"totalUnpaid": totalAmountUnpaid,
 	})
 }
 
