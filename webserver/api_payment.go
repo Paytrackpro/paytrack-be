@@ -508,7 +508,7 @@ func (a *apiPayment) processPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	f.Process(&payment)
-	if err = a.db.Save(&payment); err != nil {
+	if err = a.db.GetDB().Model(&payment).Omit("UpdatedAt").Updates(payment).Error; err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
 	}
@@ -546,7 +546,7 @@ func (a *apiPayment) processPaymentUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	f.ProcessPayUrl(&payment)
-	if err = a.db.Save(&payment); err != nil {
+	if err = a.db.GetDB().Model(&payment).Omit("UpdatedAt").Updates(payment).Error; err != nil {
 		utils.Response(w, http.StatusInternalServerError, utils.InternalError.With(err), nil)
 		return
 	}
