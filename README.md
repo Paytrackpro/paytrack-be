@@ -1,46 +1,91 @@
-# [Application Scope](https://code.cryptopower.dev/mgmt-ng/fe/-/wikis/home)
+# 🚀 MGMT-NG Backend (`mgmtngd`)
 
-# MGMT-NG backend
+> Backend service for the MGMT-NG project. Built with [Go](https://golang.org/) (version 1.19).
 
-mgmt-ng backend(mgmtngd) is the code of backend for mgmt-ng project. It is written in [go](https://golang.org/) and using go 1.19.
+---
 
-## Setup
+## 📘 Application Scope
 
-### Database ([Posgresql](https://www.postgresql.org/))
+See full documentation in the [Project Wiki](https://code.cryptopower.dev/mgmt-ng/fe/-/wikis/home)
 
-When you have Posgresql, you need create new db with name **mgmtng**
+---
 
-### Config env
+## 🗄️ Setup
 
-Create new yaml config in `./private/config.yaml`. a sample config file can be located at `sample/mgmtngd.yaml`
+### 1. Install Go
 
-in your config.yaml edit the db section to match your environment settings
-`db:
-  dns: "host=<host> user=<user> password=<password> dbname=mgmtng port=<port> sslmode=disable TimeZone=Asia/Shanghai"`
+Ensure you have Go 1.19 installed: [https://go.dev/dl/](https://go.dev/dl/)
 
-## Running mgmtngd (Linux | MacOS | Window):
+### 2. Setup PostgreSQL
 
-### Terminal
+Install [PostgreSQL](https://www.postgresql.org/) and create a database named `mgmtng`:
 
-Run `go run ./cmd/mgmtngd --config=./private/config.yaml`
-
-### Makefile
-
-You can create `Makefile` and add command to makefile like this
-
+```sql
+CREATE DATABASE mgmtng;
 ```
-.PHONY:
+
+---
+
+## ⚙️ Configuration
+
+Create a config file at `./private/config.yaml`. You can copy from the sample:
+
+```bash
+cp sample/mgmtngd.yaml private/config.yaml
+```
+
+Edit the `db` section to match your environment:
+
+```yaml
+db:
+  dns: "host=<host> user=<user> password=<password> dbname=mgmtng port=<port> sslmode=disable TimeZone=Asia/Shanghai"
+```
+
+---
+
+## ▶️ Running `mgmtngd`
+
+### Option 1: Run from terminal
+
+```bash
+go run ./cmd/mgmtngd --config=./private/config.yaml
+```
+
+### Option 2: Using Makefile
+
+Create a `Makefile` with the following content:
+
+```makefile
+.PHONY: up
+
 up:
 	go run ./cmd/mgmtngd --config=./private/config.yaml
-
 ```
 
-after that run `make up`
+Then run:
 
-## Create user like admin:
+```bash
+make up
+```
 
-access to db and run this query:
+---
 
-`UPDATE users SET "role" = 1 WHERE "user_name" = '<username>'`
+## 👤 Create Admin User
 
-example: `UPDATE users SET "role" = 1 WHERE "user_name" = 'justindo'`
+Access the database and run the following SQL to promote a user to admin:
+
+```sql
+UPDATE users SET role = 1 WHERE user_name = '<username>';
+```
+
+Example:
+
+```sql
+UPDATE users SET role = 1 WHERE user_name = 'justindo';
+```
+
+---
+
+## 🧾 License
+
+This project is licensed under the **MIT License**.
