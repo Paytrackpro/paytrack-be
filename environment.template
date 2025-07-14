@@ -1,0 +1,31 @@
+# Database Configuration
+POSTGRES_PASSWORD=paytrack123
+DB_HOST=postgres
+DB_PORT=5432
+DB_NAME=mgmtng
+DB_USER=paytrack
+DB_PASSWORD=paytrack123
+
+# Security Keys - CHANGE THESE IN PRODUCTION
+HMAC_SECRET_KEY=your-super-secret-hmac-key-change-this-in-production
+AES_SECRET_KEY=your-super-secret-aes-key-change-this-in-production
+
+# Authentication Configuration
+AUTH_TYPE=0
+AUTH_HOST=http://localhost:8001
+
+# Exchange Configuration
+EXCHANGE=bittrex
+ALLOWED_EXCHANGES=binance,kucoin,mexc
+COINMARKETCAP_KEY=
+
+# Logging Configuration
+LOG_LEVEL=info
+LOG_DIR=/app/logs
+
+# Email Configuration
+MAIL_ADDR=smtp.gmail.com:587
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+MAIL_HOST=smtp.gmail.com
+MAIL_FROM=noreply@paytrack.local 

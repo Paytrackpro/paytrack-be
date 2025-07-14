@@ -1,0 +1,50 @@
+db:
+  dns: "host=${DB_HOST:-localhost} user=${DB_USER:-paytrack} password=${DB_PASSWORD:-paytrack123} dbname=${DB_NAME:-mgmtng} port=${DB_PORT:-5432} sslmode=disable TimeZone=UTC"
+
+webServer:
+  # Port for the web server
+  port: 6789
+  
+  # HMAC secret key for JWT generation - MUST be changed in production
+  hmacSecretKey: "${HMAC_SECRET_KEY:-CHANGE_ME_IN_PRODUCTION}"
+  
+  # Session lifetime in hours
+  aliveSessionHours: 24
+  
+  # AES secret key for data encryption - MUST be changed in production
+  aesSecretKey: "${AES_SECRET_KEY:-CHANGE_ME_IN_PRODUCTION}"
+  
+  # Authentication type: 0 = local username/password, 1 = external auth microservice
+  authType: ${AUTH_TYPE:-0}
+  
+  # External auth host (if using authType: 1)
+  authHost: "${AUTH_HOST:-http://localhost:8001}"
+  
+  service:
+    # Cryptocurrency exchange for rate conversion
+    # Options: "binance", "bittrex", "coinmarketcap"
+    exchange: "${EXCHANGE:-bittrex}"
+    
+    # Allowed exchanges
+    allowexchanges: "${ALLOWED_EXCHANGES:-binance,kucoin,mexc}"
+    
+    # CoinMarketCap API key (required if using coinmarketcap)
+    coimarketcapKey: "${COINMARKETCAP_KEY:-}"
+    
+    # Auth service configuration
+    authType: ${AUTH_TYPE:-0}
+    authHost: "${AUTH_HOST:-localhost:50051}"
+
+# Log level: "trace", "debug", "info", "warn", "error", "off"
+logLevel: "${LOG_LEVEL:-info}"
+
+# Log directory path
+logDir: "${LOG_DIR:-/app/logs}"
+
+# Email configuration
+mail:
+  addr: "${MAIL_ADDR:-smtp.gmail.com:587}"
+  userName: "${MAIL_USERNAME:-}"
+  password: "${MAIL_PASSWORD:-}"
+  host: "${MAIL_HOST:-smtp.gmail.com}"
+  from: "${MAIL_FROM:-noreply@paytrack.local}" 
