@@ -186,10 +186,17 @@ build_paytrack() {
     
     # Source Go environment
     export PATH=$PATH:/usr/local/go/bin
+
+    # Set GOMODCACHE to user's module cache directory
+    export GOMODCACHE=$PAYTRACK_HOME/go/pkg/mod
+    mkdir -p $GOMODCACHE
+    
+    # Set GOCACHE to user's cache directory
+    export GOCACHE=$PAYTRACK_HOME/.cache
     
     # Build the application
     cd "$(dirname "$0")/.."
-    sudo -u "$PAYTRACK_USER" -E env PATH="$PATH" go build -o mgmtngd ./cmd/mgmtngd
+    env PATH="$PATH" GOCACHE="$GOCACHE" GOMODCACHE="$GOMODCACHE" go build -o mgmtngd ./cmd/mgmtngd
     
     # Copy binary to installation directory
     cp mgmtngd "$PAYTRACK_HOME/"
