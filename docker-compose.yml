@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: paytrack_postgres
+    environment:
+      POSTGRES_DB: mgmtng
+      POSTGRES_USER: paytrack
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-paytrack123}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - paytrack_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paytrack -d mgmtng"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  paytrack:
+    build: .
+    container_name: paytrack_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=mgmtng
+      - DB_USER=paytrack
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-paytrack123}
+    ports:
+      - "6789:6789"
+    volumes:
+      - ./private:/app/private:ro
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    networks:
+      - paytrack_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6789/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Optional: Redis for caching (if needed in future)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: paytrack_redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - paytrack_network
+  #   restart: unless-stopped
+
+  # Optional: Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: paytrack_nginx
+    depends_on:
+      - paytrack
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/logs:/var/log/nginx
+    networks:
+      - paytrack_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  paytrack_network:
+    driver: bridge 
