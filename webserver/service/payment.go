@@ -14,6 +14,11 @@ import (
 	"gorm.io/gorm"
 )
 
+// getCoinMethodType maps coin string to utils.Method type
+func getCoinMethodType(coin string) utils.Method {
+	return utils.MethodFromCoin(coin)
+}
+
 func (s *Service) GetBulkPaymentBTC(userId uint64, page, pageSize int, order string) ([]storage.Payment, int64, error) {
 	if page != 0 {
 		page = page - 1
@@ -136,6 +141,27 @@ func (s *Service) CreatePayment(userId uint64, userName string, displayName stri
 		ShowProjectOnInvoice:  request.ShowProjectOnInvoice,
 		PaymentType:           request.PaymentType,
 		PaymentCode:           request.PaymentCode,
+		UserPaymentMethodId:   request.UserPaymentMethodId,
+	}
+
+	// If UserPaymentMethodId is provided, validate that it belongs to the sender
+	if request.UserPaymentMethodId != nil && *request.UserPaymentMethodId > 0 {
+		var paymentMethod storage.UserPaymentMethod
+		if err := s.db.Where("id = ? AND user_id = ?", *request.UserPaymentMethodId, userId).First(&paymentMethod).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return nil, utils.NewError(fmt.Errorf("payment method not found or does not belong to sender"), utils.ErrorBadRequest)
+			}
+			return nil, err
+		}
+		// Set payment settings from the selected payment method
+		payment.PaymentSettings = storage.PaymentSettings{
+			{
+				Type:    getCoinMethodType(paymentMethod.Coin),
+				Address: paymentMethod.Address,
+			},
+		}
+		payment.PaymentMethod = getCoinMethodType(paymentMethod.Coin)
+		payment.PaymentAddress = paymentMethod.Address
 	}
 
 	if payment.ShowProjectOnInvoice {

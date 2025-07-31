@@ -182,6 +182,7 @@ type Payment struct {
 	ProjectId             uint64          `json:"projectId"`
 	ProjectName           string          `json:"projectName"`
 	StartDate             time.Time       `json:"startDate"`
+	UserPaymentMethodId   *uint64         `json:"userPaymentMethodId"`
 	PaymentUrl            string          `json:"paymentUrl" gorm:"-"`
 }
 
