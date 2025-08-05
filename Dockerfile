@@ -1,5 +1,5 @@
 # Multi-stage build for PayTrack application
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23.11-alpine AS builder
 
 # Install git and ca-certificates for dependencies
 RUN apk add --no-cache git ca-certificates
