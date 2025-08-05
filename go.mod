@@ -16,9 +16,11 @@ require (
 )
 
 require (
+	github.com/btcsuite/btcd v0.24.2
 	github.com/googollee/go-socket.io v1.7.0
 	github.com/gorilla/schema v1.2.0
 	github.com/jrick/logrotate v1.1.2
+	github.com/ltcsuite/ltcd v0.23.6-0.20250505084124-c37ac1524e04
 	github.com/pquerna/otp v1.4.0
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
@@ -28,7 +30,6 @@ require (
 	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
 	github.com/blendle/zapdriver v1.3.1 // indirect
-	github.com/btcsuite/btcd v0.24.2 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.1.3 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -51,7 +52,6 @@ require (
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
-	github.com/ltcsuite/ltcd v0.23.6-0.20250505084124-c37ac1524e04 // indirect
 	github.com/ltcsuite/ltcd/btcec/v2 v2.3.2 // indirect
 	github.com/ltcsuite/ltcd/chaincfg/chainhash v1.0.2 // indirect
 	github.com/ltcsuite/secp256k1 v0.1.1 // indirect

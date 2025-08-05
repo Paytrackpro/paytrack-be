@@ -1,6 +1,7 @@
 package webserver
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"slices"
@@ -225,7 +226,77 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 	if payment.PaymentType == utils.PaymentUrl {
 		payment.PaymentUrl = a.service.GeneratePaymentURL(int(payment.Id), payment.PaymentCode)
 	}
+	
+	// Enhance payment_settings with network information if missing
+	if len(payment.PaymentSettings) > 0 {
+		enhancedSettings := make(storage.PaymentSettings, 0, len(payment.PaymentSettings))
+		for _, setting := range payment.PaymentSettings {
+			// Check if network info is already present
+			settingMap := make(map[string]interface{})
+			settingBytes, _ := json.Marshal(setting)
+			json.Unmarshal(settingBytes, &settingMap)
+			
+			// If network is missing, add it based on the payment type
+			if _, hasNetwork := settingMap["network"]; !hasNetwork {
+				// Map payment type to network
+				network := getNetworkForPaymentType(setting.Type)
+				coin := getCoinForPaymentType(setting.Type)
+				
+				// Create enhanced setting with network info
+				enhancedSetting := map[string]interface{}{
+					"type":    setting.Type,
+					"address": setting.Address,
+					"coin":    coin,
+					"network": network,
+				}
+				enhancedSettingBytes, _ := json.Marshal(enhancedSetting)
+				var newSetting storage.PaymentSetting
+				json.Unmarshal(enhancedSettingBytes, &newSetting)
+				enhancedSettings = append(enhancedSettings, newSetting)
+			} else {
+				enhancedSettings = append(enhancedSettings, setting)
+			}
+		}
+		payment.PaymentSettings = enhancedSettings
+	}
+	
 	utils.ResponseOK(w, payment)
+}
+
+// Helper function to get network for payment type
+func getNetworkForPaymentType(paymentType utils.Method) string {
+	switch paymentType {
+	case utils.PaymentTypeBTC:
+		return "btc"
+	case utils.PaymentTypeLTC:
+		return "ltc"
+	case utils.PaymentTypeDCR:
+		return "dcr"
+	case utils.PaymentTypeETH:
+		return "erc20"
+	case utils.PaymentTypeUSDT:
+		return "erc20"
+	default:
+		return "unknown"
+	}
+}
+
+// Helper function to get coin for payment type
+func getCoinForPaymentType(paymentType utils.Method) string {
+	switch paymentType {
+	case utils.PaymentTypeBTC:
+		return "BTC"
+	case utils.PaymentTypeLTC:
+		return "LTC"
+	case utils.PaymentTypeDCR:
+		return "DCR"
+	case utils.PaymentTypeETH:
+		return "ETH"
+	case utils.PaymentTypeUSDT:
+		return "USDT"
+	default:
+		return strings.ToUpper(paymentType.String())
+	}
 }
 
 func (a *apiPayment) getPaymentUrl(w http.ResponseWriter, r *http.Request) {
@@ -245,6 +316,40 @@ func (a *apiPayment) getPaymentUrl(w http.ResponseWriter, r *http.Request) {
 	if payment.PaymentType == utils.PaymentUrl {
 		payment.PaymentUrl = a.service.GeneratePaymentURL(int(payment.Id), payment.PaymentCode)
 	}
+	
+	// Enhance payment_settings with network information if missing
+	if len(payment.PaymentSettings) > 0 {
+		enhancedSettings := make(storage.PaymentSettings, 0, len(payment.PaymentSettings))
+		for _, setting := range payment.PaymentSettings {
+			// Check if network info is already present
+			settingMap := make(map[string]interface{})
+			settingBytes, _ := json.Marshal(setting)
+			json.Unmarshal(settingBytes, &settingMap)
+			
+			// If network is missing, add it based on the payment type
+			if _, hasNetwork := settingMap["network"]; !hasNetwork {
+				// Map payment type to network
+				network := getNetworkForPaymentType(setting.Type)
+				coin := getCoinForPaymentType(setting.Type)
+				
+				// Create enhanced setting with network info
+				enhancedSetting := map[string]interface{}{
+					"type":    setting.Type,
+					"address": setting.Address,
+					"coin":    coin,
+					"network": network,
+				}
+				enhancedSettingBytes, _ := json.Marshal(enhancedSetting)
+				var newSetting storage.PaymentSetting
+				json.Unmarshal(enhancedSettingBytes, &newSetting)
+				enhancedSettings = append(enhancedSettings, newSetting)
+			} else {
+				enhancedSettings = append(enhancedSettings, setting)
+			}
+		}
+		payment.PaymentSettings = enhancedSettings
+	}
+	
 	utils.ResponseOK(w, payment)
 }
 

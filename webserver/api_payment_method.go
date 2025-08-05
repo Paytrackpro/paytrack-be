@@ -26,10 +26,22 @@ func (a *apiPaymentMethod) createPaymentMethod(w http.ResponseWriter, r *http.Re
 
 	paymentMethod, err := a.service.CreatePaymentMethod(claims.Id, req)
 	if err != nil {
-		utils.Response(w, http.StatusBadRequest, err, nil)
+		// Provide more specific error messages
+		errorMsg := err.Error()
+		if len(errorMsg) > 21 && errorMsg[:21] == "address validation failed" {
+			utils.Response(w, http.StatusBadRequest, utils.NewError(err, utils.ErrorBadRequest), nil)
+		} else {
+			utils.Response(w, http.StatusBadRequest, err, nil)
+		}
 		return
 	}
 
+	// Return success response with payment method data and clear message
+	// response := map[string]interface{}{
+	// 	"message": fmt.Sprintf("Payment method '%s' for %s on %s network has been created successfully",
+	// 		paymentMethod.Label, paymentMethod.Coin, paymentMethod.Network),
+	// 	"data": paymentMethod,
+	// }
 	utils.Response(w, http.StatusCreated, nil, paymentMethod)
 }
 
@@ -91,7 +103,7 @@ func (a *apiPaymentMethod) deletePaymentMethod(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		if err.Error() == "payment method not found" {
 			utils.Response(w, http.StatusNotFound, err, nil)
-		} else if err.Error()[0:12] == "cannot delete" {
+		} else if len(err.Error()) >= 12 && err.Error()[0:12] == "cannot delete" {
 			utils.Response(w, http.StatusBadRequest, err, nil)
 		} else {
 			utils.Response(w, http.StatusInternalServerError, err, nil)
@@ -99,7 +111,10 @@ func (a *apiPaymentMethod) deletePaymentMethod(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	// Return success response with message
+	utils.ResponseOK(w, map[string]string{
+		"message": "Payment method deleted successfully",
+	})
 }
 
 // validateAddress handles POST /api/user/payment-methods/validate-address
