@@ -4,14 +4,21 @@ import (
 	"encoding/json"
 )
 
-type Method int
+type CoinInfo struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+type Method string
 type Type int
 
 const (
-	PaymentTypeNotSet Method = iota
-	PaymentTypeBTC
-	PaymentTypeLTC
-	PaymentTypeDCR
+	PaymentTypeNotSet Method = ""
+	PaymentTypeBTC    Method = "btc"
+	PaymentTypeLTC    Method = "ltc"
+	PaymentTypeDCR    Method = "dcr"
+	PaymentTypeETH    Method = "eth"
+	PaymentTypeUSDT   Method = "usdt"
 )
 
 const (
@@ -19,16 +26,34 @@ const (
 	PaymentUrl
 )
 
-func (m Method) String() string {
+// Info returns the coin information with both code and display name
+func (m Method) Info() CoinInfo {
 	switch m {
 	case PaymentTypeBTC:
-		return "btc"
+		return CoinInfo{Code: "btc", Name: "Bitcoin"}
 	case PaymentTypeLTC:
-		return "ltc"
+		return CoinInfo{Code: "ltc", Name: "Litecoin"}
 	case PaymentTypeDCR:
-		return "dcr"
+		return CoinInfo{Code: "dcr", Name: "Decred"}
+	case PaymentTypeETH:
+		return CoinInfo{Code: "eth", Name: "Ethereum"}
+	case PaymentTypeUSDT:
+		return CoinInfo{Code: "usdt", Name: "Tether USD"}
+	default:
+		return CoinInfo{Code: string(m), Name: string(m)}
 	}
-	return "none"
+}
+
+func (m Method) String() string {
+	if m == PaymentTypeNotSet {
+		return "none"
+	}
+	return string(m)
+}
+
+// MethodFromCode returns the Method type from a code string
+func MethodFromCode(code string) Method {
+	return Method(code)
 }
 
 func (m Method) MarshalJSON() ([]byte, error) {
@@ -45,6 +70,15 @@ func (m *Method) UnmarshalText(val []byte) error {
 		return nil
 	case "dcr":
 		*m = PaymentTypeDCR
+		return nil
+	case "eth":
+		*m = PaymentTypeETH
+		return nil
+	case "usdt":
+		*m = PaymentTypeUSDT
+		return nil
+	case "none", "":
+		*m = PaymentTypeNotSet
 		return nil
 	}
 	*m = PaymentTypeNotSet

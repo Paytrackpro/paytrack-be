@@ -33,20 +33,6 @@ type UserStorage interface {
 	QueryUserWithList(field string, val interface{}) ([]User, error)
 }
 
-// Value Marshal
-func (a PaymentSettings) Value() (driver.Value, error) {
-	return json.Marshal(a)
-}
-
-// Scan Unmarshal
-func (a *PaymentSettings) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
-	}
-	return json.Unmarshal(b, &a)
-}
-
 type User struct {
 	Id                    uint64          `json:"id" gorm:"primarykey"`
 	UserName              string          `json:"userName" gorm:"index:users_user_name_idx,unique"`

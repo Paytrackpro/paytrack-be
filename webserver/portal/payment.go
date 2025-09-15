@@ -33,6 +33,7 @@ type PaymentRequest struct {
 	ProjectName           string                  `json:"projectName"`
 	PaymentType           utils.Type              `json:"-"`
 	PaymentCode           string                  `json:"-"`
+	UserPaymentMethodId   *uint64                 `json:"userPaymentMethodId"`
 }
 
 type PaymentConfirm struct {

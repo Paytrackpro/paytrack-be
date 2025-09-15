@@ -15,6 +15,20 @@ type PaymentSetting struct {
 
 type PaymentSettings []PaymentSetting
 
+// Value Marshal for PaymentSettings
+func (ps PaymentSettings) Value() (driver.Value, error) {
+	return json.Marshal(ps)
+}
+
+// Scan Unmarshal for PaymentSettings
+func (ps *PaymentSettings) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return json.Unmarshal(b, ps)
+}
+
 type Approvers []Approver
 
 type Approver struct {

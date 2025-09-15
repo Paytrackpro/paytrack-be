@@ -23,6 +23,9 @@ func (s *WebServer) Route() {
 	})
 	s.mux.Get("/socket.io/", s.handleSocket())
 	s.mux.Route("/api", func(r chi.Router) {
+		// Public settings endpoint (no authentication required)
+		var settingsRouter = apiSettings{WebServer: s}
+		r.Get("/settings", settingsRouter.getSettings)
 		r.Route("/auth", func(r chi.Router) {
 			var authRouter = apiAuth{WebServer: s}
 			r.Get("/auth-method", authRouter.getAuthMethod)
@@ -64,6 +67,14 @@ func (s *WebServer) Route() {
 				r.Get("/payment", userRouter.getPaymentSetting)
 				r.Put("/payment", userRouter.updatePaymentSetting)
 			})
+			r.Route("/payment-methods", func(r chi.Router) {
+				var paymentMethodRouter = apiPaymentMethod{WebServer: s}
+				r.Post("/", paymentMethodRouter.createPaymentMethod)
+				r.Get("/", paymentMethodRouter.getPaymentMethods)
+				r.Put("/{id:[0-9]+}", paymentMethodRouter.updatePaymentMethod)
+				r.Delete("/{id:[0-9]+}", paymentMethodRouter.deletePaymentMethod)
+				r.Post("/validate-address", paymentMethodRouter.validateAddress)
+			})
 			r.Post("/start_timer", userRouter.startTimer)
 			r.Post("/pause_timer", userRouter.pauseTimer)
 			r.Post("/resume_timer", userRouter.resumeTimer)
@@ -72,6 +83,12 @@ func (s *WebServer) Route() {
 			r.Get("/get-time-log", userRouter.getTimeLogList)
 			r.Put("/update-timer", userRouter.updateTimer)
 			r.Delete("/timer-delete/{id:[0-9]+}", userRouter.deleteTimer)
+		})
+		
+		// Public payment methods endpoints (no authentication required)
+		r.Route("/payment-methods", func(r chi.Router) {
+			var paymentMethodRouter = apiPaymentMethod{WebServer: s}
+			r.Get("/supported-networks", paymentMethodRouter.getSupportedNetworks)
 		})
 
 		r.Route("/file", func(r chi.Router) {
