@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/Paytrackpro/paytrack-be/utils"
 )
 
 type apiFileUpload struct {

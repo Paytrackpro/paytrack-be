@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"code.cryptopower.dev/mgmt-ng/be/email"
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/webserver"
+	"github.com/Paytrackpro/paytrack-be/email"
+	"github.com/Paytrackpro/paytrack-be/storage"
+	"github.com/Paytrackpro/paytrack-be/webserver"
 
 	"gopkg.in/yaml.v3"
 )

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/Paytrackpro/paytrack-be/utils"
 )
 
 type PaymentSetting struct {

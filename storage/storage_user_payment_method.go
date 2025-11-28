@@ -3,7 +3,7 @@ package storage
 import (
 	"time"
 
-	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/Paytrackpro/paytrack-be/utils"
 )
 
 // UserPaymentMethod represents a user's payment method

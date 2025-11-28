@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/Paytrackpro/paytrack-be/utils"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -43,7 +43,7 @@ func MigratePaymentsSettings() {
 
 	// Start migration
 	log.Println("Starting payment_settings migration in payments table...")
-	
+
 	// Begin transaction
 	tx := db.Begin()
 	defer func() {
@@ -58,7 +58,7 @@ func MigratePaymentsSettings() {
 		ID       uint64
 		Settings []byte
 	}
-	
+
 	var payments []PaymentData
 	rows, err := tx.Raw(`
 		SELECT id, payment_settings 
@@ -71,7 +71,7 @@ func MigratePaymentsSettings() {
 		tx.Rollback()
 		log.Fatal("Failed to query payments:", err)
 	}
-	
+
 	// Load all data into memory first
 	for rows.Next() {
 		var payment PaymentData
@@ -82,7 +82,7 @@ func MigratePaymentsSettings() {
 		payments = append(payments, payment)
 	}
 	rows.Close() // Close rows immediately after reading
-	
+
 	log.Printf("Found %d payments with payment_settings to process", len(payments))
 
 	migratedCount := 0
@@ -105,7 +105,7 @@ func MigratePaymentsSettings() {
 				skippedCount++
 				continue
 			}
-			
+
 			log.Printf("Error parsing payment_settings for payment %d: %v", paymentId, err)
 			errorCount++
 			continue
@@ -113,18 +113,18 @@ func MigratePaymentsSettings() {
 
 		// Convert to new format
 		newSettings := make([]NewPaymentSetting, 0, len(oldSettings))
-		
+
 		for _, oldSetting := range oldSettings {
 			coin, network := mapMethodToCoinNetwork(oldSetting.Type)
-			
+
 			if coin == "" || network == "" {
-				log.Printf("Warning: Unknown payment type %d for payment %d, using fallback", 
+				log.Printf("Warning: Unknown payment type %d for payment %d, using fallback",
 					oldSetting.Type, paymentId)
 				// Use fallback for unknown types
 				coin = fmt.Sprintf("UNKNOWN_%d", oldSetting.Type)
 				network = "unknown"
 			}
-			
+
 			newSettings = append(newSettings, NewPaymentSetting{
 				Coin:    coin,
 				Network: network,
@@ -141,7 +141,7 @@ func MigratePaymentsSettings() {
 		}
 
 		// Update payment_settings column
-		if err := tx.Exec("UPDATE payments SET payment_settings = ? WHERE id = ?", 
+		if err := tx.Exec("UPDATE payments SET payment_settings = ? WHERE id = ?",
 			newSettingsJSON, paymentId).Error; err != nil {
 			log.Printf("Error updating payment %d: %v", paymentId, err)
 			errorCount++
@@ -194,16 +194,16 @@ func main() {
 	fmt.Println("This will migrate payment_settings in payments table")
 	fmt.Println("from old format (type, address) to new format (coin, network, address)")
 	fmt.Println("========================================")
-	
+
 	// Check if DATABASE_URL is set
 	if os.Getenv("DATABASE_URL") == "" {
 		fmt.Println("\nError: DATABASE_URL environment variable is not set")
 		fmt.Println("Usage: DATABASE_URL=postgres://... go run migrate_payments.go")
 		os.Exit(1)
 	}
-	
+
 	fmt.Println("\nPress Enter to continue or Ctrl+C to cancel...")
 	fmt.Scanln()
-	
+
 	MigratePaymentsSettings()
 }

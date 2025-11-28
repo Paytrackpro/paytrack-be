@@ -3,10 +3,10 @@ package service
 import (
 	"fmt"
 
-	"code.cryptopower.dev/mgmt-ng/be/authpb"
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/utils"
-	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
+	"github.com/Paytrackpro/paytrack-be/authpb"
+	"github.com/Paytrackpro/paytrack-be/storage"
+	"github.com/Paytrackpro/paytrack-be/utils"
+	"github.com/Paytrackpro/paytrack-be/webserver/portal"
 	socketio "github.com/googollee/go-socket.io"
 	"gorm.io/gorm"
 )

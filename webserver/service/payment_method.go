@@ -3,9 +3,9 @@ package service
 import (
 	"fmt"
 
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/utils"
-	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
+	"github.com/Paytrackpro/paytrack-be/storage"
+	"github.com/Paytrackpro/paytrack-be/utils"
+	"github.com/Paytrackpro/paytrack-be/webserver/portal"
 	"gorm.io/gorm"
 )
 
@@ -21,7 +21,7 @@ func (s *Service) ValidatePaymentAddress(req portal.ValidateAddressRequest) port
 
 	// Convert network code to Network type
 	network := utils.NetworkFromCode(req.Network)
-	
+
 	err := utils.VerifyAddress(req.Address, network)
 	if err != nil {
 		networkInfo := network.Info()

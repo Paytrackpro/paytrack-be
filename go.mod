@@ -1,4 +1,4 @@
-module code.cryptopower.dev/mgmt-ng/be
+module github.com/Paytrackpro/paytrack-be
 
 go 1.23.4
 

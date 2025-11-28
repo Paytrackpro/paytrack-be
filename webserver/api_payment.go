@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"code.cryptopower.dev/mgmt-ng/be/email"
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/utils"
-	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
-	"code.cryptopower.dev/mgmt-ng/be/webserver/service"
+	"github.com/Paytrackpro/paytrack-be/email"
+	"github.com/Paytrackpro/paytrack-be/storage"
+	"github.com/Paytrackpro/paytrack-be/utils"
+	"github.com/Paytrackpro/paytrack-be/webserver/portal"
+	"github.com/Paytrackpro/paytrack-be/webserver/service"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -226,7 +226,7 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 	if payment.PaymentType == utils.PaymentUrl {
 		payment.PaymentUrl = a.service.GeneratePaymentURL(int(payment.Id), payment.PaymentCode)
 	}
-	
+
 	// Enhance payment_settings with network information if missing
 	if len(payment.PaymentSettings) > 0 {
 		enhancedSettings := make(storage.PaymentSettings, 0, len(payment.PaymentSettings))
@@ -235,13 +235,13 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 			settingMap := make(map[string]interface{})
 			settingBytes, _ := json.Marshal(setting)
 			json.Unmarshal(settingBytes, &settingMap)
-			
+
 			// If network is missing, add it based on the payment type
 			if _, hasNetwork := settingMap["network"]; !hasNetwork {
 				// Map payment type to network
 				network := getNetworkForPaymentType(setting.Type)
 				coin := getCoinForPaymentType(setting.Type)
-				
+
 				// Create enhanced setting with network info
 				enhancedSetting := map[string]interface{}{
 					"type":    setting.Type,
@@ -259,7 +259,7 @@ func (a *apiPayment) getPayment(w http.ResponseWriter, r *http.Request) {
 		}
 		payment.PaymentSettings = enhancedSettings
 	}
-	
+
 	utils.ResponseOK(w, payment)
 }
 
@@ -316,7 +316,7 @@ func (a *apiPayment) getPaymentUrl(w http.ResponseWriter, r *http.Request) {
 	if payment.PaymentType == utils.PaymentUrl {
 		payment.PaymentUrl = a.service.GeneratePaymentURL(int(payment.Id), payment.PaymentCode)
 	}
-	
+
 	// Enhance payment_settings with network information if missing
 	if len(payment.PaymentSettings) > 0 {
 		enhancedSettings := make(storage.PaymentSettings, 0, len(payment.PaymentSettings))
@@ -325,13 +325,13 @@ func (a *apiPayment) getPaymentUrl(w http.ResponseWriter, r *http.Request) {
 			settingMap := make(map[string]interface{})
 			settingBytes, _ := json.Marshal(setting)
 			json.Unmarshal(settingBytes, &settingMap)
-			
+
 			// If network is missing, add it based on the payment type
 			if _, hasNetwork := settingMap["network"]; !hasNetwork {
 				// Map payment type to network
 				network := getNetworkForPaymentType(setting.Type)
 				coin := getCoinForPaymentType(setting.Type)
-				
+
 				// Create enhanced setting with network info
 				enhancedSetting := map[string]interface{}{
 					"type":    setting.Type,
@@ -349,7 +349,7 @@ func (a *apiPayment) getPaymentUrl(w http.ResponseWriter, r *http.Request) {
 		}
 		payment.PaymentSettings = enhancedSettings
 	}
-	
+
 	utils.ResponseOK(w, payment)
 }
 

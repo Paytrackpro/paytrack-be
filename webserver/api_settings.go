@@ -3,7 +3,7 @@ package webserver
 import (
 	"net/http"
 
-	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/Paytrackpro/paytrack-be/utils"
 )
 
 type apiSettings struct {

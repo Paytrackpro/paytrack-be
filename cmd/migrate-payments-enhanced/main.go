@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/Paytrackpro/paytrack-be/utils"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -68,7 +68,7 @@ func MigratePaymentsSettingsEnhanced() {
 	log.Println("Enhanced Payment Settings Migration")
 	log.Println("This version maintains backward compatibility")
 	log.Println("========================================")
-	
+
 	// Begin transaction
 	tx := db.Begin()
 	defer func() {
@@ -86,7 +86,7 @@ func MigratePaymentsSettingsEnhanced() {
 		ID       uint64
 		Settings []byte
 	}
-	
+
 	var payments []PaymentData
 	rows, err := tx.Raw(`
 		SELECT id, payment_settings 
@@ -99,7 +99,7 @@ func MigratePaymentsSettingsEnhanced() {
 		tx.Rollback()
 		log.Fatal("Failed to query payments:", err)
 	}
-	
+
 	// Load all data into memory first
 	for rows.Next() {
 		var payment PaymentData
@@ -110,7 +110,7 @@ func MigratePaymentsSettingsEnhanced() {
 		payments = append(payments, payment)
 	}
 	rows.Close()
-	
+
 	log.Printf("Found %d payments with payment_settings to process", len(payments))
 
 	migratedCount := 0
@@ -139,20 +139,20 @@ func MigratePaymentsSettingsEnhanced() {
 
 		// Convert to new format with backward compatibility
 		newSettings := make([]EnhancedPaymentSetting, 0, len(oldSettings))
-		
+
 		for _, oldSetting := range oldSettings {
 			coin, network := mapMethodToCoinNetwork(oldSetting.Type)
-			
+
 			if coin == "" || network == "" {
-				log.Printf("Warning: Unknown payment type %s for payment %d, keeping original", 
+				log.Printf("Warning: Unknown payment type %s for payment %d, keeping original",
 					oldSetting.Type.String(), paymentId)
 				// Keep original type for unknown methods
 				coin = strings.ToUpper(oldSetting.Type.String())
 				network = "unknown"
 			}
-			
+
 			newSettings = append(newSettings, EnhancedPaymentSetting{
-				Type:    oldSetting.Type,  // IMPORTANT: Keep original type for backward compatibility
+				Type:    oldSetting.Type, // IMPORTANT: Keep original type for backward compatibility
 				Coin:    coin,
 				Network: network,
 				Address: oldSetting.Address,
@@ -168,7 +168,7 @@ func MigratePaymentsSettingsEnhanced() {
 		}
 
 		// Update payment_settings column
-		if err := tx.Exec("UPDATE payments SET payment_settings = ? WHERE id = ?", 
+		if err := tx.Exec("UPDATE payments SET payment_settings = ? WHERE id = ?",
 			newSettingsJSON, paymentId).Error; err != nil {
 			log.Printf("Error updating payment %d: %v", paymentId, err)
 			errorCount++
@@ -193,7 +193,7 @@ func MigratePaymentsSettingsEnhanced() {
 	log.Printf("Already migrated/skipped: %d payments", skippedCount)
 	log.Printf("Errors encountered: %d payments", errorCount)
 	log.Println("========================================")
-	
+
 	// Print post-migration recommendations
 	printRecommendations()
 }
@@ -201,13 +201,13 @@ func MigratePaymentsSettingsEnhanced() {
 // analyzeCurrentState analyzes the current state of payment_settings
 func analyzeCurrentState(db *gorm.DB) {
 	log.Println("\n--- Analyzing Current State ---")
-	
+
 	// Count payments with different payment types
 	type TypeCount struct {
 		Type  string
 		Count int
 	}
-	
+
 	var counts []TypeCount
 	query := `
 		SELECT 
@@ -219,7 +219,7 @@ func analyzeCurrentState(db *gorm.DB) {
 		AND payment_settings::text != '[]'
 		GROUP BY type
 	`
-	
+
 	if err := db.Raw(query).Scan(&counts).Error; err != nil {
 		log.Printf("Could not analyze payment types: %v", err)
 	} else {
@@ -228,7 +228,7 @@ func analyzeCurrentState(db *gorm.DB) {
 			log.Printf("  %s: %d payments", tc.Type, tc.Count)
 		}
 	}
-	
+
 	// Check for already migrated payments (have "coin" field)
 	var migratedCount int64
 	db.Raw(`
@@ -236,7 +236,7 @@ func analyzeCurrentState(db *gorm.DB) {
 		FROM payments 
 		WHERE payment_settings::text LIKE '%"coin"%'
 	`).Scan(&migratedCount)
-	
+
 	log.Printf("Already migrated payments: %d", migratedCount)
 	log.Println("-------------------------------\n")
 }
@@ -244,7 +244,7 @@ func analyzeCurrentState(db *gorm.DB) {
 // verifyMigration verifies the migration results
 func verifyMigration(db *gorm.DB) {
 	log.Println("\n--- Verifying Migration Results ---")
-	
+
 	// Test backward compatibility query
 	var btcCount int64
 	testQuery := `SELECT COUNT(*) FROM payments WHERE payment_settings @> '[{"type": "btc"}]'`
@@ -253,7 +253,7 @@ func verifyMigration(db *gorm.DB) {
 	} else {
 		log.Printf("Backward compatibility OK: Found %d BTC payments using old query", btcCount)
 	}
-	
+
 	// Test new query format
 	var btcCountNew int64
 	newQuery := `SELECT COUNT(*) FROM payments WHERE payment_settings @> '[{"coin": "BTC"}]'`
@@ -262,7 +262,7 @@ func verifyMigration(db *gorm.DB) {
 	} else {
 		log.Printf("New format OK: Found %d BTC payments using new query", btcCountNew)
 	}
-	
+
 	log.Println("------------------------------------\n")
 }
 
@@ -324,14 +324,14 @@ func main() {
 	fmt.Println("This version maintains backward compatibility")
 	fmt.Println("by keeping the 'type' field while adding new fields")
 	fmt.Println("========================================")
-	
+
 	// Check if DATABASE_URL is set
 	if os.Getenv("DATABASE_URL") == "" {
 		fmt.Println("\nError: DATABASE_URL environment variable is not set")
 		fmt.Println("Usage: DATABASE_URL=postgres://... go run main.go")
 		os.Exit(1)
 	}
-	
+
 	fmt.Println("\nThis migration will:")
 	fmt.Println("1. Add 'coin' and 'network' fields to payment_settings")
 	fmt.Println("2. Keep existing 'type' field for backward compatibility")
@@ -339,6 +339,6 @@ func main() {
 	fmt.Println()
 	fmt.Println("Press Enter to continue or Ctrl+C to cancel...")
 	fmt.Scanln()
-	
+
 	MigratePaymentsSettingsEnhanced()
 }

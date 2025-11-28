@@ -1,6 +1,6 @@
 package portal
 
-import "code.cryptopower.dev/mgmt-ng/be/storage"
+import "github.com/Paytrackpro/paytrack-be/storage"
 
 type ProjectRequest struct {
 	ProjectId      uint64          `json:"projectId"`

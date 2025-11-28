@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"code.cryptopower.dev/mgmt-ng/be/authpb"
+	"github.com/Paytrackpro/paytrack-be/authpb"
 	"google.golang.org/grpc"
 )
 

@@ -3,8 +3,8 @@ package portal
 import (
 	"time"
 
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/Paytrackpro/paytrack-be/storage"
+	"github.com/Paytrackpro/paytrack-be/utils"
 )
 
 type PaymentRequest struct {

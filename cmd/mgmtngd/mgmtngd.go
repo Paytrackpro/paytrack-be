@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 
-	"code.cryptopower.dev/mgmt-ng/be/email"
-	"code.cryptopower.dev/mgmt-ng/be/log"
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/webserver"
+	"github.com/Paytrackpro/paytrack-be/email"
+	"github.com/Paytrackpro/paytrack-be/log"
+	"github.com/Paytrackpro/paytrack-be/storage"
+	"github.com/Paytrackpro/paytrack-be/webserver"
 )
 
 func main() {

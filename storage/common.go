@@ -3,7 +3,7 @@ package storage
 import (
 	"strings"
 
-	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/Paytrackpro/paytrack-be/utils"
 	"gorm.io/gorm"
 )
 

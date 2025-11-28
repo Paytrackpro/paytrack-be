@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/utils"
-	"code.cryptopower.dev/mgmt-ng/be/webserver/portal"
+	"github.com/Paytrackpro/paytrack-be/storage"
+	"github.com/Paytrackpro/paytrack-be/utils"
+	"github.com/Paytrackpro/paytrack-be/webserver/portal"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )

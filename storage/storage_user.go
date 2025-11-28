@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/Paytrackpro/paytrack-be/utils"
 	"gorm.io/gorm"
 )
 

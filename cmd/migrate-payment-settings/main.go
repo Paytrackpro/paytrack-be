@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"code.cryptopower.dev/mgmt-ng/be/storage"
-	"code.cryptopower.dev/mgmt-ng/be/utils"
+	"github.com/Paytrackpro/paytrack-be/storage"
+	"github.com/Paytrackpro/paytrack-be/utils"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -30,7 +30,7 @@ func main() {
 
 	// Start migration
 	log.Println("Starting payment settings migration...")
-	
+
 	// Begin transaction
 	tx := db.Begin()
 	defer func() {
