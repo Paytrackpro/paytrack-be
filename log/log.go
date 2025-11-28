@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"code.cryptopower.dev/mgmt-ng/be/webserver"
-	"code.cryptopower.dev/mgmt-ng/be/webserver/service"
+	"github.com/Paytrackpro/paytrack-be/webserver"
+	"github.com/Paytrackpro/paytrack-be/webserver/service"
 	"github.com/decred/slog"
 	"github.com/jrick/logrotate/rotator"
 )

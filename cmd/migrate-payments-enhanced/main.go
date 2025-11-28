@@ -64,11 +64,6 @@ func MigratePaymentsSettingsEnhanced() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	log.Println("========================================")
-	log.Println("Enhanced Payment Settings Migration")
-	log.Println("This version maintains backward compatibility")
-	log.Println("========================================")
-
 	// Begin transaction
 	tx := db.Begin()
 	defer func() {
@@ -186,21 +181,10 @@ func MigratePaymentsSettingsEnhanced() {
 	if err := tx.Commit().Error; err != nil {
 		log.Fatal("Failed to commit transaction:", err)
 	}
-
-	log.Println("========================================")
-	log.Printf("Migration completed!")
-	log.Printf("Successfully migrated: %d payments", migratedCount)
-	log.Printf("Already migrated/skipped: %d payments", skippedCount)
-	log.Printf("Errors encountered: %d payments", errorCount)
-	log.Println("========================================")
-
-	// Print post-migration recommendations
-	printRecommendations()
 }
 
 // analyzeCurrentState analyzes the current state of payment_settings
 func analyzeCurrentState(db *gorm.DB) {
-	log.Println("\n--- Analyzing Current State ---")
 
 	// Count payments with different payment types
 	type TypeCount struct {
@@ -238,7 +222,6 @@ func analyzeCurrentState(db *gorm.DB) {
 	`).Scan(&migratedCount)
 
 	log.Printf("Already migrated payments: %d", migratedCount)
-	log.Println("-------------------------------\n")
 }
 
 // verifyMigration verifies the migration results
@@ -262,8 +245,6 @@ func verifyMigration(db *gorm.DB) {
 	} else {
 		log.Printf("New format OK: Found %d BTC payments using new query", btcCountNew)
 	}
-
-	log.Println("------------------------------------\n")
 }
 
 // mapMethodToCoinNetwork maps the old payment method to new coin and network values
@@ -289,56 +270,6 @@ func mapMethodToCoinNetwork(method utils.Method) (coin, network string) {
 	}
 }
 
-// printRecommendations prints post-migration recommendations
-func printRecommendations() {
-	fmt.Println("\n========================================")
-	fmt.Println("POST-MIGRATION RECOMMENDATIONS")
-	fmt.Println("========================================")
-	fmt.Println()
-	fmt.Println("1. TESTING:")
-	fmt.Println("   - Test all payment-related APIs")
-	fmt.Println("   - Verify BTC bulk payment functionality")
-	fmt.Println("   - Check payment creation with UserPaymentMethod")
-	fmt.Println()
-	fmt.Println("2. CODE UPDATES NEEDED:")
-	fmt.Println("   - Update queries in /webserver/service/payment.go to use both 'type' and 'coin'")
-	fmt.Println("   - Consider updating PaymentSetting struct to include new fields")
-	fmt.Println("   - Plan for eventual removal of 'type' field after full transition")
-	fmt.Println()
-	fmt.Println("3. MONITORING:")
-	fmt.Println("   - Monitor error logs for payment-related issues")
-	fmt.Println("   - Check that payment_settings queries still work")
-	fmt.Println("   - Verify address validation with new network field")
-	fmt.Println()
-	fmt.Println("4. ROLLBACK PLAN:")
-	fmt.Println("   - Backup database before running in production")
-	fmt.Println("   - Keep original migration script for reference")
-	fmt.Println("   - Document the migration date and affected payment IDs")
-	fmt.Println()
-	fmt.Println("========================================")
-}
-
 func main() {
-	fmt.Println("========================================")
-	fmt.Println("Enhanced Payment Settings Migration Tool")
-	fmt.Println("This version maintains backward compatibility")
-	fmt.Println("by keeping the 'type' field while adding new fields")
-	fmt.Println("========================================")
-
-	// Check if DATABASE_URL is set
-	if os.Getenv("DATABASE_URL") == "" {
-		fmt.Println("\nError: DATABASE_URL environment variable is not set")
-		fmt.Println("Usage: DATABASE_URL=postgres://... go run main.go")
-		os.Exit(1)
-	}
-
-	fmt.Println("\nThis migration will:")
-	fmt.Println("1. Add 'coin' and 'network' fields to payment_settings")
-	fmt.Println("2. Keep existing 'type' field for backward compatibility")
-	fmt.Println("3. Ensure existing queries continue to work")
-	fmt.Println()
-	fmt.Println("Press Enter to continue or Ctrl+C to cancel...")
-	fmt.Scanln()
-
 	MigratePaymentsSettingsEnhanced()
 }
